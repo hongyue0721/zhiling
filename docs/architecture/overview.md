@@ -15,14 +15,14 @@
 - 地图交互使用 `@xyflow/react`，客户端局部状态使用 Zustand；
 - 边界数据使用 Zod 校验，自定义地图生成通过 SSE 报告阶段进度；
 - PostgreSQL、Drizzle ORM 与 Drizzle migrations；
-- Better Auth、Anonymous Plugin 与 Email & Password；
+- Better Auth 与 Email & Password；
 - 知乎 API 和模型 API 均置于独立适配器之后。
 
 此处记录目标技术方向，不等于已经锁定包版本或实现方式。具体选择必须通过 ADR 并在工程骨架阶段验证。
 
 ## 逻辑分层
 
-在技术栈确认前，仅约束职责，不预设具体框架：
+逻辑分层只约束职责和依赖方向，具体工程目录由后续目录 ADR 决定：
 
 1. **接口层**：协议解析、身份上下文、输入校验和响应映射。
 2. **应用层**：编排用例、事务边界和授权决策。
@@ -34,7 +34,7 @@
 ## 首批待决策事项
 
 - Next.js 目录、服务端边界与依赖约束；
-- 领域模型、事务边界和匿名账户合并规则；
+- 领域模型、事务边界、会话生命周期，以及邮箱验证与密码恢复是否纳入一期；
 - 知乎与模型适配器的规范化契约及错误分类；
 - 地图生成任务状态机、并发合并和恢复方式；
 - SSE 事件契约、断线恢复与最终状态查询；
@@ -43,4 +43,4 @@
 
 重要决策使用 [ADR](decisions/README.md) 记录。
 
-进一步阅读：[系统上下文](system-context.md)、[领域契约](domain-contracts.md)、[地图生成流程](generation-pipeline.md)和[安全边界](security-boundaries.md)。
+进一步阅读：[系统上下文](system-context.md)、[领域契约](domain-contracts.md)、[地图生成流程](generation-pipeline.md)、[安全边界](security-boundaries.md)和[访问控制矩阵](access-control.md)。

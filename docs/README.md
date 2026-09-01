@@ -21,6 +21,7 @@
 - 数据关系：[数据模型](architecture/data-model.md)
 - 外部隔离：[兼容性策略](architecture/compatibility.md)
 - 安全规则：[安全边界](architecture/security-boundaries.md)
+- 权限规则：[访问控制矩阵](architecture/access-control.md)
 - API 维护：[API 文档](api/README.md)
 - 分工顺序：[工作包](development/work-packages.md)
 - 决策记录：[ADR 索引](architecture/decisions/README.md)

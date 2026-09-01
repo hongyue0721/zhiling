@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Zhiling API
+  title: Zhijing API
   version: 0.0.0
   description: >-
-    API contract placeholder. Business endpoints will be added only after the
-    product scope and domain contracts are confirmed.
+    Contract-first API skeleton. Business paths and the Better Auth session
+    security scheme will be added after their exact contracts are reviewed.
 paths: {}
