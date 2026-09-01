@@ -8,7 +8,17 @@
 
 建议分支名：`feature/<scope>`、`fix/<scope>`、`docs/<scope>`、`refactor/<scope>`。
 
-建议提交格式：`<type>(<scope>): <summary>`，其中 `type` 可取 `feat`、`fix`、`docs`、`test`、`refactor`、`build`、`ci`、`chore`。
+所有提交必须使用中文标题，并通过正文解释功能、原因和验证结果。类型标识可保留社区通用缩写，但功能描述必须使用中文。
+
+```text
+<类型>(<范围>): <中文功能标题>
+
+功能：说明本次实现或调整了什么。
+原因：说明业务背景、问题根因或设计依据。
+验证：列出实际执行的检查及其结果。
+```
+
+`类型` 可取 `feat`、`fix`、`docs`、`test`、`refactor`、`build`、`ci`、`chore`。禁止使用“update files”“修改一下”等无法说明成果的标题，也不能省略正文中的功能解说。
 
 ## 合入要求
 
