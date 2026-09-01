@@ -14,7 +14,7 @@
 - [ ] 评审并冻结首批架构决策与领域契约
 - [ ] 依据已确认契约建立第一个端到端纵向切片
 
-范围索引见 [产品需求](docs/product/requirements.md)，架构入口见 [架构总览](docs/architecture/overview.md)，API 契约入口见 [API 文档](docs/api/README.md)。
+完整阅读入口见 [项目文档索引](docs/README.md)。范围索引见 [产品需求](docs/product/requirements.md)，架构入口见 [架构总览](docs/architecture/overview.md)，API 契约入口见 [API 文档](docs/api/README.md)。
 
 ## 协作原则
 

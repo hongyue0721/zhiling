@@ -42,3 +42,5 @@
 - 部署平台、可观测性、安全检查与回滚要求。
 
 重要决策使用 [ADR](decisions/README.md) 记录。
+
+进一步阅读：[系统上下文](system-context.md)、[领域契约](domain-contracts.md)、[地图生成流程](generation-pipeline.md)和[安全边界](security-boundaries.md)。
