@@ -1,0 +1,8 @@
+openapi: 3.1.0
+info:
+  title: Zhiling API
+  version: 0.0.0
+  description: >-
+    API contract placeholder. Business endpoints will be added only after the
+    product scope and domain contracts are confirmed.
+paths: {}

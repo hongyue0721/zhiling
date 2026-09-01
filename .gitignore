@@ -1,0 +1,16 @@
+.DS_Store
+.idea/
+.vscode/
+*.log
+.env
+.env.*
+!.env.example
+
+# Build and dependency outputs
+node_modules/
+dist/
+build/
+coverage/
+target/
+__pycache__/
+.pytest_cache/
