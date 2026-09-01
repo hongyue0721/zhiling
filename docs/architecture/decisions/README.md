@@ -17,6 +17,8 @@
 | [0005](0005-transactional-anonymous-account-merge.md) | 匿名账户事务性合并方案 | Rejected |
 | [0006](0006-contract-first-api-and-compatibility.md) | API 契约优先并显式管理兼容性 | Accepted |
 | [0007](0007-require-login-for-all-product-capabilities.md) | 所有产品能力必须登录 | Accepted |
+| [0008](0008-project-structure-and-dependency-direction.md) | 固定工程目录与依赖方向 | Accepted |
+| [0009](0009-unified-business-api-error-contract.md) | 统一业务 API 错误契约 | Accepted |
 
 状态流转规则：
 

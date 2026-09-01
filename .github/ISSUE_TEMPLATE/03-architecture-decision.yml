@@ -1,0 +1,113 @@
+name: 架构决策
+description: 为跨模块、长期约束或难以回滚的选择发起 ADR 评审
+title: "[架构决策] "
+labels:
+  - "类型：架构决策"
+  - "状态：待决策"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        本表单用于启动决策，不代表方案已经接受。评审结论必须同步到 `docs/architecture/decisions/`，提议状态不得被实现当作已确认事实。
+
+  - type: textarea
+    id: decision
+    attributes:
+      label: 待决策问题
+      description: 用一句可判定的话描述必须作出的选择，并说明最晚决策节点。
+      placeholder: 是否/应采用……；必须在……之前决定
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 背景、约束与已确认事实
+      description: 引用项目目标、现有 ADR、真实接口资料或可复现实验；把未知项与事实分开。
+      placeholder: |
+        已确认事实：
+        - ……；依据：……
+        约束：
+        - ……
+        未知项：
+        - ……；验证方式：……
+    validations:
+      required: true
+
+  - type: textarea
+    id: drivers
+    attributes:
+      label: 决策驱动与判定标准
+      description: 按重要性说明业务一致性、可维护性、可验证性、性能或交付约束，避免只凭偏好选型。
+      placeholder: 1. ……；可通过……判定
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: 可选方案与权衡
+      description: 至少列出合理候选、收益、代价、失败语义及不选后果；若只有一个可行方案，说明排除其他方案的证据。
+      placeholder: |
+        方案 A：……
+        - 收益：……
+        - 代价与风险：……
+        - 失败语义：……
+        方案 B：……
+    validations:
+      required: true
+
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: 影响边界与所有权
+      description: 列出受影响模块、数据所有者、依赖方向、工作包和需要共同评审的契约消费方；负责人未分配时写“待分配”。
+      placeholder: 影响……；所有权……；消费方……；不影响……
+    validations:
+      required: true
+
+  - type: textarea
+    id: contracts
+    attributes:
+      label: 契约、兼容与演进
+      description: 说明 HTTP/SSE/模块/数据/第三方契约变化、支持范围、迁移和回滚方式、废弃窗口及兼容层移除条件。
+      placeholder: 契约变化……；支持版本……；迁移……；回滚……；移除条件……
+    validations:
+      required: true
+
+  - type: textarea
+    id: security
+    attributes:
+      label: 安全与数据一致性
+      description: 说明认证、授权、密钥、隐私、外部输入、事务和并发不变量；不适用时给出依据。
+      placeholder: 威胁……；控制边界……；残余风险……
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: 验证、观测与退出条件
+      description: 说明如何用测试或原型验证假设，如何发现错误决策，以及何时重审或撤销。
+      placeholder: 验证……；观测……；重审条件……；撤销条件……
+    validations:
+      required: true
+
+  - type: textarea
+    id: documentation
+    attributes:
+      label: 文档同步清单
+      description: 列出 ADR 及受影响的产品、架构、API、开发和变更文档。
+      placeholder: docs/architecture/decisions/……；其他同步文档……
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已检索现有 ADR 和 Issue，确认该问题没有已接受且仍适用的结论。
+          required: true
+        - label: 我会在决策被接受前阻止依赖该结论的实现进入主分支。
+          required: true

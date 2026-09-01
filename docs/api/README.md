@@ -14,3 +14,5 @@ API 采用契约优先。机器可读的单一事实源是 [`api/openapi.yaml`](
 当前未确认任何业务接口，因此 OpenAPI 文件不包含虚构路径。
 
 首版接口实现前还需评审 [API 约定](conventions.md)，尤其是统一错误模型、身份上下文和 SSE 恢复语义。
+
+业务 HTTP 错误遵循 [统一错误模型](error-model.md)。Better Auth 托管端点需在锁定真实版本后单独记录其框架契约，不得根据印象补写到 OpenAPI。

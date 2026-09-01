@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题报告
+    url: https://github.com/hongyue0721/zhiling/security/policy
+    about: 不要在普通 Issue 中披露漏洞、密钥、令牌或个人数据，请先阅读安全策略。

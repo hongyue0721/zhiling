@@ -6,3 +6,123 @@ info:
     Contract-first API skeleton. Business paths and the Better Auth session
     security scheme will be added after their exact contracts are reviewed.
 paths: {}
+components:
+  schemas:
+    ApiError:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ApiErrorBody'
+    ApiErrorBody:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - requestId
+      properties:
+        code:
+          type: string
+          pattern: '^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$'
+          examples:
+            - invalid_request
+        message:
+          type: string
+          minLength: 1
+          examples:
+            - 请求内容不符合接口要求
+        requestId:
+          type: string
+          minLength: 1
+          examples:
+            - req_01JXEXAMPLE
+        issues:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ApiValidationIssue'
+    ApiValidationIssue:
+      type: object
+      additionalProperties: false
+      required:
+        - path
+        - code
+        - message
+      properties:
+        path:
+          type: string
+          pattern: '^/(?:[^~/]|~0|~1)*(?:/(?:[^~/]|~0|~1)*)*$'
+          examples:
+            - /topic
+        code:
+          type: string
+          pattern: '^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$'
+          examples:
+            - required
+        message:
+          type: string
+          minLength: 1
+          examples:
+            - 请输入学习主题
+  responses:
+    BadRequest:
+      description: 请求结构、参数或输入无法解析
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    AuthenticationRequired:
+      description: 未建立有效正式账户会话
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    PermissionDenied:
+      description: 当前身份无权执行该操作
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ResourceNotFound:
+      description: 资源不存在或其存在性不可向当前身份暴露
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    StateConflict:
+      description: 请求与资源当前状态、版本或幂等约束冲突
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    RateLimited:
+      description: 当前正式账户超过允许频率
+      headers:
+        Retry-After:
+          description: 再次请求前需要等待的秒数或 HTTP 日期
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    InternalError:
+      description: 未预期的内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    DependencyUnavailable:
+      description: 当前外部依赖不可用且业务无法继续
+      headers:
+        Retry-After:
+          description: 仅在服务端能够确定时提供的等待秒数或 HTTP 日期
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'

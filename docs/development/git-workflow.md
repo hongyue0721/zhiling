@@ -1,6 +1,6 @@
 # Git 协作流程
 
-默认分支为 `main`，通过短生命周期分支和 PR 合入。
+默认分支为 `main`，通过短生命周期分支和 PR 合入。远程只允许 rebase 合入，禁止 merge commit、squash 和直接推送 `main`。
 
 ## 任务拆分
 
@@ -15,3 +15,11 @@
 3. 执行仓库规定的全部检查；
 4. 填写 PR 模板并请求对应所有者评审；
 5. 评审通过且自动检查全部成功后合入。
+
+协作基线检查命令：
+
+```bash
+scripts/verify-collaboration.sh --base origin/main --head HEAD
+```
+
+GitHub Issue 的状态流转、工作包链接与依赖见[协作任务队列](task-board.md)。由于当前私有仓库套餐不能启用分支保护，合入者必须人工确认 PR、独立评审和绿色检查全部满足；平台限制不降低流程要求。

@@ -1,0 +1,47 @@
+name: 协作规范检查
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: collaboration-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 验证协作基线
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 检出完整提交历史
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 验证拉取请求
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_COMMIT: ${{ github.event.pull_request.base.sha }}
+          HEAD_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: scripts/verify-collaboration.sh --base "${BASE_COMMIT}" --head "${HEAD_COMMIT}"
+
+      - name: 审计主分支新增提交
+        if: github.event_name == 'push'
+        env:
+          BASE_COMMIT: ${{ github.event.before }}
+          HEAD_COMMIT: ${{ github.event.after }}
+        run: scripts/verify-collaboration.sh --base "${BASE_COMMIT}" --head "${HEAD_COMMIT}"
+
+      - name: 手动验证当前协作基线
+        if: github.event_name == 'workflow_dispatch'
+        run: scripts/verify-collaboration.sh

@@ -6,6 +6,8 @@
 2. 在编码前确认任务边界、验收条件和受影响契约。
 3. 非简单改动先在 issue 或设计文档中记录方案。
 
+领取任务前先检查 [协作任务队列](docs/development/task-board.md) 的前置依赖和状态。状态为“阻塞”或“待决策”的工作不得提前实现。
+
 建议分支名：`feature/<scope>`、`fix/<scope>`、`docs/<scope>`、`refactor/<scope>`。
 
 所有提交必须使用中文标题，并通过正文解释功能、原因和验证结果。类型标识可保留社区通用缩写，但功能描述必须使用中文。
@@ -20,6 +22,12 @@
 
 `类型` 可取 `feat`、`fix`、`docs`、`test`、`refactor`、`build`、`ci`、`chore`。禁止使用“update files”“修改一下”等无法说明成果的标题，也不能省略正文中的功能解说。
 
+提交 PR 前执行：
+
+```bash
+scripts/verify-collaboration.sh --base origin/main --head HEAD
+```
+
 ## 合入要求
 
 每个 PR 必须：
@@ -31,6 +39,8 @@
 - 不得提交密钥、令牌、生产数据或本地环境文件。
 
 API 发生变化时，必须先更新 `api/openapi.yaml` 及相关 schema、示例和错误定义。破坏性变更必须有版本策略和迁移窗口，不能静默合入。
+
+远程仓库只允许 rebase 合入，以保留已经通过检查的中文提交说明。禁止直接向 `main` 推送；当前平台无法强制分支保护时，这仍是必须人工遵守的协作门禁。
 
 ## 评审重点
 

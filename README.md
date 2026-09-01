@@ -25,3 +25,7 @@
 5. 重要架构选择通过 ADR 记录原因、影响与替代方案。
 
 开始贡献前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+安全问题不得通过普通 Issue 披露，处理方式见 [SECURITY.md](SECURITY.md)。
+
+团队分工入口见 [协作就绪清单](docs/development/collaboration-readiness.md) 与 [协作任务队列](docs/development/task-board.md)。

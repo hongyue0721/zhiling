@@ -1,0 +1,106 @@
+name: 缺陷报告
+description: 报告可复现、可定位且不掩盖业务事实的异常行为
+title: "[缺陷] "
+labels:
+  - "类型：缺陷"
+  - "状态：待分配"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        安全漏洞或可能泄露密钥、令牌、个人数据的细节不得公开粘贴。请先以最小必要信息描述影响，并按仓库维护者指定的私密渠道补充证据。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题与业务影响
+      description: 说明谁在什么场景受到影响，以及数据、权限或核心闭环是否已受损。
+      placeholder: 当……时，……无法/错误地……，影响……
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为及依据
+      description: 写明正确行为，并引用产品目标、契约、ADR 或已确认业务规则。若依据冲突，直接指出。
+      placeholder: 预期……；依据：……
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 说明可观察结果、稳定错误码和发生频率；不得粘贴密钥、令牌、完整个人数据或第三方敏感响应。
+      placeholder: 实际……；发生频率……；错误标识……
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 最小复现步骤
+      description: 给出从已知初始状态开始的完整步骤，以及复现所需的脱敏数据条件。
+      placeholder: |
+        前置状态：……
+        1. ……
+        2. ……
+        3. ……
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境与版本
+      description: 记录分支/提交、浏览器或运行环境、协议/适配器/数据版本；未知项写“未知”。
+      placeholder: 提交……；环境……；浏览器……；契约版本……
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏证据
+      description: 提供最小必要的日志、请求 ID、截图或失败测试，并说明已做何种脱敏。
+      placeholder: 请求 ID……；日志摘要……；脱敏方式……
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 已知范围与关联改动
+      description: 列出受影响和确认不受影响的功能、数据、契约、兼容层及近期相关变更；未知边界要明确。
+      placeholder: 受影响……；暂未发现影响……；关联 PR/提交……；待确认……
+    validations:
+      required: true
+
+  - type: textarea
+    id: consistency_security
+    attributes:
+      label: 数据一致性与安全评估
+      description: 说明是否可能越权、泄露、丢失/重复数据、产生半成品关系或暴露正确答案；无法确认时说明需要怎样核验。
+      placeholder: 风险……；现有证据……；需核验……
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: 修复验收与回归计划
+      description: 给出能证明根因闭合的自动化测试、契约检查、兼容/迁移验证及文档更新范围。
+      placeholder: 回归用例……；失败路径……；兼容验证……；文档……
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已检索现有 Issue，并提供了可复现证据或明确说明当前无法复现的原因。
+          required: true
+        - label: 我已删除或脱敏密钥、令牌、个人数据和第三方敏感响应。
+          required: true

@@ -1,0 +1,110 @@
+name: 功能任务
+description: 提出有明确业务事实、边界和验收方式的功能工作
+title: "[功能] "
+labels:
+  - "类型：功能"
+  - "状态：待分配"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先核对 `PROJECT_GOAL.md` 和已有 ADR。尚未确认的业务规则应明确标记为待决策，不能作为实现事实。
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标与价值
+      description: 说明要解决的问题、目标用户或调用方，以及完成后产生的可观察价值。
+      placeholder: 当前……导致……；完成后……能够……
+    validations:
+      required: true
+
+  - type: textarea
+    id: facts
+    attributes:
+      label: 已确认的业务事实与依据
+      description: 列出事实及其来源；未知项必须写成待确认问题，不得猜测。
+      placeholder: |
+        - 事实：……；依据：PROJECT_GOAL.md 第……节 / ADR-…… / 已确认接口资料
+        - 待确认：……；确认方：……；最迟确认节点：……
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 范围与非目标
+      description: 分别说明本任务包含和明确不包含的工作，避免协作边界漂移。
+      placeholder: |
+        范围：
+        - ……
+        非目标：
+        - ……
+    validations:
+      required: true
+
+  - type: textarea
+    id: contracts
+    attributes:
+      label: 契约与依赖
+      description: 说明输入、输出、错误语义、数据所有权、上下游依赖及受影响的 HTTP/SSE/模块/第三方契约；无影响时也要写明判断依据。
+      placeholder: 输入……；输出……；失败……；依赖……；契约影响……
+    validations:
+      required: true
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: 兼容、迁移与回滚
+      description: 说明兼容范围、失败方式、迁移步骤、回滚边界及兼容层移除条件；不适用时说明原因。
+      placeholder: 兼容对象与版本……；不支持场景……；迁移……；回滚……；移除条件……
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 使用可独立验证的结果描述完成条件，不写“功能正常”等模糊结论。
+      placeholder: |
+        - [ ] 当……时，系统……
+        - [ ] 当事实缺失或关系不一致时，系统明确失败为……
+    validations:
+      required: true
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: 测试计划
+      description: 覆盖核心正常路径、边界、失败路径、契约测试及必要的回归范围。
+      placeholder: 单元测试……；集成测试……；契约测试……；端到端验证……
+    validations:
+      required: true
+
+  - type: textarea
+    id: documentation
+    attributes:
+      label: 文档同步计划
+      description: 列出必须更新的产品、架构、API、开发或变更文档；不适用时说明原因。
+      placeholder: PROJECT_GOAL.md / docs/…… / api/openapi.yaml / CHANGELOG.md
+    validations:
+      required: true
+
+  - type: textarea
+    id: security
+    attributes:
+      label: 安全与数据一致性
+      description: 说明认证、授权、敏感信息、外部输入、并发/事务和数据关系风险；不适用时说明依据。
+      placeholder: 身份来源……；所有权校验……；敏感数据……；事务不变量……
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已检索现有 Issue、文档和 ADR，确认没有重复任务或冲突决策。
+          required: true
+        - label: 我没有把未知业务事实包装成默认值、兼容能力或已确认需求。
+          required: true
