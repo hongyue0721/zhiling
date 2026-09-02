@@ -10,6 +10,8 @@ tags:
     description: Authenticated read access to current published featured map versions.
   - name: Learning relationships
     description: Account-owned access to an immutable learning-map version.
+  - name: Map generations
+    description: Authenticated, account-scoped custom map generation and resumable progress.
 paths:
   /api/featured-learning-maps:
     get:
@@ -23,19 +25,19 @@ paths:
       security:
         - betterAuthSession: []
       responses:
-        '200':
+        "200":
           description: 当前已发布精选地图目录
           headers:
             Cache-Control:
-              $ref: '#/components/headers/PrivateNoStore'
+              $ref: "#/components/headers/PrivateNoStore"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FeaturedLearningMapList'
-        '401':
-          $ref: '#/components/responses/AuthenticationRequired'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/FeaturedLearningMapList"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/featured-learning-maps/{mapId}:
     get:
       operationId: getFeaturedLearningMap
@@ -49,23 +51,23 @@ paths:
       security:
         - betterAuthSession: []
       parameters:
-        - $ref: '#/components/parameters/MapId'
+        - $ref: "#/components/parameters/MapId"
       responses:
-        '200':
+        "200":
           description: 当前精选版本的完整图与来源证据投影
           headers:
             Cache-Control:
-              $ref: '#/components/headers/PrivateNoStore'
+              $ref: "#/components/headers/PrivateNoStore"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LearningMapDetail'
-        '401':
-          $ref: '#/components/responses/AuthenticationRequired'
-        '404':
-          $ref: '#/components/responses/ResourceNotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/LearningMapDetail"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ResourceNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/learning-relationships/{learningRelationshipId}/map:
     get:
       operationId: getLearningRelationshipMap
@@ -79,23 +81,23 @@ paths:
       security:
         - betterAuthSession: []
       parameters:
-        - $ref: '#/components/parameters/LearningRelationshipId'
+        - $ref: "#/components/parameters/LearningRelationshipId"
       responses:
-        '200':
+        "200":
           description: 学习关系绑定的完整地图与来源证据投影
           headers:
             Cache-Control:
-              $ref: '#/components/headers/PrivateNoStore'
+              $ref: "#/components/headers/PrivateNoStore"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LearningMapDetail'
-        '401':
-          $ref: '#/components/responses/AuthenticationRequired'
-        '404':
-          $ref: '#/components/responses/ResourceNotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/LearningMapDetail"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ResourceNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/learning-relationships/{learningRelationshipId}/nodes/{nodeId}/assessment:
     get:
       operationId: getLearningNodeAssessment
@@ -109,24 +111,24 @@ paths:
       security:
         - betterAuthSession: []
       parameters:
-        - $ref: '#/components/parameters/LearningRelationshipId'
-        - $ref: '#/components/parameters/NodeId'
+        - $ref: "#/components/parameters/LearningRelationshipId"
+        - $ref: "#/components/parameters/NodeId"
       responses:
-        '200':
+        "200":
           description: 不含答案的节点验证题面
           headers:
             Cache-Control:
-              $ref: '#/components/headers/PrivateNoStore'
+              $ref: "#/components/headers/PrivateNoStore"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LearningNodeAssessment'
-        '401':
-          $ref: '#/components/responses/AuthenticationRequired'
-        '404':
-          $ref: '#/components/responses/ResourceNotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/LearningNodeAssessment"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ResourceNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
     post:
       operationId: submitLearningNodeAssessment
       tags:
@@ -139,33 +141,33 @@ paths:
       security:
         - betterAuthSession: []
       parameters:
-        - $ref: '#/components/parameters/LearningRelationshipId'
-        - $ref: '#/components/parameters/NodeId'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: "#/components/parameters/LearningRelationshipId"
+        - $ref: "#/components/parameters/NodeId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AssessmentSubmission'
+              $ref: "#/components/schemas/AssessmentSubmission"
       responses:
-        '200':
+        "200":
           description: 服务端判题结果、节点分数和完成状态
           headers:
             Cache-Control:
-              $ref: '#/components/headers/PrivateNoStore'
+              $ref: "#/components/headers/PrivateNoStore"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AssessmentSubmissionResult'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/AuthenticationRequired'
-        '404':
-          $ref: '#/components/responses/ResourceNotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/AssessmentSubmissionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ResourceNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/learning-relationships/{learningRelationshipId}/progress:
     get:
       operationId: getLearningRelationshipProgress
@@ -178,23 +180,126 @@ paths:
       security:
         - betterAuthSession: []
       parameters:
-        - $ref: '#/components/parameters/LearningRelationshipId'
+        - $ref: "#/components/parameters/LearningRelationshipId"
       responses:
-        '200':
+        "200":
           description: 节点最佳成绩、完成状态与历史摘要
           headers:
             Cache-Control:
-              $ref: '#/components/headers/PrivateNoStore'
+              $ref: "#/components/headers/PrivateNoStore"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LearningProgressSummary'
-        '401':
-          $ref: '#/components/responses/AuthenticationRequired'
-        '404':
-          $ref: '#/components/responses/ResourceNotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
+                $ref: "#/components/schemas/LearningProgressSummary"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ResourceNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/map-generations:
+    post:
+      operationId: requestMapGeneration
+      tags:
+        - Map generations
+      summary: 请求生成一张自定义学习地图
+      description: >-
+        Creates or joins the account's generation task for a normalized topic. A
+        cache hit is still account-scoped: the response identifies the caller's
+        newly established learning relationship. The Web process only enqueues or
+        reads persisted state; provider credentials are required by the Worker.
+      security:
+        - betterAuthSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MapGenerationRequest"
+      responses:
+        "202":
+          description: 已创建、加入活动任务或命中缓存的生成任务快照
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MapGenerationRequestResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/map-generations/{taskId}:
+    get:
+      operationId: getMapGeneration
+      tags:
+        - Map generations
+      summary: 读取账户参与的生成任务快照
+      description: >-
+        Returns only the persisted safe state of a task in which the current
+        account participates. A guessed task ID and a task owned by another
+        account both return resource_not_found.
+      security:
+        - betterAuthSession: []
+      parameters:
+        - $ref: "#/components/parameters/GenerationTaskId"
+      responses:
+        "200":
+          description: 生成状态、阶段、恢复序号和终态结果或失败类别
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationTaskSnapshot"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ResourceNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/map-generations/{taskId}/events:
+    get:
+      operationId: streamMapGenerationEvents
+      tags:
+        - Map generations
+      summary: 以 SSE 订阅可恢复的生成进度
+      description: >-
+        Revalidates the formal Session and task participation on every connection.
+        Last-Event-ID is a persisted sequence cursor. If retained history cannot
+        satisfy the cursor, the first event is a complete snapshot event followed
+        by retained events. Only safe status, stage, result identifiers and stable
+        failure categories are emitted; candidate content and provider details are
+        never sent. A succeeded or failed terminal event closes the stream.
+      security:
+        - betterAuthSession: []
+      parameters:
+        - $ref: "#/components/parameters/GenerationTaskId"
+        - $ref: "#/components/parameters/LastEventId"
+      responses:
+        "200":
+          description: 事件流；每个持久事件都使用单调序号和封闭事件类型
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/SseCacheControl"
+            X-Accel-Buffering:
+              $ref: "#/components/headers/SseNoBuffer"
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/GenerationSseStream"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ResourceNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   securitySchemes:
     betterAuthSession:
@@ -239,12 +344,38 @@ components:
         type: string
         minLength: 1
         maxLength: 256
+    GenerationTaskId:
+      name: taskId
+      in: path
+      required: true
+      description: Stable opaque generation task identifier.
+      schema:
+        type: string
+        minLength: 1
+    LastEventId:
+      name: Last-Event-ID
+      in: header
+      required: false
+      description: Last persisted event sequence received by the client.
+      schema:
+        type: integer
+        minimum: 0
   headers:
     PrivateNoStore:
       description: Protected content must not enter shared or cross-account caches.
       schema:
         type: string
         const: private, no-store
+    SseNoBuffer:
+      description: Streaming responses must not be buffered by a reverse proxy.
+      schema:
+        type: string
+        const: "no"
+    SseCacheControl:
+      description: SSE responses are private and must not be buffered or transformed.
+      schema:
+        type: string
+        const: private, no-cache, no-transform
   schemas:
     FeaturedLearningMapList:
       type: object
@@ -255,7 +386,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/FeaturedLearningMapSummary'
+            $ref: "#/components/schemas/FeaturedLearningMapSummary"
     FeaturedLearningMapSummary:
       type: object
       additionalProperties: false
@@ -316,20 +447,20 @@ components:
           minItems: 5
           maxItems: 7
           items:
-            $ref: '#/components/schemas/LearningMapNode'
+            $ref: "#/components/schemas/LearningMapNode"
         prerequisites:
           type: array
           items:
-            $ref: '#/components/schemas/LearningMapPrerequisite'
+            $ref: "#/components/schemas/LearningMapPrerequisite"
         sources:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/KnowledgeSource'
+            $ref: "#/components/schemas/KnowledgeSource"
         viewpoints:
           type: array
           items:
-            $ref: '#/components/schemas/SourcedViewpoint'
+            $ref: "#/components/schemas/SourcedViewpoint"
     LearningMapNode:
       type: object
       additionalProperties: false
@@ -431,7 +562,7 @@ components:
           oneOf:
             - type: string
               minLength: 1
-            - type: 'null'
+            - type: "null"
         sourceIds:
           type: array
           minItems: 1
@@ -467,7 +598,7 @@ components:
           minItems: 2
           maxItems: 3
           items:
-            $ref: '#/components/schemas/AssessmentQuestionPrompt'
+            $ref: "#/components/schemas/AssessmentQuestionPrompt"
     AssessmentQuestionPrompt:
       type: object
       additionalProperties: false
@@ -499,7 +630,7 @@ components:
           type: array
           minItems: 2
           items:
-            $ref: '#/components/schemas/AssessmentQuestionOption'
+            $ref: "#/components/schemas/AssessmentQuestionOption"
         sourceIds:
           type: array
           minItems: 1
@@ -530,7 +661,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/AssessmentAnswer'
+            $ref: "#/components/schemas/AssessmentAnswer"
     AssessmentAnswer:
       oneOf:
         - type: object
@@ -560,7 +691,7 @@ components:
             matches:
               type: array
               items:
-                $ref: '#/components/schemas/AssessmentMatchingAnswer'
+                $ref: "#/components/schemas/AssessmentMatchingAnswer"
     AssessmentMatchingAnswer:
       type: object
       additionalProperties: false
@@ -622,7 +753,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/AssessmentQuestionResult'
+            $ref: "#/components/schemas/AssessmentQuestionResult"
     AssessmentQuestionResult:
       type: object
       additionalProperties: false
@@ -675,11 +806,11 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/LearningNodeProgress'
+            $ref: "#/components/schemas/LearningNodeProgress"
         attempts:
           type: array
           items:
-            $ref: '#/components/schemas/LearningAttemptSummary'
+            $ref: "#/components/schemas/LearningAttemptSummary"
     LearningNodeProgress:
       type: object
       additionalProperties: false
@@ -703,12 +834,12 @@ components:
           oneOf:
             - type: string
               format: date-time
-            - type: 'null'
+            - type: "null"
         bestAttemptId:
           oneOf:
             - type: string
               minLength: 1
-            - type: 'null'
+            - type: "null"
     LearningAttemptSummary:
       type: object
       additionalProperties: false
@@ -731,6 +862,241 @@ components:
         submittedAt:
           type: string
           format: date-time
+    MapGenerationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - topic
+      properties:
+        topic:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 用户想系统学习的主题；服务端会再次规范化并建立缓存身份。
+    MapGenerationRequestResult:
+      type: object
+      additionalProperties: false
+      required:
+        - reuse
+        - snapshot
+      properties:
+        reuse:
+          type: string
+          enum:
+            - created
+            - active_task
+            - cache
+        snapshot:
+          $ref: "#/components/schemas/GenerationTaskSnapshot"
+    GenerationTaskSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - taskId
+        - status
+        - stage
+        - sequence
+        - createdAt
+        - updatedAt
+        - deadlineAt
+        - completedAt
+        - result
+        - failure
+      properties:
+        taskId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - queued
+            - normalizing
+            - cache_lookup
+            - planning
+            - searching
+            - structuring
+            - supplementing
+            - extracting
+            - assessing
+            - validating
+            - publishing
+            - succeeded
+            - failed
+        stage:
+          type: string
+          enum:
+            - queued
+            - normalizing
+            - cache_lookup
+            - planning
+            - searching
+            - structuring
+            - supplementing
+            - extracting
+            - assessing
+            - validating
+            - publishing
+        sequence:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deadlineAt:
+          type: string
+          format: date-time
+        completedAt:
+          description: Null before termination; terminal completion time otherwise.
+          oneOf:
+            - type: string
+              format: date-time
+            - type: "null"
+        result:
+          oneOf:
+            - $ref: "#/components/schemas/GenerationResult"
+            - type: "null"
+        failure:
+          oneOf:
+            - $ref: "#/components/schemas/GenerationFailure"
+            - type: "null"
+    GenerationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - mapId
+        - versionId
+        - learningRelationshipId
+      properties:
+        mapId:
+          type: string
+          minLength: 1
+        versionId:
+          type: string
+          minLength: 1
+        learningRelationshipId:
+          type: string
+          minLength: 1
+    GenerationFailure:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - retryable
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_topic
+            - source_unavailable
+            - source_insufficient
+            - model_unavailable
+            - candidate_invalid
+            - generation_timeout
+            - internal_failure
+        retryable:
+          type: boolean
+    GenerationSseEventEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - protocolVersion
+        - taskId
+        - sequence
+        - type
+        - occurredAt
+        - data
+      properties:
+        protocolVersion:
+          type: string
+          const: "1"
+        taskId:
+          type: string
+          minLength: 1
+        sequence:
+          type: integer
+          minimum: 0
+        type:
+          type: string
+          enum:
+            - snapshot
+            - progress
+            - succeeded
+            - failed
+        occurredAt:
+          type: string
+          format: date-time
+        data:
+          $ref: "#/components/schemas/GenerationSseEventData"
+    GenerationSseEventData:
+      type: object
+      additionalProperties: false
+      description: >-
+        Safe state projection only. Candidate nodes, question bodies, source URLs,
+        provider response bodies and participant identities are not representable.
+      properties:
+        taskId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - queued
+            - normalizing
+            - cache_lookup
+            - planning
+            - searching
+            - structuring
+            - supplementing
+            - extracting
+            - assessing
+            - validating
+            - publishing
+            - succeeded
+            - failed
+        stage:
+          type: string
+          enum:
+            - queued
+            - normalizing
+            - cache_lookup
+            - planning
+            - searching
+            - structuring
+            - supplementing
+            - extracting
+            - assessing
+            - validating
+            - publishing
+        sequence:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deadlineAt:
+          type: string
+          format: date-time
+        result:
+          oneOf:
+            - $ref: "#/components/schemas/GenerationResult"
+            - type: "null"
+        failure:
+          oneOf:
+            - $ref: "#/components/schemas/GenerationFailure"
+            - type: "null"
+    GenerationSseStream:
+      type: string
+      description: >-
+        text/event-stream records. Each record is `id: <sequence>`, `event:
+        <snapshot|progress|succeeded|failed>`, and a JSON `data` value matching
+        GenerationSseEventEnvelope. A `: keep-alive` comment is sent at most every
+        15 seconds while a non-terminal task is waiting.
     ApiError:
       type: object
       additionalProperties: false
@@ -738,7 +1104,7 @@ components:
         - error
       properties:
         error:
-          $ref: '#/components/schemas/ApiErrorBody'
+          $ref: "#/components/schemas/ApiErrorBody"
     ApiErrorBody:
       type: object
       additionalProperties: false
@@ -749,7 +1115,7 @@ components:
       properties:
         code:
           type: string
-          pattern: '^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$'
+          pattern: "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
           examples:
             - invalid_request
         message:
@@ -766,7 +1132,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/ApiValidationIssue'
+            $ref: "#/components/schemas/ApiValidationIssue"
     ApiValidationIssue:
       type: object
       additionalProperties: false
@@ -777,12 +1143,12 @@ components:
       properties:
         path:
           type: string
-          pattern: '^/(?:[^~/]|~0|~1)*(?:/(?:[^~/]|~0|~1)*)*$'
+          pattern: "^/(?:[^~/]|~0|~1)*(?:/(?:[^~/]|~0|~1)*)*$"
           examples:
             - /topic
         code:
           type: string
-          pattern: '^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$'
+          pattern: "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
           examples:
             - required
         message:
@@ -792,7 +1158,7 @@ components:
             - 请输入学习主题
     AuthenticationRequiredError:
       allOf:
-        - $ref: '#/components/schemas/ApiError'
+        - $ref: "#/components/schemas/ApiError"
         - type: object
           properties:
             error:
@@ -802,7 +1168,7 @@ components:
                   const: authentication_required
     ResourceNotFoundError:
       allOf:
-        - $ref: '#/components/schemas/ApiError'
+        - $ref: "#/components/schemas/ApiError"
         - type: object
           properties:
             error:
@@ -812,7 +1178,7 @@ components:
                   const: resource_not_found
     InternalServerError:
       allOf:
-        - $ref: '#/components/schemas/ApiError'
+        - $ref: "#/components/schemas/ApiError"
         - type: object
           properties:
             error:
@@ -825,52 +1191,52 @@ components:
       description: 请求结构、参数或输入无法解析
       headers:
         Cache-Control:
-          $ref: '#/components/headers/PrivateNoStore'
+          $ref: "#/components/headers/PrivateNoStore"
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ApiError'
+            $ref: "#/components/schemas/ApiError"
     AuthenticationRequired:
       description: 未建立有效正式账户会话
       headers:
         Cache-Control:
-          $ref: '#/components/headers/PrivateNoStore'
+          $ref: "#/components/headers/PrivateNoStore"
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/AuthenticationRequiredError'
+            $ref: "#/components/schemas/AuthenticationRequiredError"
     PermissionDenied:
       description: 当前身份无权执行该操作
       headers:
         Cache-Control:
-          $ref: '#/components/headers/PrivateNoStore'
+          $ref: "#/components/headers/PrivateNoStore"
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ApiError'
+            $ref: "#/components/schemas/ApiError"
     ResourceNotFound:
       description: 资源不存在或其存在性不可向当前身份暴露
       headers:
         Cache-Control:
-          $ref: '#/components/headers/PrivateNoStore'
+          $ref: "#/components/headers/PrivateNoStore"
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ResourceNotFoundError'
+            $ref: "#/components/schemas/ResourceNotFoundError"
     StateConflict:
       description: 请求与资源当前状态、版本或幂等约束冲突
       headers:
         Cache-Control:
-          $ref: '#/components/headers/PrivateNoStore'
+          $ref: "#/components/headers/PrivateNoStore"
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ApiError'
+            $ref: "#/components/schemas/ApiError"
     RateLimited:
       description: 当前正式账户超过允许频率
       headers:
         Cache-Control:
-          $ref: '#/components/headers/PrivateNoStore'
+          $ref: "#/components/headers/PrivateNoStore"
         Retry-After:
           description: 再次请求前需要等待的秒数或 HTTP 日期
           schema:
@@ -878,26 +1244,13 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ApiError'
+            $ref: "#/components/schemas/ApiError"
     InternalError:
       description: 未预期的内部错误
       headers:
         Cache-Control:
-          $ref: '#/components/headers/PrivateNoStore'
+          $ref: "#/components/headers/PrivateNoStore"
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/InternalServerError'
-    DependencyUnavailable:
-      description: 当前外部依赖不可用且业务无法继续
-      headers:
-        Cache-Control:
-          $ref: '#/components/headers/PrivateNoStore'
-        Retry-After:
-          description: 仅在服务端能够确定时提供的等待秒数或 HTTP 日期
-          schema:
-            type: string
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ApiError'
+            $ref: "#/components/schemas/InternalServerError"

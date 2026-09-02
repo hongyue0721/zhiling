@@ -1,12 +1,12 @@
 # 地图生成流程
 
-> 状态：流程阶段、持久化状态机、VPS Docker 运行、租约恢复和 SSE 重连已由 ADR-0004 接受；供应商单次请求参数仍等待 #6 的真实契约。
+> 状态：流程阶段、持久化状态机、VPS Docker Worker、租约恢复、缓存去重、原子发布和 SSE 重连已实现；生产成功调用仍需在部署环境使用受控 Access Secret 完成在线验收。
 
 ## 发布原则
 
 地图生成是“候选内容逐步形成，完整校验后一次发布”的流程。阶段进度可以对用户可见，但未经校验的节点和题目不能伪装成正式结果。
 
-## 建议状态机
+## 已实现状态机
 
 | 状态 | 含义 | 可持久化正式地图 |
 | --- | --- | --- |
@@ -51,7 +51,7 @@
 缓存身份至少由以下事实组成：
 
 ```text
-normalizedTopic + pipelineVersion + sourceAdapterVersion
+normalizedTopic + pipelineVersion + sourceAdapterVersion + modelAdapterVersion
 ```
 
 相同身份的并发生成请求共享一个任务或已发布结果，并通过数据库唯一约束和事务保证。每个主动请求账户按 ADR-0014 原子登记任务参与关系；复用执行不授予未参与账户读取权限。
@@ -66,7 +66,7 @@ normalizedTopic + pipelineVersion + sourceAdapterVersion
 - `generation_timeout`：任务超过 10 分钟硬时限，不重试；
 - `internal_failure`：不应向客户端泄露细节的系统错误。
 
-每个外部阶段的自动重试使用指数退避；供应商单次请求时限由 #6 的真实契约确定且不得超过任务剩余时限。稳定错误码、阶段和可重试性由服务端产生，第三方正文不进入 HTTP 或 SSE。
+每个外部阶段的自动重试使用指数退避；单次来源与模型调用时限由服务端配置显式提供，并受任务剩余时限约束。稳定错误码、阶段和可重试性由服务端产生，第三方正文不进入 HTTP 或 SSE。
 
 ## 恢复与可观察性
 

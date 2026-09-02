@@ -24,7 +24,7 @@ pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-`.env.local` 中必须替换 `BETTER_AUTH_SECRET`。实际发送验证邮件前，还必须配置真实 `RESEND_API_KEY` 与已在 Resend 验证域名下的 `AUTH_EMAIL_FROM`；项目不提供万能密钥、假发信成功或生产默认值。
+`.env.local` 中必须替换 `BETTER_AUTH_SECRET`。实际发送验证邮件前，还必须配置真实 `RESEND_API_KEY` 与已在 Resend 验证域名下的 `AUTH_EMAIL_FROM`；运行现场地图生成 Worker 前必须配置真实 `ZHIHU_ACCESS_SECRET`。项目不提供万能密钥、假发信成功、假供应方成功或生产默认值。
 
 ## 数据库与迁移
 
@@ -51,9 +51,10 @@ pnpm db:migrate
 pnpm dev
 pnpm build
 pnpm start
+pnpm worker:generation
 ```
 
-`pnpm dev` 默认在 `http://localhost:3000` 启动。`pnpm start` 需要先完成 `pnpm build`。产品登录/注册页面尚未实现；认证托管端点及调用约束见[认证框架契约](../api/authentication.md)。
+`pnpm dev` 默认在 `http://localhost:3000` 启动。`pnpm start` 需要先完成 `pnpm build`。`pnpm worker:generation` 在独立进程轮询 PostgreSQL；Web 无需读取知乎密钥。产品登录/注册页面尚未实现；认证托管端点及调用约束见[认证框架契约](../api/authentication.md)。
 
 ## 质量与测试
 
