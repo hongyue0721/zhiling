@@ -46,7 +46,6 @@ jobs:
             exit 1
           fi
 
-
       - name: 验证拉取请求
         if: github.event_name == 'pull_request'
         env:
