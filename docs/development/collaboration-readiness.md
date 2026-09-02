@@ -12,31 +12,35 @@
 | 工程目录和依赖方向 | ADR-0008、工程结构说明 | 完成 |
 | API 契约与基础错误模型 | OpenAPI、ADR-0009、错误模型 | 完成；业务路径随工作包契约优先增加 |
 | 文档同步和变更历史 | 文档治理规则、CHANGELOG | 完成 |
-| 分支、提交和 PR 规范 | CONTRIBUTING、Git 流程、PR 模板 | 完成 |
+| 分支、提交和 PR 规范 | CONTRIBUTING、Git 流程、PR 模板 | 完成；普通 PR 目标为 `dev` |
 | Issue 入口和任务拆分 | 三类 Issue Form、任务队列、工作包 | 完成 |
 | 所有权与独立评审规则 | 所有权说明、评审指南、CODEOWNERS | 规则完成；具体成员待哥哥分配 |
 | 并行修改和交接 | 并行工作与交接协议 | 完成 |
 | 安全报告与敏感信息规则 | SECURITY、安全边界 | 完成 |
-| 自动协作检查 | 协作工作流、验证脚本 | 完成并通过本地验证 |
+| 自动协作检查与分支提升 | 协作工作流、验证脚本、`dev-to-main` Bot | 完成；Bot 负责 `dev` → `main` |
 
 ## 已完成的 GitHub 远程准备
 
-- 默认分支是 `main`，仓库保持私有；
+- 默认分支仍是 `main`，仓库保持私有；
+- `dev` 已建立为日常集成分支，普通工作 PR 目标为 `dev`；
+- Actions 只允许运行 GitHub 官方 Action，普通工作流默认权限保持只读；
+- `dev-to-main` 工作流具有明确的 `contents: write`、`pull-requests: write` 和 `checks: read` 权限，仅用于等待 dev 检查并 rebase 合入 main；
 - 只允许 rebase 合入，关闭 merge commit 和 squash；
 - PR 分支允许由维护者更新，合入后自动删除；
-- Actions 只允许运行 GitHub 官方 Action，默认权限保持只读；
 - Dependabot 漏洞告警已启用；
 - Issue Form 所需标签和任务状态标签已创建；
 - 待决策、外部契约和 B 至 F 工作包均已创建 GitHub Issue，并登记依赖。
-
 ## 平台限制
 
 当前 GitHub 免费私有仓库不支持本仓库使用分支保护或规则集，API 返回 HTTP 403 并要求升级 GitHub Pro 或改为公开仓库。因此：
 
-- 协作 CI 可以审计 PR 和 `main` 推送，但不能技术上阻止管理员直接推送或合入失败检查；
+- 普通 PR 的目标、评审、检查和 `dev` 合入仍需要维护者按文档执行；
+- `dev-to-main` Bot 只在同一 dev 提交的协作与质量检查成功后创建提升 PR，并由工作流执行 rebase 合入；
+- 平台仍不能技术上阻止管理员直接推送或绕过失败检查；这属于异常操作，不是正常流程；
 - CODEOWNERS 目前提供评审路由，不构成平台强制审批；
 - Secret scanning 与 push protection 对当前仓库不可用，启用请求返回 HTTP 422；
-- 在平台能力变化前，维护者必须按评审指南人工执行 PR、独立批准和绿色检查门禁。
+- 在平台能力变化前，必须保留 PR、工作流运行和提升提交作为审计证据。
+
 
 仓库可见性和付费方案属于哥哥的外部决策。本次不将私有仓库改为公开，也不以文档声称保护已经生效。
 

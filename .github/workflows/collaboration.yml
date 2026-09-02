@@ -3,9 +3,11 @@ name: 协作规范检查
 on:
   pull_request:
     branches:
+      - dev
       - main
   push:
     branches:
+      - dev
       - main
   workflow_dispatch:
 
@@ -27,6 +29,23 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: 验证普通 PR 的目标分支
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [[ "${BASE_BRANCH}" == "main" ]] && {
+            [[ "${HEAD_BRANCH}" != "dev" ]] || [[ "${HEAD_REPOSITORY}" != "${REPOSITORY}" ]]
+          }; then
+            echo "普通 PR 不得直接进入 main；请先提交到 dev。" >&2
+            exit 1
+          fi
+
 
       - name: 验证拉取请求
         if: github.event_name == 'pull_request'
