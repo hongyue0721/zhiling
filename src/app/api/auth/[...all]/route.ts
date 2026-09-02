@@ -1,3 +1,3 @@
-import { authHandlers } from "@/bootstrap/identity";
+import { authHandlers } from "@/bootstrap/server";
 
 export const { GET, POST } = authHandlers;

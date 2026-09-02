@@ -1,0 +1,92 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const internal = vi.hoisted(() => ({
+  listFeatured: vi.fn(),
+  findFeatured: vi.fn(),
+}));
+
+vi.mock("../infrastructure/runtime", () => ({
+  createLearningCatalogRuntime: () => ({
+    catalog: {
+      listFeatured: internal.listFeatured,
+      findFeatured: internal.findFeatured,
+    },
+  }),
+}));
+
+import { createLearningCatalogRuntime } from "./server";
+
+beforeEach(() => {
+  internal.listFeatured.mockReset();
+  internal.findFeatured.mockReset();
+});
+
+describe("learning catalog public server boundary", () => {
+  it("deep-copies internal projections into independent public DTOs", async () => {
+    const internalSummary = {
+      mapId: "map-1",
+      versionId: "version-1",
+      title: "Map",
+      summary: "Summary",
+      nodeCount: 5,
+    };
+    const internalDetail = {
+      mapId: "map-1",
+      versionId: "version-1",
+      title: "Map",
+      summary: "Summary",
+      nodes: [
+        {
+          nodeId: "node-1",
+          title: "Node",
+          learningObjective: "Objective",
+          sourceIds: ["source-1"],
+        },
+      ],
+      prerequisites: [{ nodeId: "node-2", prerequisiteNodeId: "node-1" }],
+      sources: [
+        {
+          sourceId: "source-1",
+          title: "Source",
+          excerpt: "Excerpt",
+          url: "https://www.zhihu.com/question/1",
+          authorName: "Author",
+        },
+      ],
+      viewpoints: [
+        {
+          viewpointId: "viewpoint-1",
+          nodeId: "node-1",
+          kind: "consensus" as const,
+          statement: "Statement",
+          conditions: null,
+          sourceIds: ["source-1"],
+        },
+      ],
+    };
+    internal.listFeatured.mockResolvedValue([internalSummary]);
+    internal.findFeatured.mockResolvedValue(internalDetail);
+    const runtime = createLearningCatalogRuntime({
+      database: undefined as never,
+    });
+
+    const summaries = await runtime.catalog.listFeatured();
+    const detail = await runtime.catalog.findFeatured("map-1");
+
+    expect(summaries[0]).toEqual(internalSummary);
+    expect(summaries[0]).not.toBe(internalSummary);
+    expect(detail).toEqual(internalDetail);
+    expect(detail).not.toBe(internalDetail);
+    expect(detail?.nodes).not.toBe(internalDetail.nodes);
+    expect(detail?.nodes[0]?.sourceIds).not.toBe(
+      internalDetail.nodes[0]?.sourceIds,
+    );
+    expect(detail?.sources).not.toBe(internalDetail.sources);
+    expect(detail?.viewpoints[0]?.sourceIds).not.toBe(
+      internalDetail.viewpoints[0]?.sourceIds,
+    );
+
+    (detail?.nodes[0]?.sourceIds as string[]).push("public-only");
+    expect(internalDetail.nodes[0]?.sourceIds).toEqual(["source-1"]);
+  });
+});

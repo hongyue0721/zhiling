@@ -1,25 +1,31 @@
 import "server-only";
 
 import { toNextJsHandler } from "better-auth/next-js";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
-import { createPostgresDatabase } from "@/platform/database/postgres";
+import { databaseSchema } from "@/platform/database/schema";
 
 import { IdentityService } from "../application/identity-service";
 import { type AuthRouteHandlers, limitAuthRoutes } from "./auth-route-handlers";
 import { BetterAuthSessionReader } from "./better-auth-session-reader";
-import { readIdentityEnvironment } from "./config";
+import type { IdentityEnvironment } from "./config";
 import { createIdentityAuth } from "./identity-auth";
 import { ResendVerificationEmailSender } from "./resend-verification-email-sender";
 
 export type IdentityRuntime = Readonly<{
   identity: IdentityService;
   authHandlers: AuthRouteHandlers;
-  close: () => Promise<void>;
 }>;
 
-export function createProductionIdentityRuntime(): IdentityRuntime {
-  const environment = readIdentityEnvironment();
-  const { database, pool } = createPostgresDatabase(environment.databaseUrl);
+export type IdentityRuntimeDependencies = Readonly<{
+  database: NodePgDatabase<typeof databaseSchema>;
+  environment: IdentityEnvironment;
+}>;
+
+export function createIdentityRuntime({
+  database,
+  environment,
+}: IdentityRuntimeDependencies): IdentityRuntime {
   const emailSender = new ResendVerificationEmailSender(
     environment.resendApiKey,
     environment.emailFrom,
@@ -41,7 +47,6 @@ export function createProductionIdentityRuntime(): IdentityRuntime {
       ),
     ),
     authHandlers: limitAuthRoutes(toNextJsHandler(auth)),
-    close: () => pool.end(),
   };
 }
 

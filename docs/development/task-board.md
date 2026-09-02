@@ -24,11 +24,17 @@
 
 | Issue | 决策 | 阻塞工作包 |
 | --- | --- | --- |
-| [#4](https://github.com/hongyue0721/zhiling/issues/4) | 认证会话与邮箱能力范围 | C1 |
 | [#2](https://github.com/hongyue0721/zhiling/issues/2) | 地图生成运行与 SSE 恢复 | D1、F |
 | [#3](https://github.com/hongyue0721/zhiling/issues/3) | 学习验证计分与完成规则 | D2、E2、F |
 | [#5](https://github.com/hongyue0721/zhiling/issues/5) | 生成任务与自定义地图授权 | C2、D1、F |
 | [#1](https://github.com/hongyue0721/zhiling/issues/1) | 登录后分享接收者规则 | E2、F |
+
+## 已完成决策
+
+| 来源 | 决策结果 | 落地证据 |
+| --- | --- | --- |
+| [#4](https://github.com/hongyue0721/zhiling/issues/4) | 强制邮箱验证、数据库 Session、Resend 发信、一期不提供密码恢复 | ADR-0010、工作包 C1 |
+| C2 地图版本评审 | 稳定地图身份、不可变版本、精选指针、既有学习关系绑定原版本 | ADR-0011、工作包 C2a |
 
 ## 外部契约准备
 
@@ -40,10 +46,10 @@
 
 | 工作包 | Issue | 当前状态 | 主要前置 |
 | --- | --- | --- | --- |
-| B 工程基础 | [#7](https://github.com/hongyue0721/zhiling/issues/7) | 已实现，待合入 | ADR-0008、ADR-0009 已接受 |
-| C1 身份与会话 | [#8](https://github.com/hongyue0721/zhiling/issues/8) | 已实现，待合入 | B、ADR-0010 已完成 |
-| C2 学习目录与来源 | [#10](https://github.com/hongyue0721/zhiling/issues/10) | 阻塞 | #7；授权部分依赖 #5 |
-| C3 外部适配器 | [#9](https://github.com/hongyue0721/zhiling/issues/9) | 阻塞 | #6、#7 |
+| B 工程基础 | [#7](https://github.com/hongyue0721/zhiling/issues/7) | 已提交 `main` | ADR-0008、ADR-0009 已接受 |
+| C1 身份与会话 | [#8](https://github.com/hongyue0721/zhiling/issues/8) | 已提交 `main` | B、ADR-0010 已完成 |
+| C2 学习目录与来源 | [#10](https://github.com/hongyue0721/zhiling/issues/10) | 精选读取已实现；自定义读取阻塞 | B、ADR-0002、ADR-0011；自定义授权部分依赖 #5 |
+| C3 外部适配器 | [#9](https://github.com/hongyue0721/zhiling/issues/9) | 阻塞 | #6 |
 | D1 地图生成 | [#12](https://github.com/hongyue0721/zhiling/issues/12) | 阻塞 | #2、#5、#8、#9、#10 |
 | D2 验证与进度 | [#11](https://github.com/hongyue0721/zhiling/issues/11) | 阻塞 | #3、#8、#10 |
 | E1 匿名数据合并 | 无 | 已取消 | ADR-0005 Rejected、ADR-0007 Accepted；编号不复用 |

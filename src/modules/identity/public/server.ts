@@ -5,10 +5,17 @@ import {
   type IdentityService,
 } from "../application/identity-service";
 import type { FormalIdentity as InternalFormalIdentity } from "../domain/formal-identity";
-import { createProductionIdentityRuntime as createInternalIdentityRuntime } from "../infrastructure/runtime";
+import {
+  createIdentityRuntime as createInternalIdentityRuntime,
+  type IdentityRuntimeDependencies,
+} from "../infrastructure/runtime";
 import type { FormalIdentity } from "./contracts";
 
 export { FormalIdentityRequiredError };
+export {
+  readIdentityEnvironment,
+  type IdentityEnvironment,
+} from "../infrastructure/config";
 export type { FormalIdentity } from "./contracts";
 
 export type IdentityAccess = Readonly<{
@@ -24,7 +31,6 @@ export type AuthRouteHandlers = Readonly<{
 export type IdentityRuntime = Readonly<{
   identity: IdentityAccess;
   authHandlers: AuthRouteHandlers;
-  close: () => Promise<void>;
 }>;
 
 function toPublicIdentity(identity: InternalFormalIdentity): FormalIdentity {
@@ -47,12 +53,13 @@ function createPublicIdentityAccess(identity: IdentityService): IdentityAccess {
   };
 }
 
-export function createProductionIdentityRuntime(): IdentityRuntime {
-  const runtime = createInternalIdentityRuntime();
+export function createIdentityRuntime(
+  dependencies: IdentityRuntimeDependencies,
+): IdentityRuntime {
+  const runtime = createInternalIdentityRuntime(dependencies);
 
   return {
     identity: createPublicIdentityAccess(runtime.identity),
     authHandlers: runtime.authHandlers,
-    close: runtime.close,
   };
 }

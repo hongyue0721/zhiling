@@ -63,7 +63,8 @@ function collectSourcePaths(directory: string): string[] {
       paths.push(...collectSourcePaths(absolutePath));
     } else if (
       sourceExtensions.has(extname(entry)) &&
-      !entry.endsWith(".d.ts")
+      !entry.endsWith(".d.ts") &&
+      !/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(entry)
     ) {
       paths.push(absolutePath);
     }

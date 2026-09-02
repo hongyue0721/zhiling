@@ -1,13 +1,288 @@
 openapi: 3.1.0
 info:
   title: Zhijing API
-  version: 0.0.0
+  version: 0.1.0
   description: >-
-    Contract-first API skeleton. Business paths and the Better Auth session
-    security scheme will be added after their exact contracts are reviewed.
-paths: {}
+    Contract-first business API. Better Auth managed authentication endpoints are
+    versioned separately and are not duplicated here.
+tags:
+  - name: Featured learning maps
+    description: Authenticated read access to current published featured map versions.
+paths:
+  /api/featured-learning-maps:
+    get:
+      operationId: listFeaturedLearningMaps
+      tags:
+        - Featured learning maps
+      summary: 读取精选学习地图目录
+      description: >-
+        Returns every currently featured map in editorial position order. An empty
+        items array is a successful empty catalog and never triggers live generation.
+      security:
+        - betterAuthSession: []
+      responses:
+        '200':
+          description: 当前已发布精选地图目录
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturedLearningMapList'
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/featured-learning-maps/{mapId}:
+    get:
+      operationId: getFeaturedLearningMap
+      tags:
+        - Featured learning maps
+      summary: 读取当前精选学习地图详情
+      description: >-
+        Resolves a stable mapId through the featured pointer and returns its current
+        immutable published version. Draft, non-featured and missing maps are all
+        reported as resource_not_found.
+      security:
+        - betterAuthSession: []
+      parameters:
+        - $ref: '#/components/parameters/MapId'
+      responses:
+        '200':
+          description: 当前精选版本的完整图与来源证据投影
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturedLearningMapDetail'
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
+  securitySchemes:
+    betterAuthSession:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: >-
+        Better Auth database-backed session cookie. Production uses the framework's
+        __Secure- prefix. The server also requires the session account to have a
+        verified email before it becomes a formal product identity.
+  parameters:
+    MapId:
+      name: mapId
+      in: path
+      required: true
+      description: Stable learning-map identity; this is not a version ID.
+      schema:
+        type: string
+        minLength: 1
+  headers:
+    PrivateNoStore:
+      description: Protected content must not enter shared or cross-account caches.
+      schema:
+        type: string
+        const: private, no-store
   schemas:
+    FeaturedLearningMapList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeaturedLearningMapSummary'
+    FeaturedLearningMapSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - mapId
+        - versionId
+        - title
+        - summary
+        - nodeCount
+      properties:
+        mapId:
+          type: string
+          minLength: 1
+          description: Stable identity shared by all versions of the topic.
+        versionId:
+          type: string
+          minLength: 1
+          description: Immutable version currently selected by the featured pointer.
+        title:
+          type: string
+          minLength: 1
+        summary:
+          type: string
+          minLength: 1
+        nodeCount:
+          type: integer
+          minimum: 5
+          maximum: 7
+    FeaturedLearningMapDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - mapId
+        - versionId
+        - title
+        - summary
+        - nodes
+        - prerequisites
+        - sources
+        - viewpoints
+      properties:
+        mapId:
+          type: string
+          minLength: 1
+          description: Stable identity shared by all versions of the topic.
+        versionId:
+          type: string
+          minLength: 1
+          description: Immutable content version returned by this response.
+        title:
+          type: string
+          minLength: 1
+        summary:
+          type: string
+          minLength: 1
+        nodes:
+          type: array
+          minItems: 5
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/LearningMapNode'
+        prerequisites:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningMapPrerequisite'
+        sources:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/KnowledgeSource'
+        viewpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourcedViewpoint'
+    LearningMapNode:
+      type: object
+      additionalProperties: false
+      required:
+        - nodeId
+        - title
+        - learningObjective
+        - sourceIds
+      properties:
+        nodeId:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        learningObjective:
+          type: string
+          minLength: 1
+        sourceIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+    LearningMapPrerequisite:
+      type: object
+      additionalProperties: false
+      required:
+        - nodeId
+        - prerequisiteNodeId
+      properties:
+        nodeId:
+          type: string
+          minLength: 1
+          description: Node that requires the prerequisite.
+        prerequisiteNodeId:
+          type: string
+          minLength: 1
+          description: Node that must be learned first.
+    KnowledgeSource:
+      type: object
+      additionalProperties: false
+      required:
+        - sourceId
+        - title
+        - excerpt
+        - url
+        - authorName
+      properties:
+        sourceId:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        excerpt:
+          type: string
+          minLength: 1
+        url:
+          type: string
+          format: uri
+          pattern: '^https://(?:[A-Za-z0-9-]+\.)*zhihu\.com(?:[/?#].*)?$'
+          description: HTTPS Zhihu URL accepted from the server-side source adapter boundary.
+        authorName:
+          type: string
+          minLength: 1
+    SourcedViewpoint:
+      type: object
+      additionalProperties: false
+      required:
+        - viewpointId
+        - nodeId
+        - kind
+        - statement
+        - conditions
+        - sourceIds
+      properties:
+        viewpointId:
+          type: string
+          minLength: 1
+        nodeId:
+          type: string
+          minLength: 1
+        kind:
+          type: string
+          enum:
+            - consensus
+            - disagreement
+            - practical_experience
+            - supplementary
+        statement:
+          type: string
+          minLength: 1
+        conditions:
+          description: >-
+            Required non-empty text for disagreement; null is allowed for the other
+            viewpoint kinds.
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+        sourceIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
     ApiError:
       type: object
       additionalProperties: false
@@ -67,33 +342,78 @@ components:
           minLength: 1
           examples:
             - 请输入学习主题
+    AuthenticationRequiredError:
+      allOf:
+        - $ref: '#/components/schemas/ApiError'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  const: authentication_required
+    ResourceNotFoundError:
+      allOf:
+        - $ref: '#/components/schemas/ApiError'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  const: resource_not_found
+    InternalServerError:
+      allOf:
+        - $ref: '#/components/schemas/ApiError'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  const: internal_error
   responses:
     BadRequest:
       description: 请求结构、参数或输入无法解析
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateNoStore'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     AuthenticationRequired:
       description: 未建立有效正式账户会话
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateNoStore'
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ApiError'
+            $ref: '#/components/schemas/AuthenticationRequiredError'
     PermissionDenied:
       description: 当前身份无权执行该操作
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateNoStore'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     ResourceNotFound:
       description: 资源不存在或其存在性不可向当前身份暴露
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateNoStore'
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ApiError'
+            $ref: '#/components/schemas/ResourceNotFoundError'
     StateConflict:
       description: 请求与资源当前状态、版本或幂等约束冲突
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateNoStore'
       content:
         application/json:
           schema:
@@ -101,6 +421,8 @@ components:
     RateLimited:
       description: 当前正式账户超过允许频率
       headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateNoStore'
         Retry-After:
           description: 再次请求前需要等待的秒数或 HTTP 日期
           schema:
@@ -111,13 +433,18 @@ components:
             $ref: '#/components/schemas/ApiError'
     InternalError:
       description: 未预期的内部错误
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateNoStore'
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ApiError'
+            $ref: '#/components/schemas/InternalServerError'
     DependencyUnavailable:
       description: 当前外部依赖不可用且业务无法继续
       headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateNoStore'
         Retry-After:
           description: 仅在服务端能够确定时提供的等待秒数或 HTTP 日期
           schema:

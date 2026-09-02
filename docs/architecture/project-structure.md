@@ -134,7 +134,9 @@ SSE 路由同样遵循上述边界。连接保活、事件编码和恢复游标�
 - 领域层、应用层和模块公开契约不得直接依赖 OpenAPI 或第三方生成 DTO；传输适配器与对应基础设施适配器负责显式转换；
 - 生成器配置、OpenAPI 和模块边界 schema 是输入事实，生成产物不是补写业务规则的位置；
 - Drizzle 迁移是经过审查的历史变更记录，位于根目录 `drizzle/` 并纳入版本控制，不按可随时删除的生成代码处理；
-- `identity` 已贯通认证 Route Handler、组合根、公开服务端入口、应用/领域、Better Auth/Resend 基础设施与 PostgreSQL 平台能力；产品前端未实现，因此不创建 `presentation/` 或 `public/client.ts`。
+- `identity` 已贯通认证 Route Handler、组合根、公开服务端入口、应用/领域、Better Auth/Resend 基础设施与 PostgreSQL 平台能力；
+- `learning-catalog` 已贯通精选地图 Route Handler、正式身份门禁、公开查询、地图与证据领域校验、发布/读取仓储及 PostgreSQL 持久化；两个模块在生产组合根共享同一数据库连接池；
+- 产品前端仍未实现，因此不创建没有真实消费方的模块 `presentation/` 或 `public/client.ts`。
 
 ## 工程骨架验收
 

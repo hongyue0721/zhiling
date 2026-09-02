@@ -1,0 +1,177 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { FormalIdentityRequiredError } from "@/modules/identity/public/server";
+
+const runtime = vi.hoisted(() => ({
+  requireIdentity: vi.fn(),
+  listFeatured: vi.fn(),
+  findFeatured: vi.fn(),
+}));
+
+vi.mock("@/bootstrap/server", () => ({
+  identity: { require: runtime.requireIdentity },
+  learningCatalog: {
+    listFeatured: runtime.listFeatured,
+    findFeatured: runtime.findFeatured,
+  },
+}));
+
+import { GET as getFeaturedDetail } from "@/app/api/featured-learning-maps/[mapId]/route";
+import { GET as listFeaturedMaps } from "@/app/api/featured-learning-maps/route";
+
+const detail = {
+  mapId: "map-1",
+  versionId: "version-2",
+  title: "Map",
+  summary: "Summary",
+  nodes: Array.from({ length: 5 }, (_, index) => ({
+    nodeId: `node-${index}`,
+    title: `Node ${index}`,
+    learningObjective: `Learn ${index}`,
+    sourceIds: [`source-${index}`],
+  })),
+  prerequisites: Array.from({ length: 4 }, (_, index) => ({
+    nodeId: `node-${index + 1}`,
+    prerequisiteNodeId: `node-${index}`,
+  })),
+  sources: Array.from({ length: 5 }, (_, index) => ({
+    sourceId: `source-${index}`,
+    title: `Source ${index}`,
+    excerpt: `Evidence ${index}`,
+    url: `https://www.zhihu.com/question/${index}`,
+    authorName: `Author ${index}`,
+  })),
+  viewpoints: Array.from({ length: 5 }, (_, index) => ({
+    viewpointId: `viewpoint-${index}`,
+    nodeId: `node-${index}`,
+    kind: "consensus" as const,
+    statement: `Statement ${index}`,
+    conditions: null,
+    sourceIds: [`source-${index}`],
+  })),
+};
+
+beforeEach(() => {
+  runtime.requireIdentity.mockReset().mockResolvedValue({
+    userId: "user-1",
+    email: "user@example.com",
+    emailVerified: true,
+  });
+  runtime.listFeatured.mockReset();
+  runtime.findFeatured.mockReset();
+});
+
+describe("featured learning map HTTP contract", () => {
+  it("returns the frozen list envelope without internal position", async () => {
+    runtime.listFeatured.mockResolvedValue([
+      {
+        mapId: "map-1",
+        versionId: "version-2",
+        title: "Map",
+        summary: "Summary",
+        nodeCount: 5,
+      },
+    ]);
+
+    const response = await listFeaturedMaps(
+      new Request("http://localhost/api/featured-learning-maps"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(await response.json()).toEqual({
+      items: [
+        {
+          mapId: "map-1",
+          versionId: "version-2",
+          title: "Map",
+          summary: "Summary",
+          nodeCount: 5,
+        },
+      ],
+    });
+  });
+
+  it("returns the stable detail DTO for a featured published map", async () => {
+    runtime.findFeatured.mockResolvedValue(detail);
+
+    const response = await getFeaturedDetail(
+      new Request("http://localhost/api/featured-learning-maps/map-1"),
+      { params: Promise.resolve({ mapId: "map-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(await response.json()).toEqual(detail);
+    expect(runtime.findFeatured).toHaveBeenCalledWith("map-1");
+  });
+
+  it("uses the same safe 404 for missing, draft, and non-featured maps", async () => {
+    runtime.findFeatured.mockResolvedValue(null);
+
+    const response = await getFeaturedDetail(
+      new Request("http://localhost/api/featured-learning-maps/hidden"),
+      { params: Promise.resolve({ mapId: "hidden" }) },
+    );
+    const body = (await response.json()) as {
+      error: { code: string; requestId: string };
+    };
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(body.error.code).toBe("resource_not_found");
+    expect(body.error.requestId).toMatch(/^req_[0-9a-f]{32}$/);
+  });
+
+  it("requires formal identity and never reflects a supplied request id", async () => {
+    runtime.requireIdentity.mockRejectedValue(
+      new FormalIdentityRequiredError(),
+    );
+    const suppliedRequestId = "attacker-controlled-request-id";
+
+    const response = await listFeaturedMaps(
+      new Request("http://localhost/api/featured-learning-maps", {
+        headers: { "x-request-id": suppliedRequestId },
+      }),
+    );
+    const body = (await response.json()) as {
+      error: { code: string; requestId: string };
+    };
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(body.error.code).toBe("authentication_required");
+    expect(body.error.requestId).not.toBe(suppliedRequestId);
+    expect(runtime.listFeatured).not.toHaveBeenCalled();
+  });
+
+  it("maps unexpected failures to a correlated safe 500 response and log", async () => {
+    const sensitiveMessage = "password=secret sql=private-provider-body";
+    runtime.listFeatured.mockRejectedValue(new Error(sensitiveMessage));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const response = await listFeaturedMaps(
+      new Request("http://localhost/api/featured-learning-maps"),
+    );
+    const body = (await response.json()) as {
+      error: { code: string; requestId: string };
+    };
+    const logged = log.mock.calls[0]?.[0] as {
+      event: string;
+      requestId: string;
+      errorType: string;
+    };
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(body.error.code).toBe("internal_error");
+    expect(logged).toEqual({
+      event: "business_api_unexpected_error",
+      requestId: body.error.requestId,
+      errorType: "Error",
+    });
+    expect(JSON.stringify(body)).not.toContain(sensitiveMessage);
+    expect(JSON.stringify(logged)).not.toContain(sensitiveMessage);
+    log.mockRestore();
+  });
+});

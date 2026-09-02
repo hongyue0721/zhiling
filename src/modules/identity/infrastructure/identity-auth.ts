@@ -5,6 +5,7 @@ import { betterAuth } from "better-auth";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import { authSchema } from "@/platform/database/auth-schema";
+import { databaseSchema } from "@/platform/database/schema";
 
 import type { VerificationEmailSender } from "../application/ports";
 
@@ -13,7 +14,7 @@ const ONE_DAY_SECONDS = 24 * ONE_HOUR_SECONDS;
 const SEVEN_DAYS_SECONDS = 7 * ONE_DAY_SECONDS;
 
 export type IdentityAuthOptions = Readonly<{
-  database: NodePgDatabase<typeof authSchema>;
+  database: NodePgDatabase<typeof databaseSchema>;
   emailSender: VerificationEmailSender;
   secret: string;
   baseUrl: string;

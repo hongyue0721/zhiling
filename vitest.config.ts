@@ -40,6 +40,7 @@ export default defineConfig({
           name: "architecture",
           environment: "node",
           include: ["tests/architecture/**/*.test.ts"],
+          exclude: ["tests/architecture/fixtures/**"],
         },
       },
       {
@@ -63,6 +64,7 @@ export default defineConfig({
         },
         test: {
           name: "integration",
+          fileParallelism: false,
           environment: "node",
           include: ["tests/integration/**/*.test.ts"],
         },

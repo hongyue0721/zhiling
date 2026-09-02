@@ -8,6 +8,13 @@
       "when": 1788315194483,
       "tag": "0000_identity_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788324127843,
+      "tag": "0001_featured_learning_catalog",
+      "breakpoints": true
     }
   ]
 }

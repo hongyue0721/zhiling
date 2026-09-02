@@ -20,6 +20,7 @@
 | [0008](0008-project-structure-and-dependency-direction.md) | 固定工程目录与依赖方向 | Accepted |
 | [0009](0009-unified-business-api-error-contract.md) | 统一业务 API 错误契约 | Accepted |
 | [0010](0010-email-verification-and-session-policy.md) | 邮箱验证与会话安全策略 | Accepted |
+| [0011](0011-immutable-map-versions-and-featured-pointer.md) | 不可变地图版本与精选指针 | Accepted |
 
 状态流转规则：
 
