@@ -9,7 +9,7 @@ export type FeaturedLearningMapSummary = Readonly<{
   nodeCount: number;
 }>;
 
-export type FeaturedLearningMapDetail = Readonly<{
+export type LearningMapDetail = Readonly<{
   mapId: string;
   versionId: string;
   title: string;
@@ -39,4 +39,10 @@ export type FeaturedLearningMapDetail = Readonly<{
     conditions: string | null;
     sourceIds: readonly string[];
   }>[];
+}>;
+
+export type LearningRelationship = Readonly<{
+  learningRelationshipId: string;
+  mapId: string;
+  versionId: string;
 }>;

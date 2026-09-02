@@ -11,6 +11,7 @@ import {
   timestamp,
   unique,
 } from "drizzle-orm/pg-core";
+import { user } from "./auth-schema";
 
 export const learningMapVersionStatus = pgEnum("learning_map_version_status", [
   "draft",
@@ -191,6 +192,27 @@ export const learningViewpointSource = pgTable(
   ],
 );
 
+export const learningRelationship = pgTable(
+  "learning_relationship",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    versionId: text("version_id")
+      .notNull()
+      .references(() => learningMapVersion.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("learning_relationship_user_version_unique").on(
+      table.userId,
+      table.versionId,
+    ),
+    index("learning_relationship_version_id_idx").on(table.versionId),
+  ],
+);
+
 export const featuredLearningMap = pgTable(
   "featured_learning_map",
   {
@@ -217,6 +239,7 @@ export const catalogSchema = {
   learningMapPrerequisite,
   knowledgeSource,
   learningMapNodeSource,
+  learningRelationship,
   learningViewpoint,
   learningViewpointSource,
   featuredLearningMap,

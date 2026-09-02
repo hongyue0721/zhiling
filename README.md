@@ -4,7 +4,7 @@
 
 > 把知乎上的真实讨论，走成一条学会的路。
 
-完整产品事实以 [PROJECT_GOAL.md](PROJECT_GOAL.md) 为准。仓库已建立 Next.js 15 工程基础、PostgreSQL/Drizzle 迁移、Better Auth 邮箱身份后端以及已发布精选地图读取后端；当前页面仍是非业务工程壳，产品登录/注册和学习地图界面由前端工作继续实现。
+完整产品事实以 [PROJECT_GOAL.md](PROJECT_GOAL.md) 为准。仓库已建立 Next.js 15 工程基础、PostgreSQL/Drizzle 迁移、Better Auth 邮箱身份后端、精选地图读取和账户学习关系地图读取后端；当前页面仍是非业务工程壳，产品登录/注册和学习地图界面由前端工作继续实现。
 
 ## 当前阶段
 
@@ -16,8 +16,10 @@
 - [x] 建立强制邮箱验证、数据库 Session 和服务端正式身份纵向切片
 - [x] 建立不可变地图版本、精选指针、来源证据与受保护读取接口
   - 前端接入见[精选学习地图接口](docs/api/featured-learning-maps.md)
+- [x] 建立账户与不可变地图版本的唯一学习关系，以及按关系读取地图的纵向切片
+  - 前端接入见[学习关系地图接口](docs/api/learning-relationships.md)
 - [x] 将分享移出一期范围，结课报告收敛为所属账户私有能力
-- [ ] 冻结外部真实样本，推进自定义地图读取、生成和学习闭环
+- [ ] 冻结外部真实样本，推进地图生成和学习验证闭环
 
 完整阅读入口见 [项目文档索引](docs/README.md)。范围索引见 [产品需求](docs/product/requirements.md)，架构入口见 [架构总览](docs/architecture/overview.md)，API 契约入口见 [API 文档](docs/api/README.md)。
 

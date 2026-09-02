@@ -82,7 +82,7 @@ export type SourcedViewpoint = Readonly<{
   sourceIds: readonly string[];
 }>;
 
-export type FeaturedLearningMapDetail = Readonly<{
+export type LearningMapDetail = Readonly<{
   mapId: string;
   versionId: string;
   title: string;

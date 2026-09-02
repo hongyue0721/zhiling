@@ -13,8 +13,10 @@ import {
   learningMap,
   learningMapNode,
   learningMapVersion,
+  learningRelationship,
   learningViewpointSource,
 } from "@/platform/database/catalog-schema";
+import { user } from "@/platform/database/auth-schema";
 import { createPostgresDatabase } from "@/platform/database/postgres";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -77,7 +79,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
-    'TRUNCATE TABLE "featured_learning_map", "learning_viewpoint_source", "learning_viewpoint", "learning_map_node_source", "knowledge_source", "learning_map_prerequisite", "learning_map_node", "learning_map_version", "learning_map" CASCADE',
+    'TRUNCATE TABLE "learning_relationship", "featured_learning_map", "learning_viewpoint_source", "learning_viewpoint", "learning_map_node_source", "knowledge_source", "learning_map_prerequisite", "learning_map_node", "learning_map_version", "learning_map", "user" CASCADE',
   );
 });
 
@@ -266,5 +268,55 @@ describe("featured learning catalog persistence", () => {
     expect(failedVersions).toEqual([]);
     expect(failedMaps).toEqual([]);
     await expect(repository.findFeatured("map-2")).resolves.toBeNull();
+  });
+});
+
+describe("learning relationship persistence", () => {
+  it("establishes one account-version relationship and reads through it", async () => {
+    await database.insert(user).values([
+      {
+        id: "user-1",
+        name: "Owner",
+        email: "owner@example.com",
+        emailVerified: true,
+      },
+      {
+        id: "user-2",
+        name: "Other",
+        email: "other@example.com",
+        emailVerified: true,
+      },
+    ]);
+    await publish.execute(publication("map-1", "version-1"));
+
+    const relationship = await repository.establish("user-1", "version-1");
+    const repeated = await repository.establish("user-1", "version-1");
+
+    expect(relationship).toMatchObject({
+      mapId: "map-1",
+      versionId: "version-1",
+    });
+    expect(repeated).toEqual(relationship);
+    await expect(
+      repository.findByLearningRelationship(
+        "user-1",
+        relationship!.learningRelationshipId,
+      ),
+    ).resolves.toMatchObject({
+      mapId: "map-1",
+      versionId: "version-1",
+      title: "Title version-1",
+    });
+    await expect(
+      repository.findByLearningRelationship(
+        "user-2",
+        relationship!.learningRelationshipId,
+      ),
+    ).resolves.toBeNull();
+    await expect(
+      database
+        .select({ id: learningRelationship.id })
+        .from(learningRelationship),
+    ).resolves.toHaveLength(1);
   });
 });

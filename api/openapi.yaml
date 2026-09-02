@@ -8,6 +8,8 @@ info:
 tags:
   - name: Featured learning maps
     description: Authenticated read access to current published featured map versions.
+  - name: Learning relationships
+    description: Account-owned access to an immutable learning-map version.
 paths:
   /api/featured-learning-maps:
     get:
@@ -57,7 +59,37 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FeaturedLearningMapDetail'
+                $ref: '#/components/schemas/LearningMapDetail'
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/learning-relationships/{learningRelationshipId}/map:
+    get:
+      operationId: getLearningRelationshipMap
+      tags:
+        - Learning relationships
+      summary: 读取当前账户学习关系绑定的地图
+      description: >-
+        Returns the immutable published map version bound to this account-owned
+        learning relationship. The relationship is established by a successful
+        generation or cache hit; this endpoint never joins a map by ID.
+      security:
+        - betterAuthSession: []
+      parameters:
+        - $ref: '#/components/parameters/LearningRelationshipId'
+      responses:
+        '200':
+          description: 学习关系绑定的完整地图与来源证据投影
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningMapDetail'
         '401':
           $ref: '#/components/responses/AuthenticationRequired'
         '404':
@@ -80,6 +112,14 @@ components:
       in: path
       required: true
       description: Stable learning-map identity; this is not a version ID.
+      schema:
+        type: string
+        minLength: 1
+    LearningRelationshipId:
+      name: learningRelationshipId
+      in: path
+      required: true
+      description: Account-owned relationship that pins one immutable map version.
       schema:
         type: string
         minLength: 1
@@ -128,7 +168,7 @@ components:
           type: integer
           minimum: 5
           maximum: 7
-    FeaturedLearningMapDetail:
+    LearningMapDetail:
       type: object
       additionalProperties: false
       required:

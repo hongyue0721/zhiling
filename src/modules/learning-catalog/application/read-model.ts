@@ -8,7 +8,7 @@ export type FeaturedLearningMapSummary = Readonly<{
   nodeCount: number;
 }>;
 
-export type FeaturedLearningMapDetail = Readonly<{
+export type LearningMapDetail = Readonly<{
   mapId: string;
   versionId: string;
   title: string;
@@ -40,7 +40,24 @@ export type FeaturedLearningMapDetail = Readonly<{
   }>[];
 }>;
 
-export interface FeaturedLearningMapReader {
+export type LearningRelationship = Readonly<{
+  learningRelationshipId: string;
+  mapId: string;
+  versionId: string;
+}>;
+
+export interface LearningCatalogReader {
   listFeatured(): Promise<readonly FeaturedLearningMapSummary[]>;
-  findFeatured(mapId: string): Promise<FeaturedLearningMapDetail | null>;
+  findFeatured(mapId: string): Promise<LearningMapDetail | null>;
+  findByLearningRelationship(
+    userId: string,
+    learningRelationshipId: string,
+  ): Promise<LearningMapDetail | null>;
+}
+
+export interface LearningRelationshipWriter {
+  establish(
+    userId: string,
+    versionId: string,
+  ): Promise<LearningRelationship | null>;
 }

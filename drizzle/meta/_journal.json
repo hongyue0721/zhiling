@@ -15,6 +15,13 @@
       "when": 1788324127843,
       "tag": "0001_featured_learning_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788335734810,
+      "tag": "0002_learning_relationship",
+      "breakpoints": true
     }
   ]
 }

@@ -19,5 +19,5 @@ export function createLearningCatalogRuntime({
   database,
 }: LearningCatalogRuntimeDependencies): InternalLearningCatalogRuntime {
   const repository = new DrizzleLearningCatalogRepository(database);
-  return { catalog: new LearningCatalogService(repository) };
+  return { catalog: new LearningCatalogService(repository, repository) };
 }

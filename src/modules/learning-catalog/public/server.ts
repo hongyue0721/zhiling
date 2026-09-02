@@ -1,7 +1,8 @@
 import "server-only";
 
 import type {
-  FeaturedLearningMapDetail as InternalDetail,
+  LearningMapDetail as InternalDetail,
+  LearningRelationship as InternalRelationship,
   FeaturedLearningMapSummary as InternalSummary,
 } from "../application/read-model";
 import {
@@ -9,13 +10,22 @@ import {
   type LearningCatalogRuntimeDependencies,
 } from "../infrastructure/runtime";
 import type {
-  FeaturedLearningMapDetail,
   FeaturedLearningMapSummary,
+  LearningMapDetail,
+  LearningRelationship,
 } from "./contracts";
 
 export type LearningCatalogAccess = Readonly<{
   listFeatured(): Promise<readonly FeaturedLearningMapSummary[]>;
-  findFeatured(mapId: string): Promise<FeaturedLearningMapDetail | null>;
+  findFeatured(mapId: string): Promise<LearningMapDetail | null>;
+  findByLearningRelationship(
+    userId: string,
+    learningRelationshipId: string,
+  ): Promise<LearningMapDetail | null>;
+  establishLearningRelationship(
+    userId: string,
+    versionId: string,
+  ): Promise<LearningRelationship | null>;
 }>;
 
 export type LearningCatalogRuntime = Readonly<{
@@ -32,7 +42,7 @@ function toPublicSummary(summary: InternalSummary): FeaturedLearningMapSummary {
   };
 }
 
-function toPublicDetail(detail: InternalDetail): FeaturedLearningMapDetail {
+function toPublicDetail(detail: InternalDetail): LearningMapDetail {
   return {
     mapId: detail.mapId,
     versionId: detail.versionId,
@@ -66,6 +76,12 @@ function toPublicDetail(detail: InternalDetail): FeaturedLearningMapDetail {
   };
 }
 
+function toPublicRelationship(
+  relationship: InternalRelationship,
+): LearningRelationship {
+  return { ...relationship };
+}
+
 export function createLearningCatalogRuntime(
   dependencies: LearningCatalogRuntimeDependencies,
 ): LearningCatalogRuntime {
@@ -80,12 +96,28 @@ export function createLearningCatalogRuntime(
         const detail = await runtime.catalog.findFeatured(mapId);
         return detail ? toPublicDetail(detail) : null;
       },
+      async findByLearningRelationship(userId, learningRelationshipId) {
+        const detail = await runtime.catalog.findByLearningRelationship(
+          userId,
+          learningRelationshipId,
+        );
+        return detail ? toPublicDetail(detail) : null;
+      },
+      async establishLearningRelationship(userId, versionId) {
+        const relationship =
+          await runtime.catalog.establishLearningRelationship(
+            userId,
+            versionId,
+          );
+        return relationship ? toPublicRelationship(relationship) : null;
+      },
     },
   };
 }
 
 export type {
-  FeaturedLearningMapDetail,
   FeaturedLearningMapSummary,
+  LearningMapDetail,
+  LearningRelationship,
   ViewpointKind,
 } from "./contracts";

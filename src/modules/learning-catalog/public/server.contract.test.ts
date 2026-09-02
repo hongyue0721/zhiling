@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const internal = vi.hoisted(() => ({
   listFeatured: vi.fn(),
   findFeatured: vi.fn(),
+  findByLearningRelationship: vi.fn(),
+  establishLearningRelationship: vi.fn(),
 }));
 
 vi.mock("../infrastructure/runtime", () => ({
@@ -10,6 +12,8 @@ vi.mock("../infrastructure/runtime", () => ({
     catalog: {
       listFeatured: internal.listFeatured,
       findFeatured: internal.findFeatured,
+      findByLearningRelationship: internal.findByLearningRelationship,
+      establishLearningRelationship: internal.establishLearningRelationship,
     },
   }),
 }));
@@ -19,6 +23,8 @@ import { createLearningCatalogRuntime } from "./server";
 beforeEach(() => {
   internal.listFeatured.mockReset();
   internal.findFeatured.mockReset();
+  internal.findByLearningRelationship.mockReset();
+  internal.establishLearningRelationship.mockReset();
 });
 
 describe("learning catalog public server boundary", () => {
@@ -66,17 +72,38 @@ describe("learning catalog public server boundary", () => {
     };
     internal.listFeatured.mockResolvedValue([internalSummary]);
     internal.findFeatured.mockResolvedValue(internalDetail);
+    internal.findByLearningRelationship.mockResolvedValue(internalDetail);
+    internal.establishLearningRelationship.mockResolvedValue({
+      learningRelationshipId: "learning-1",
+      mapId: "map-1",
+      versionId: "version-1",
+    });
     const runtime = createLearningCatalogRuntime({
       database: undefined as never,
     });
 
     const summaries = await runtime.catalog.listFeatured();
     const detail = await runtime.catalog.findFeatured("map-1");
+    const relationshipDetail = await runtime.catalog.findByLearningRelationship(
+      "user-1",
+      "learning-1",
+    );
+    const relationship = await runtime.catalog.establishLearningRelationship(
+      "user-1",
+      "version-1",
+    );
 
     expect(summaries[0]).toEqual(internalSummary);
     expect(summaries[0]).not.toBe(internalSummary);
     expect(detail).toEqual(internalDetail);
     expect(detail).not.toBe(internalDetail);
+    expect(relationshipDetail).toEqual(internalDetail);
+    expect(relationshipDetail).not.toBe(internalDetail);
+    expect(relationship).toEqual({
+      learningRelationshipId: "learning-1",
+      mapId: "map-1",
+      versionId: "version-1",
+    });
     expect(detail?.nodes).not.toBe(internalDetail.nodes);
     expect(detail?.nodes[0]?.sourceIds).not.toBe(
       internalDetail.nodes[0]?.sourceIds,

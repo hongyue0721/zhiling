@@ -11,6 +11,7 @@ import {
   learningMapNodeSource,
   learningMapPrerequisite,
   learningMapVersion,
+  learningRelationship,
   learningViewpoint,
   learningViewpointSource,
 } from "@/platform/database/catalog-schema";
@@ -18,9 +19,11 @@ import { databaseSchema } from "@/platform/database/schema";
 
 import type { LearningMapPublisher } from "../application/learning-catalog";
 import type {
-  FeaturedLearningMapDetail,
-  FeaturedLearningMapReader,
   FeaturedLearningMapSummary,
+  LearningCatalogReader,
+  LearningMapDetail,
+  LearningRelationship,
+  LearningRelationshipWriter,
 } from "../application/read-model";
 import {
   validateLearningMapPublication,
@@ -37,7 +40,10 @@ export class LearningMapVersionAlreadyExistsError extends Error {
 }
 
 export class DrizzleLearningCatalogRepository
-  implements LearningMapPublisher, FeaturedLearningMapReader
+  implements
+    LearningMapPublisher,
+    LearningCatalogReader,
+    LearningRelationshipWriter
 {
   constructor(
     private readonly database: NodePgDatabase<typeof databaseSchema>,
@@ -192,26 +198,75 @@ export class DrizzleLearningCatalogRepository
       );
   }
 
-  async findFeatured(mapId: string): Promise<FeaturedLearningMapDetail | null> {
+  async findFeatured(mapId: string): Promise<LearningMapDetail | null> {
+    const versions = await this.database
+      .select({
+        mapId: featuredLearningMap.mapId,
+        versionId: learningMapVersion.id,
+        title: learningMapVersion.title,
+        summary: learningMapVersion.summary,
+      })
+      .from(featuredLearningMap)
+      .innerJoin(
+        learningMapVersion,
+        and(
+          eq(learningMapVersion.id, featuredLearningMap.versionId),
+          eq(learningMapVersion.mapId, featuredLearningMap.mapId),
+        ),
+      )
+      .where(
+        and(
+          eq(featuredLearningMap.mapId, mapId),
+          eq(learningMapVersion.status, "published"),
+        ),
+      )
+      .limit(1);
+    const version = versions[0];
+    return version ? this.loadLearningMapDetail(version) : null;
+  }
+
+  async findByLearningRelationship(
+    userId: string,
+    learningRelationshipId: string,
+  ): Promise<LearningMapDetail | null> {
+    const versions = await this.database
+      .select({
+        mapId: learningMapVersion.mapId,
+        versionId: learningMapVersion.id,
+        title: learningMapVersion.title,
+        summary: learningMapVersion.summary,
+      })
+      .from(learningRelationship)
+      .innerJoin(
+        learningMapVersion,
+        eq(learningMapVersion.id, learningRelationship.versionId),
+      )
+      .where(
+        and(
+          eq(learningRelationship.id, learningRelationshipId),
+          eq(learningRelationship.userId, userId),
+          eq(learningMapVersion.status, "published"),
+        ),
+      )
+      .limit(1);
+    const version = versions[0];
+    return version ? this.loadLearningMapDetail(version) : null;
+  }
+
+  async establish(
+    userId: string,
+    versionId: string,
+  ): Promise<LearningRelationship | null> {
     return this.database.transaction(async (transaction) => {
       const versions = await transaction
         .select({
-          mapId: featuredLearningMap.mapId,
+          mapId: learningMapVersion.mapId,
           versionId: learningMapVersion.id,
-          title: learningMapVersion.title,
-          summary: learningMapVersion.summary,
         })
-        .from(featuredLearningMap)
-        .innerJoin(
-          learningMapVersion,
-          and(
-            eq(learningMapVersion.id, featuredLearningMap.versionId),
-            eq(learningMapVersion.mapId, featuredLearningMap.mapId),
-          ),
-        )
+        .from(learningMapVersion)
         .where(
           and(
-            eq(featuredLearningMap.mapId, mapId),
+            eq(learningMapVersion.id, versionId),
             eq(learningMapVersion.status, "published"),
           ),
         )
@@ -221,7 +276,42 @@ export class DrizzleLearningCatalogRepository
         return null;
       }
 
-      const nodes = await transaction
+      const relationships = await transaction
+        .insert(learningRelationship)
+        .values({
+          id: `learning_${crypto.randomUUID()}`,
+          userId,
+          versionId,
+        })
+        .onConflictDoUpdate({
+          target: [learningRelationship.userId, learningRelationship.versionId],
+          set: { userId },
+        })
+        .returning({ learningRelationshipId: learningRelationship.id });
+
+      return {
+        learningRelationshipId: relationships[0]!.learningRelationshipId,
+        mapId: version.mapId,
+        versionId: version.versionId,
+      };
+    });
+  }
+
+  private async loadLearningMapDetail(version: {
+    mapId: string;
+    versionId: string;
+    title: string;
+    summary: string;
+  }): Promise<LearningMapDetail> {
+    const [
+      nodes,
+      prerequisites,
+      sources,
+      nodeSources,
+      viewpoints,
+      viewpointSources,
+    ] = await Promise.all([
+      this.database
         .select({
           nodeId: learningMapNode.nodeId,
           title: learningMapNode.title,
@@ -229,8 +319,8 @@ export class DrizzleLearningCatalogRepository
         })
         .from(learningMapNode)
         .where(eq(learningMapNode.versionId, version.versionId))
-        .orderBy(asc(learningMapNode.nodeId));
-      const prerequisites = await transaction
+        .orderBy(asc(learningMapNode.nodeId)),
+      this.database
         .select({
           nodeId: learningMapPrerequisite.nodeId,
           prerequisiteNodeId: learningMapPrerequisite.prerequisiteNodeId,
@@ -240,8 +330,8 @@ export class DrizzleLearningCatalogRepository
         .orderBy(
           asc(learningMapPrerequisite.nodeId),
           asc(learningMapPrerequisite.prerequisiteNodeId),
-        );
-      const sources = await transaction
+        ),
+      this.database
         .select({
           sourceId: knowledgeSource.sourceId,
           title: knowledgeSource.title,
@@ -251,8 +341,8 @@ export class DrizzleLearningCatalogRepository
         })
         .from(knowledgeSource)
         .where(eq(knowledgeSource.versionId, version.versionId))
-        .orderBy(asc(knowledgeSource.sourceId));
-      const nodeSources = await transaction
+        .orderBy(asc(knowledgeSource.sourceId)),
+      this.database
         .select({
           nodeId: learningMapNodeSource.nodeId,
           sourceId: learningMapNodeSource.sourceId,
@@ -262,8 +352,8 @@ export class DrizzleLearningCatalogRepository
         .orderBy(
           asc(learningMapNodeSource.nodeId),
           asc(learningMapNodeSource.sourceId),
-        );
-      const viewpoints = await transaction
+        ),
+      this.database
         .select({
           viewpointId: learningViewpoint.viewpointId,
           nodeId: learningViewpoint.nodeId,
@@ -276,8 +366,8 @@ export class DrizzleLearningCatalogRepository
         .orderBy(
           asc(learningViewpoint.nodeId),
           asc(learningViewpoint.viewpointId),
-        );
-      const viewpointSources = await transaction
+        ),
+      this.database
         .select({
           nodeId: learningViewpointSource.nodeId,
           viewpointId: learningViewpointSource.viewpointId,
@@ -289,40 +379,40 @@ export class DrizzleLearningCatalogRepository
           asc(learningViewpointSource.nodeId),
           asc(learningViewpointSource.viewpointId),
           asc(learningViewpointSource.sourceId),
-        );
+        ),
+    ]);
 
-      const sourceIdsByNode = new Map<string, string[]>();
-      for (const row of nodeSources) {
-        const sourceIds = sourceIdsByNode.get(row.nodeId) ?? [];
-        sourceIds.push(row.sourceId);
-        sourceIdsByNode.set(row.nodeId, sourceIds);
-      }
-      const sourceIdsByViewpoint = new Map<string, Map<string, string[]>>();
-      for (const row of viewpointSources) {
-        const byViewpoint =
-          sourceIdsByViewpoint.get(row.nodeId) ?? new Map<string, string[]>();
-        const sourceIds = byViewpoint.get(row.viewpointId) ?? [];
-        sourceIds.push(row.sourceId);
-        byViewpoint.set(row.viewpointId, sourceIds);
-        sourceIdsByViewpoint.set(row.nodeId, byViewpoint);
-      }
+    const sourceIdsByNode = new Map<string, string[]>();
+    for (const row of nodeSources) {
+      const sourceIds = sourceIdsByNode.get(row.nodeId) ?? [];
+      sourceIds.push(row.sourceId);
+      sourceIdsByNode.set(row.nodeId, sourceIds);
+    }
+    const sourceIdsByViewpoint = new Map<string, Map<string, string[]>>();
+    for (const row of viewpointSources) {
+      const byViewpoint =
+        sourceIdsByViewpoint.get(row.nodeId) ?? new Map<string, string[]>();
+      const sourceIds = byViewpoint.get(row.viewpointId) ?? [];
+      sourceIds.push(row.sourceId);
+      byViewpoint.set(row.viewpointId, sourceIds);
+      sourceIdsByViewpoint.set(row.nodeId, byViewpoint);
+    }
 
-      return {
-        ...version,
-        nodes: nodes.map((node) => ({
-          ...node,
-          sourceIds: sourceIdsByNode.get(node.nodeId) ?? [],
-        })),
-        prerequisites,
-        sources,
-        viewpoints: viewpoints.map((viewpoint) => ({
-          ...viewpoint,
-          sourceIds:
-            sourceIdsByViewpoint
-              .get(viewpoint.nodeId)
-              ?.get(viewpoint.viewpointId) ?? [],
-        })),
-      };
-    });
+    return {
+      ...version,
+      nodes: nodes.map((node) => ({
+        ...node,
+        sourceIds: sourceIdsByNode.get(node.nodeId) ?? [],
+      })),
+      prerequisites,
+      sources,
+      viewpoints: viewpoints.map((viewpoint) => ({
+        ...viewpoint,
+        sourceIds:
+          sourceIdsByViewpoint
+            .get(viewpoint.nodeId)
+            ?.get(viewpoint.viewpointId) ?? [],
+      })),
+    };
   }
 }

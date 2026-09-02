@@ -6,6 +6,7 @@ const runtime = vi.hoisted(() => ({
   requireIdentity: vi.fn(),
   listFeatured: vi.fn(),
   findFeatured: vi.fn(),
+  findByLearningRelationship: vi.fn(),
 }));
 
 vi.mock("@/bootstrap/server", () => ({
@@ -13,11 +14,13 @@ vi.mock("@/bootstrap/server", () => ({
   learningCatalog: {
     listFeatured: runtime.listFeatured,
     findFeatured: runtime.findFeatured,
+    findByLearningRelationship: runtime.findByLearningRelationship,
   },
 }));
 
 import { GET as getFeaturedDetail } from "@/app/api/featured-learning-maps/[mapId]/route";
 import { GET as listFeaturedMaps } from "@/app/api/featured-learning-maps/route";
+import { GET as getRelationshipMap } from "@/app/api/learning-relationships/[learningRelationshipId]/map/route";
 
 const detail = {
   mapId: "map-1",
@@ -59,6 +62,7 @@ beforeEach(() => {
   });
   runtime.listFeatured.mockReset();
   runtime.findFeatured.mockReset();
+  runtime.findByLearningRelationship.mockReset();
 });
 
 describe("featured learning map HTTP contract", () => {
@@ -173,5 +177,48 @@ describe("featured learning map HTTP contract", () => {
     expect(JSON.stringify(body)).not.toContain(sensitiveMessage);
     expect(JSON.stringify(logged)).not.toContain(sensitiveMessage);
     log.mockRestore();
+  });
+});
+
+describe("learning relationship map HTTP contract", () => {
+  it("returns the relationship map for its account", async () => {
+    runtime.findByLearningRelationship.mockResolvedValue(detail);
+
+    const response = await getRelationshipMap(
+      new Request("http://localhost/api/learning-relationships/learning-1/map"),
+      {
+        params: Promise.resolve({
+          learningRelationshipId: "learning-1",
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(detail);
+    expect(runtime.findByLearningRelationship).toHaveBeenCalledWith(
+      "user-1",
+      "learning-1",
+    );
+  });
+
+  it("returns resource_not_found when the account has no matching relationship", async () => {
+    runtime.findByLearningRelationship.mockResolvedValue(null);
+
+    const response = await getRelationshipMap(
+      new Request(
+        "http://localhost/api/learning-relationships/learning-other/map",
+      ),
+      {
+        params: Promise.resolve({
+          learningRelationshipId: "learning-other",
+        }),
+      },
+    );
+    const body = (await response.json()) as {
+      error: { code: string };
+    };
+
+    expect(response.status).toBe(404);
+    expect(body.error.code).toBe("resource_not_found");
   });
 });
