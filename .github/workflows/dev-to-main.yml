@@ -46,8 +46,8 @@ jobs:
               | group_by(.name)
               | map(sort_by(.completed_at // .started_at // "") | last)
               | if length != 2 then "pending"
-                elsif all(.[]; .status == "completed" and .conclusion == "success") then "success"
-                elsif any(.[]; .status == "completed" and .conclusion != "success") then "failure"
+                elif all(.[]; .status == "completed" and .conclusion == "success") then "success"
+                elif any(.[]; .status == "completed" and .conclusion != "success") then "failure"
                 else "pending"
                 end
             ' | tr -d '\n')"
