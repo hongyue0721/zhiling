@@ -15,6 +15,61 @@ services:
     volumes:
       - zhijing-postgres:/var/lib/postgresql/data
 
+  web:
+    image: zhijing:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://zhijing:zhijing-local@postgres:5432/zhijing}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-http://localhost:3000}
+      BETTER_AUTH_TRUSTED_PROXIES: ${BETTER_AUTH_TRUSTED_PROXIES:-127.0.0.1/32}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      AUTH_EMAIL_FROM: ${AUTH_EMAIL_FROM:-Zhijing <noreply@example.com>}
+    ports:
+      - "3000:3000"
+    command: ["pnpm", "start"]
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/featured-learning-maps').then((r) => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  generation-worker:
+    image: zhijing:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://zhijing:zhijing-local@postgres:5432/zhijing}
+      GENERATION_WORKER_ID: ${GENERATION_WORKER_ID:-generation-worker-1}
+      ZHIHU_ACCESS_SECRET: ${ZHIHU_ACCESS_SECRET:-}
+      ZHIHU_MODEL: ${ZHIHU_MODEL:-zhida-thinking-1p5}
+      ZHIHU_SOURCE_TIMEOUT_MS: ${ZHIHU_SOURCE_TIMEOUT_MS:-30000}
+      ZHIHU_MODEL_TIMEOUT_MS: ${ZHIHU_MODEL_TIMEOUT_MS:-60000}
+    command: ["pnpm", "worker:generation"]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+
   postgres-test:
     image: postgres:17.6-alpine
     environment:

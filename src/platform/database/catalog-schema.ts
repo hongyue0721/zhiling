@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   check,
   foreignKey,
   index,
@@ -7,6 +8,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   unique,
@@ -104,6 +106,10 @@ export const knowledgeSource = pgTable(
     excerpt: text("excerpt").notNull(),
     url: text("url").notNull(),
     authorName: text("author_name").notNull(),
+    contentType: text("content_type"),
+    updatedAt: bigint("updated_at", { mode: "number" }),
+    authorityLevel: text("authority_level"),
+    rankingScore: real("ranking_score"),
   },
   (table) => [primaryKey({ columns: [table.versionId, table.sourceId] })],
 );

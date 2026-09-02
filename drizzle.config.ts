@@ -13,6 +13,7 @@ export default defineConfig({
     "./src/platform/database/catalog-schema.ts",
     "./src/platform/database/assessment-schema.ts",
     "./src/platform/database/progress-schema.ts",
+    "./src/platform/database/generation-schema.ts",
   ],
   out: "./drizzle",
   dbCredentials: { url: databaseUrl },
