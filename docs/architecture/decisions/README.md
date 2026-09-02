@@ -13,7 +13,7 @@
 | [0001](0001-nextjs-modular-monolith.md) | 采用 Next.js 全栈模块化单体 | Accepted |
 | [0002](0002-source-evidence-is-a-domain-invariant.md) | 将来源证据作为领域不变量 | Accepted |
 | [0003](0003-isolate-external-providers-with-adapters.md) | 使用适配器隔离外部供应商协议 | Accepted |
-| [0004](0004-generation-state-machine-and-atomic-publication.md) | 地图生成状态机与原子发布 | Proposed |
+| [0004](0004-generation-state-machine-and-atomic-publication.md) | 地图生成状态机与原子发布 | Accepted |
 | [0005](0005-transactional-anonymous-account-merge.md) | 匿名账户事务性合并方案 | Rejected |
 | [0006](0006-contract-first-api-and-compatibility.md) | API 契约优先并显式管理兼容性 | Accepted |
 | [0007](0007-require-login-for-all-product-capabilities.md) | 所有产品能力必须登录 | Accepted |
@@ -21,6 +21,9 @@
 | [0009](0009-unified-business-api-error-contract.md) | 统一业务 API 错误契约 | Accepted |
 | [0010](0010-email-verification-and-session-policy.md) | 邮箱验证与会话安全策略 | Accepted |
 | [0011](0011-immutable-map-versions-and-featured-pointer.md) | 不可变地图版本与精选指针 | Accepted |
+| [0012](0012-no-sharing-in-first-phase.md) | 一期不实现分享能力 | Accepted |
+| [0013](0013-assessment-scoring-and-completion.md) | 学习验证计分与完成规则 | Accepted |
+| [0014](0014-generation-participants-and-private-custom-maps.md) | 生成参与者与私有自定义地图授权 | Accepted |
 
 状态流转规则：
 
