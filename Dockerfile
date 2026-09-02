@@ -1,0 +1,37 @@
+FROM node:22.23.2-alpine AS dependencies
+
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
+
+FROM dependencies AS build
+WORKDIR /app
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+ARG DATABASE_URL
+ARG BETTER_AUTH_SECRET
+ARG BETTER_AUTH_URL
+ARG BETTER_AUTH_TRUSTED_ORIGINS
+ARG BETTER_AUTH_TRUSTED_PROXIES
+ARG RESEND_API_KEY
+ARG AUTH_EMAIL_FROM
+ENV DATABASE_URL=${DATABASE_URL} \
+    BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET} \
+    BETTER_AUTH_URL=${BETTER_AUTH_URL} \
+    BETTER_AUTH_TRUSTED_ORIGINS=${BETTER_AUTH_TRUSTED_ORIGINS} \
+    BETTER_AUTH_TRUSTED_PROXIES=${BETTER_AUTH_TRUSTED_PROXIES} \
+    RESEND_API_KEY=${RESEND_API_KEY} \
+    AUTH_EMAIL_FROM=${AUTH_EMAIL_FROM}
+RUN pnpm build
+
+FROM node:22.23.2-alpine AS runtime
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
+COPY --from=build /app ./
+
+EXPOSE 3000
+CMD ["pnpm", "start"]

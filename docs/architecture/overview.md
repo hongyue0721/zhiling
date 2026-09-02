@@ -1,6 +1,6 @@
 # 架构总览
 
-> 状态：模块化单体、工程边界、身份后端、学习目录、学习验证与学习进度已接受并落地；其余领域和部署决策继续按 ADR 推进。产品边界以 `PROJECT_GOAL.md` 为准。
+> 状态：模块化单体、工程边界、身份后端、学习目录、外部适配、地图生成、学习验证与学习进度已实现；其余领域和上线决策继续按 ADR 推进。产品边界以 `PROJECT_GOAL.md` 为准。
 
 ## 设计目标
 
@@ -18,7 +18,7 @@
 - Better Auth 与 Email & Password；
 - 知乎 API 和模型 API 均置于独立适配器之后。
 
-上述技术方向中，Next.js 15 工程边界、PostgreSQL/Drizzle 与 Better Auth Email & Password 已通过 ADR 和实现验证；前端图交互、状态库、业务 SSE、知乎/模型适配器与部署方式仍须由对应工作包锁定版本和契约。
+上述技术方向中，Next.js 15 工程边界、PostgreSQL/Drizzle、Better Auth、业务 SSE、知乎/模型适配器和同镜像 Web/Worker 运行方式已经落地；前端图交互与状态库仍须由对应工作包锁定版本和契约。
 
 ## 逻辑分层
 
@@ -40,11 +40,11 @@
 - ADR-0012 将分享能力移出一期，结课报告仅所属账户可读；
 - ADR-0013 固定学习验证计分、完成、重试、并发和版本规则；
 - ADR-0014 固定任务参与关系、跨账户缓存复用与私有自定义地图授权；
-- `identity` 模块只公开服务端最小正式身份，认证托管端点见[认证框架契约](../api/authentication.md)；`learning-assessment` 与 `learning-progress` 通过公开契约和学习目录关系读取能力完成 D2 闭环。
+- `identity` 模块只公开服务端最小正式身份，认证托管端点见[认证框架契约](../api/authentication.md)；`external-providers` 隔离知乎搜索与知乎直答协议；`map-generation` 持久化状态、参与关系、事件、租约与候选门禁；`learning-assessment` 与 `learning-progress` 通过公开契约和学习目录关系读取能力完成 D2 闭环。
 
 ## 仍待确认事项
 
-- 知乎与模型适配器的真实接口、规范化契约及供应商请求时限；
+- 使用生产 Access Secret 取得的成功、空结果、限流与配额响应样本及部署环境时延；
 - 精选地图人工审核入口与责任；
 - 来源去重、保留期限及第三方删除后的处理；
 - VPS 运行区域、日志保留、备份恢复和生产回滚门禁。

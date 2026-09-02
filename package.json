@@ -11,6 +11,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "worker:generation": "tsx src/workers/generation-worker.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.ts\" \".github/workflows/*.{yml,yaml}\" \"*.{json,ts,mjs,yml,yaml}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.ts\" \".github/workflows/*.{yml,yaml}\" \"*.{json,ts,mjs,yml,yaml}\"",
     "lint": "eslint . --max-warnings 0",
