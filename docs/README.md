@@ -33,6 +33,7 @@
 - 并行交接：[并行工作与交接协议](development/parallel-work.md)
 - 文档维护：[文档治理规则](development/documentation-policy.md)
 - 所有权分配：[所有权与评审分配](development/ownership.md)
+- 分支与 PR 流程：[Git 协作流程](development/git-workflow.md)
 - 合入门禁：[变更评审指南](development/review-guidelines.md)
 - 仓库治理：[GitHub 仓库治理设置](development/repository-settings.md)
 - 决策记录：[ADR 索引](architecture/decisions/README.md)

@@ -1,0 +1,134 @@
+name: dev 到 main 自动提升
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: dev-to-main-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: 等待检查并提升 main
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: 检出完整提交历史
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dev
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 等待 dev 提交的协作与质量检查
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DEV_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          deadline=$((SECONDS + 1800))
+          while (( SECONDS < deadline )); do
+            result="$(gh api "repos/${REPOSITORY}/commits/${DEV_SHA}/check-runs" --jq '
+              [ .check_runs[]
+                | select(.name == "验证协作基线" or .name == "验证工程基线")
+              ]
+              | group_by(.name)
+              | map(sort_by(.completed_at // .started_at // "") | last)
+              | if length != 2 then "pending"
+                elsif all(.[]; .status == "completed" and .conclusion == "success") then "success"
+                elsif any(.[]; .status == "completed" and .conclusion != "success") then "failure"
+                else "pending"
+                end
+            ' | tr -d '\n')"
+
+            case "${result}" in
+              success)
+                echo "dev 提交 ${DEV_SHA} 的协作与质量检查全部成功。"
+                exit 0
+                ;;
+              failure)
+                echo "dev 提交 ${DEV_SHA} 存在失败、取消或超时的协作/质量检查。" >&2
+                exit 1
+                ;;
+            esac
+
+            echo "等待 dev 提交 ${DEV_SHA} 的协作与质量检查完成。"
+            sleep 15
+          done
+
+          echo "等待 dev 提交 ${DEV_SHA} 的检查超时。" >&2
+          exit 1
+
+      - name: 创建或复用 dev 到 main 提升 PR
+        id: promotion-pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DEV_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          current_sha="$(gh api "repos/${REPOSITORY}/git/ref/heads/dev" --jq '.object.sha')"
+          if [[ "${current_sha}" != "${DEV_SHA}" ]]; then
+            echo "dev 在门禁期间继续变化：期望 ${DEV_SHA}，实际 ${current_sha}。" >&2
+            exit 1
+          fi
+
+
+          comparison="$(gh api "repos/${REPOSITORY}/compare/main...dev" --jq '.status')"
+          if [[ "${comparison}" == "identical" ]]; then
+            echo "dev 与 main 已一致，不需要创建提升 PR。"
+            exit 0
+          fi
+
+          pr_number="$(gh pr list --repo "${REPOSITORY}" --state open --base main --head dev --json number --jq '.[0].number // empty')"
+          if [[ -z "${pr_number}" ]]; then
+            body_file="$(mktemp)"
+            trap 'rm -f "${body_file}"' EXIT
+            cat >"${body_file}" <<EOF
+          这是由 .github/workflows/dev-to-main.yml 创建的自动提升 PR。
+
+          - 来源分支：\`dev\`
+          - 经过提交：\`${DEV_SHA}\`
+          - 门禁：\`协作规范检查\`、\`工程质量检查\`
+          - 合入方式：rebase
+
+          该 PR 不替代 Issue、ADR 或人工评审；它只承载已完成 dev 集成检查的内容。
+          EOF
+            gh pr create \
+              --repo "${REPOSITORY}" \
+              --base main \
+              --head dev \
+              --title "自动提升：dev → main" \
+              --body-file "${body_file}"
+          fi
+
+          pr_number="$(gh pr list --repo "${REPOSITORY}" --state open --base main --head dev --json number --jq '.[0].number // empty')"
+          if [[ -z "${pr_number}" ]]; then
+            echo "无法取得 dev 到 main 提升 PR。" >&2
+            exit 1
+          fi
+          echo "pr_number=${pr_number}" >> "${GITHUB_OUTPUT}"
+
+      - name: 自动 rebase 合入 main
+        if: steps.promotion-pr.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.promotion-pr.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          gh pr merge "${PR_NUMBER}" \
+            --repo "${REPOSITORY}" \
+            --rebase \
+            --delete-branch=false

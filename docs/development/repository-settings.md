@@ -12,8 +12,9 @@
 | --- | --- |
 | 仓库 | `hongyue0721/zhiling`，私有仓库 |
 | 默认分支 | `main` |
+| 集成分支 | `dev`，普通任务 PR 的唯一目标 |
 | Actions | 已启用，仅允许 GitHub 官方 Action |
-| 工作流默认权限 | 仅读取仓库内容，不能批准 PR |
+| 工作流默认权限 | 仅读取仓库内容；`dev-to-main` Bot 单独声明最小写权限 |
 | Action SHA 固定要求 | 已启用；所有外部 Action 必须使用完整提交 SHA |
 | 合并方式 | 仅允许 rebase；merge commit 与 squash 已关闭 |
 | PR 分支更新 | 维护者可更新落后于目标分支的 PR 分支 |
@@ -23,13 +24,13 @@
 | 协作者 | 当前只有仓库管理员 `hongyue0721` |
 | 分支保护与规则集 | 当前私有仓库套餐不支持；读取接口返回 HTTP 403 并要求升级 GitHub Pro 或公开仓库 |
 
-最后一项表示平台能力当前不可用，不能据此声称 `main` 已受保护。仓库中的 CI 会报告违规，但在没有分支保护时无法阻止管理员直接推送或合入失败检查。
+最后一项表示平台能力当前不可用，不能据此声称 `dev` 或 `main` 已受保护。仓库中的 CI 会报告违规；正常流程由普通 PR 合入 `dev`、`dev-to-main` Bot 提升到 `main` 共同保证，但管理员仍可能直接推送或绕过检查。
 
 ## 仓库内门禁
 
-工作流 [`.github/workflows/collaboration.yml`](../../.github/workflows/collaboration.yml) 使用最小的 `contents: read` 权限，并把官方 `actions/checkout` 固定到 `v7.0.1` 对应的完整提交 `3d3c42e…`。该版本在 2026-09-02 通过官方发布记录复核；工作流不读取 Secrets，也不向仓库写入内容。
+工作流 [`.github/workflows/collaboration.yml`](../../.github/workflows/collaboration.yml) 和 [`.github/workflows/quality.yml`](../../.github/workflows/quality.yml) 检查目标为 `dev` 或 `main` 的 PR，以及两个分支的推送。
 
-拉取请求会检查：
+普通工作流使用最小的 `contents: read` 权限，并把官方 `actions/checkout` 固定到 `v7.0.1` 对应的完整提交。拉取请求会检查：
 
 - 当前树和变更范围没有 Git 空白错误；
 - Markdown 本地文件链接指向仓库内现存目标；
@@ -37,10 +38,16 @@
 - ADR 文件、索引链接和状态保持一致；
 - PR 相对目标提交新增的每个提交都包含中文标题，以及独立非空的“功能：”“原因：”“验证：”正文行。
 
-推送到 `main` 后会用同一规则审计新增提交；手动运行则检查当前树，不检查提交范围。开发者可在本地执行：
+工作流 [`.github/workflows/dev-to-main.yml`](../../.github/workflows/dev-to-main.yml) 仅监听 `dev` 推送，使用 `contents: write`、`pull-requests: write` 和 `checks: read`：
+
+1. 等待同一 dev 提交的 `协作规范检查 / 验证协作基线` 和 `工程质量检查 / 验证工程基线` 成功；
+2. 创建或复用 `dev` → `main` 提升 PR；
+3. 使用 rebase 自动合入；冲突、失败或超时直接停止。
+
+开发者可在本地执行：
 
 ```bash
-scripts/verify-collaboration.sh
+scripts/verify-collaboration.sh --base origin/dev --head HEAD
 ```
 
 需要同时检查某个提交范围时执行：
@@ -53,17 +60,18 @@ scripts/verify-collaboration.sh --base <目标提交> --head <待检查提交>
 
 ## 目标设置
 
-平台能力允许后，应为 `main` 建立规则集或分支保护：
+平台能力允许后，应同时为 `dev` 和 `main` 建立规则集或分支保护：
 
-1. 必须通过 PR 合入，禁止直接推送和强制推送；
-2. 必须通过状态检查 `协作规范检查 / 验证协作基线`；
-3. 新增其他稳定 CI 后，将其纳入必需检查；
-4. 至少一名代码所有者批准后才能合入，并在新提交后撤销旧批准；
-5. 所有评审会话解决后才能合入；
-6. 禁止删除 `main`，保留管理员应急绕过的审计记录；
-7. 要求分支在合入前与 `main` 保持最新，或启用合并队列。
+1. `dev` 必须通过普通 PR 合入，禁止直接推送和强制推送；
+2. `dev` 必须通过状态检查 `协作规范检查 / 验证协作基线` 与 `工程质量检查 / 验证工程基线`；
+3. `main` 只允许 `dev-to-main` Bot 的提升 PR，禁止普通 PR 和直接推送；
+4. `main` 必须保留提升 PR 的自动检查与审计记录；
+5. 新增其他稳定 CI 后，将其纳入 `dev` 和 `main` 的必需检查；
+6. 至少一名代码所有者批准普通 PR，并在新提交后撤销旧批准；
+7. 所有评审会话解决后才能合入；
+8. 禁止删除 `dev` 和 `main`，保留管理员应急绕过的审计记录。
 
-提交说明门禁要求保留每个已经通过检查的中文提交，因此远程现已关闭 merge commit 与 squash，只保留 rebase 合入。Actions 已收紧为仅允许 GitHub 官方 Action，默认权限保持只读；合入后自动删除分支也已启用。
+提交说明门禁要求保留每个已经通过检查的中文提交，因此远程现已关闭 merge commit 与 squash，只保留 rebase 合入。合入后自动删除任务分支；`dev` 与 `main` 的正常推进均保留 PR、工作流和提交记录。
 
 新增实际协作者后仍需维护 `CODEOWNERS`，避免把单人所有权误写成多人审批已经生效。
 
