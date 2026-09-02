@@ -8,9 +8,14 @@
 
 # Build and dependency outputs
 node_modules/
+.pnpm-store/
+.next/
+out/
 dist/
 build/
 coverage/
+playwright-report/
+test-results/
 target/
 __pycache__/
 .pytest_cache/

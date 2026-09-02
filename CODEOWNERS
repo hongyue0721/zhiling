@@ -3,3 +3,20 @@
 
 /api/ @hongyue0721
 /docs/architecture/ @hongyue0721
+/.codex/skills/zhihu/ @hongyue0721
+/docs/api/zhihu-open-platform.md @hongyue0721
+/docs/api/authentication.md @hongyue0721
+
+# 工程基础仍由仓库维护者临时兜底；正式团队分工后按 ownership.md 拆分。
+/package.json @hongyue0721
+/pnpm-lock.yaml @hongyue0721
+/pnpm-workspace.yaml @hongyue0721
+/*.config.* @hongyue0721
+/src/app/ @hongyue0721
+/src/platform/ @hongyue0721
+/src/modules/identity/ @hongyue0721
+/drizzle/ @hongyue0721
+/compose.yaml @hongyue0721
+/scripts/ @hongyue0721
+/tests/architecture/ @hongyue0721
+/.github/workflows/ @hongyue0721

@@ -4,17 +4,33 @@
 
 > 把知乎上的真实讨论，走成一条学会的路。
 
-完整产品事实以 [PROJECT_GOAL.md](PROJECT_GOAL.md) 为准。当前仓库处于设计与协作基线阶段，暂不创建应用代码、安装依赖或生成数据库迁移。
+完整产品事实以 [PROJECT_GOAL.md](PROJECT_GOAL.md) 为准。仓库已建立 Next.js 15 工程基础、PostgreSQL/Drizzle 迁移与 Better Auth 邮箱身份后端；当前页面仍是非业务工程壳，产品登录/注册界面和学习能力尚未实现。
 
 ## 当前阶段
 
 - [x] 确认产品目标、目标用户和首期范围
 - [x] 确认核心业务流程、关键一致性约束和技术方向
 - [x] 建立协作、架构、兼容性和 API 契约基线
-- [ ] 评审并冻结首批架构决策与领域契约
-- [ ] 依据已确认契约建立第一个端到端纵向切片
+- [x] 评审并冻结首批架构决策与身份契约
+- [x] 建立固定运行时、分层检查、测试入口与 CI 工程基础
+- [x] 建立强制邮箱验证、数据库 Session 和服务端正式身份纵向切片
+- [ ] 依据已确认契约建立学习地图首个业务纵向切片
 
 完整阅读入口见 [项目文档索引](docs/README.md)。范围索引见 [产品需求](docs/product/requirements.md)，架构入口见 [架构总览](docs/architecture/overview.md)，API 契约入口见 [API 文档](docs/api/README.md)。
+
+## 开始开发
+
+环境要求、安装和完整命令见 [本地开发](docs/development/local-setup.md)，测试层级见 [测试策略](docs/development/testing.md)。
+
+```bash
+corepack enable
+corepack prepare pnpm@11.25.0 --activate
+pnpm install --frozen-lockfile
+cp .env.example .env.local
+docker compose up -d postgres postgres-test
+```
+
+随后按[本地开发](docs/development/local-setup.md)替换密钥、导出环境并执行迁移。`pnpm check` 是本地与 CI 共用入口，需要专用测试数据库。认证端点与安全语义见[认证框架契约](docs/api/authentication.md)。
 
 ## 协作原则
 

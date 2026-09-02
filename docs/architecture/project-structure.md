@@ -1,12 +1,12 @@
 # 工程目录与依赖方向
 
-> 状态：已由 [ADR-0008](decisions/0008-project-structure-and-dependency-direction.md) 接受。本文描述工程骨架阶段必须落实的目录职责，不代表当前已经创建应用代码、依赖或数据库迁移。
+> 状态：已由 [ADR-0008](decisions/0008-project-structure-and-dependency-direction.md) 接受。工程基础与 `identity` 后端纵向切片已落地；后续业务模块仍只由对应工作包按需创建。
 
 ## 目录骨架
 
 ```text
 api/                              # 对外 HTTP/SSE 机器契约及示例，契约事实源
-drizzle/                          # 经评审、纳入版本控制的数据库迁移（数据库阶段再创建）
+drizzle/                          # 经评审、纳入版本控制的数据库迁移
 src/
 ├── app/                          # Next.js 路由入口与页面组合，只承担接口层职责
 │   ├── (route-groups)/           # 仅组织布局和访问策略，不作为业务模块边界
@@ -133,8 +133,8 @@ SSE 路由同样遵循上述边界。连接保活、事件编码和恢复游标�
 - 生成目录禁止手工修改，生成结果必须可通过固定命令重建，并在 CI 中验证重建后无差异；
 - 领域层、应用层和模块公开契约不得直接依赖 OpenAPI 或第三方生成 DTO；传输适配器与对应基础设施适配器负责显式转换；
 - 生成器配置、OpenAPI 和模块边界 schema 是输入事实，生成产物不是补写业务规则的位置；
-- Drizzle 迁移是经过审查的历史变更记录，未来放入根目录 `drizzle/` 并纳入版本控制，不按可随时删除的生成代码处理；
-- 当前阶段不创建 `src/`、`drizzle/`、生成产物或工具配置，待工程基础工作包开始后按本约束逐项落地。
+- Drizzle 迁移是经过审查的历史变更记录，位于根目录 `drizzle/` 并纳入版本控制，不按可随时删除的生成代码处理；
+- `identity` 已贯通认证 Route Handler、组合根、公开服务端入口、应用/领域、Better Auth/Resend 基础设施与 PostgreSQL 平台能力；产品前端未实现，因此不创建 `presentation/` 或 `public/client.ts`。
 
 ## 工程骨架验收
 

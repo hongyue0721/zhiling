@@ -24,6 +24,8 @@
 - 安全规则：[安全边界](architecture/security-boundaries.md)
 - 权限规则：[访问控制矩阵](architecture/access-control.md)
 - API 维护：[API 文档](api/README.md)
+- 认证托管端点与正式身份：[认证框架契约](api/authentication.md)
+- 知乎供应方协议：[知乎开放平台外部契约](api/zhihu-open-platform.md)
 - 分工顺序：[工作包](development/work-packages.md)
 - 任务队列：[协作任务队列](development/task-board.md)
 - 就绪审计：[协作就绪清单](development/collaboration-readiness.md)

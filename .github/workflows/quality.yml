@@ -1,0 +1,70 @@
+name: 工程质量检查
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 验证工程基线
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://zhijing:zhijing-ci@127.0.0.1:5432/zhijing_test
+      TEST_DATABASE_URL: postgresql://zhijing:zhijing-ci@127.0.0.1:5432/zhijing_test
+      BETTER_AUTH_SECRET: ci-only-auth-secret-at-least-32-characters
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3000
+      BETTER_AUTH_TRUSTED_PROXIES: 127.0.0.1
+      RESEND_API_KEY: ci-not-used
+      AUTH_EMAIL_FROM: auth@example.com
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: zhijing_test
+          POSTGRES_USER: zhijing
+          POSTGRES_PASSWORD: zhijing-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd \"pg_isready -U zhijing -d zhijing_test\"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 安装固定 Node.js
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: 启用固定 pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.25.0 --activate
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 安装端到端浏览器
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: 执行本地同款检查入口
+        run: pnpm check

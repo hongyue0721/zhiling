@@ -40,8 +40,8 @@
 
 | 工作包 | Issue | 当前状态 | 主要前置 |
 | --- | --- | --- | --- |
-| B 工程基础 | [#7](https://github.com/hongyue0721/zhiling/issues/7) | 可领取 | ADR-0008、ADR-0009 已接受 |
-| C1 身份与会话 | [#8](https://github.com/hongyue0721/zhiling/issues/8) | 阻塞 | #4、#7 |
+| B 工程基础 | [#7](https://github.com/hongyue0721/zhiling/issues/7) | 已实现，待合入 | ADR-0008、ADR-0009 已接受 |
+| C1 身份与会话 | [#8](https://github.com/hongyue0721/zhiling/issues/8) | 已实现，待合入 | B、ADR-0010 已完成 |
 | C2 学习目录与来源 | [#10](https://github.com/hongyue0721/zhiling/issues/10) | 阻塞 | #7；授权部分依赖 #5 |
 | C3 外部适配器 | [#9](https://github.com/hongyue0721/zhiling/issues/9) | 阻塞 | #6、#7 |
 | D1 地图生成 | [#12](https://github.com/hongyue0721/zhiling/issues/12) | 阻塞 | #2、#5、#8、#9、#10 |
@@ -54,4 +54,4 @@
 
 开始任务前，仓库维护者必须在对应 Issue 中填写负责人、独立评审者、允许修改范围和目标分支。若任务状态与依赖证据不一致，以真实依赖为准，先修正 Issue 和本表，不能为了开工删除阻塞说明。
 
-本队列只完成协作准备，不代表任何应用工作包已经开始。
+本队列反映仓库内实现状态；GitHub Issue 的关闭与合入仍由维护者按领取和评审规则执行。

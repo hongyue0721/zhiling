@@ -19,6 +19,7 @@
 | [0007](0007-require-login-for-all-product-capabilities.md) | 所有产品能力必须登录 | Accepted |
 | [0008](0008-project-structure-and-dependency-direction.md) | 固定工程目录与依赖方向 | Accepted |
 | [0009](0009-unified-business-api-error-contract.md) | 统一业务 API 错误契约 | Accepted |
+| [0010](0010-email-verification-and-session-policy.md) | 邮箱验证与会话安全策略 | Accepted |
 
 状态流转规则：
 

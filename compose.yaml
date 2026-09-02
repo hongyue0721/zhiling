@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: zhijing
+      POSTGRES_USER: zhijing
+      POSTGRES_PASSWORD: zhijing-local
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zhijing -d zhijing"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - zhijing-postgres:/var/lib/postgresql/data
+
+  postgres-test:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: zhijing_test
+      POSTGRES_USER: zhijing
+      POSTGRES_PASSWORD: zhijing-local-test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zhijing -d zhijing_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /var/lib/postgresql/data
+
+volumes:
+  zhijing-postgres:
