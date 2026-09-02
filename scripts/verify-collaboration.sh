@@ -130,7 +130,9 @@ file_list, status = Open3.capture2(
 )
 abort("无法读取 Markdown 文件清单") unless status.success?
 
-markdown_files = file_list.lines(chomp: true).uniq.sort
+markdown_files = file_list.lines(chomp: true).uniq.sort.select do |file|
+  repository_root.join(file).file?
+end
 errors = []
 
 validate_target = lambda do |source_file, line_number, raw_target|
@@ -225,7 +227,9 @@ file_list, status = Open3.capture2(
 )
 abort("无法读取 YAML 文件清单") unless status.success?
 
-yaml_files = file_list.lines(chomp: true).uniq.sort
+yaml_files = file_list.lines(chomp: true).uniq.sort.select do |file|
+  repository_root.join(file).file?
+end
 errors = []
 yaml_files.each do |file|
   begin

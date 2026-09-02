@@ -4,7 +4,7 @@
 
 ## 资料来源与优先级
 
-本契约依据哥哥提供的知乎黑客松资料包整理。包内官方 `zhihu` Skill 已按项目范围原样安装到 [`.codex/skills/zhihu`](../../.codex/skills/zhihu/)：
+本契约依据哥哥提供的知乎黑客松资料包整理。包内官方 `zhihu` Skill 已按项目范围原样安装到 [`.omp/skills/zhihu`](../../.omp/skills/zhihu/)：
 
 - Skill：`zhihu`；
 - Skill 版本：`0.2.1`；
@@ -16,12 +16,12 @@
 
 原始契约全文：
 
-- [公共 HTTP API](../../.codex/skills/zhihu/references/http-api.md)
-- [用户数据 API](../../.codex/skills/zhihu/references/user-api.md)
-- [OAuth 应用集成](../../.codex/skills/zhihu/references/oauth.md)
-- [MCP 服务](../../.codex/skills/zhihu/references/mcp.md)
-- [CLI 使用文档](../../.codex/skills/zhihu/references/cli.md)
-- [开放平台与额度](../../.codex/skills/zhihu/references/open-platform.md)
+- [公共 HTTP API](../../.omp/skills/zhihu/references/http-api.md)
+- [用户数据 API](../../.omp/skills/zhihu/references/user-api.md)
+- [OAuth 应用集成](../../.omp/skills/zhihu/references/oauth.md)
+- [MCP 服务](../../.omp/skills/zhihu/references/mcp.md)
+- [CLI 使用文档](../../.omp/skills/zhihu/references/cli.md)
+- [开放平台与额度](../../.omp/skills/zhihu/references/open-platform.md)
 
 事实优先级为：知乎开放平台当前官方页面与真实响应 > 项目内官方 Skill 快照 > 本摘要。发生冲突时必须停止适配并更新契约，不能用兼容兜底掩盖差异。
 
@@ -29,7 +29,7 @@
 
 ## 项目使用边界
 
-- `.codex/skills/zhihu` 只在本仓库内生效，不安装到用户级或全局 Skill 目录。
+- `.omp/skills/zhihu` 是 Oh My Pi 的项目级 Skill 目录，只在本仓库内生效，不安装到用户级或全局 Skill 目录。
 - Skill/CLI 是开发调查工具，不是知径生产运行时依赖；生产适配器直接调用经确认的 HTTP API。
 - Skill 清单只声明 macOS 与 Windows CLI 产物，没有 Linux CLI 产物。本项目当前 Linux 工作站只能把 Skill 作为契约资料使用，不能宣称 CLI 已在本机可执行。
 - 知径账户仍使用 Better Auth。知乎 OAuth 与知径登录严格分离，不能把知乎 OAuth Token 当作知径 Session。
