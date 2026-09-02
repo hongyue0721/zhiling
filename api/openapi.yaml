@@ -96,6 +96,105 @@ paths:
           $ref: '#/components/responses/ResourceNotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/learning-relationships/{learningRelationshipId}/nodes/{nodeId}/assessment:
+    get:
+      operationId: getLearningNodeAssessment
+      tags:
+        - Learning relationships
+      summary: 获取节点验证题面
+      description: >-
+        Returns the questions bound to the immutable question-set version of this
+        learning relationship. The response never contains explanations, standard
+        answers or other server-only judging data.
+      security:
+        - betterAuthSession: []
+      parameters:
+        - $ref: '#/components/parameters/LearningRelationshipId'
+        - $ref: '#/components/parameters/NodeId'
+      responses:
+        '200':
+          description: 不含答案的节点验证题面
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningNodeAssessment'
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: submitLearningNodeAssessment
+      tags:
+        - Learning relationships
+      summary: 提交节点验证答案
+      description: >-
+        Judges answers on the server, records one immutable attempt and updates the
+        relationship-scoped best score in one transaction. Reusing an
+        Idempotency-Key returns the original result without creating another attempt.
+      security:
+        - betterAuthSession: []
+      parameters:
+        - $ref: '#/components/parameters/LearningRelationshipId'
+        - $ref: '#/components/parameters/NodeId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssessmentSubmission'
+      responses:
+        '200':
+          description: 服务端判题结果、节点分数和完成状态
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentSubmissionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/learning-relationships/{learningRelationshipId}/progress:
+    get:
+      operationId: getLearningRelationshipProgress
+      tags:
+        - Learning relationships
+      summary: 读取学习关系进度和答题历史摘要
+      description: >-
+        Returns progress for every node in the relationship's pinned map version and
+        immutable attempt summaries ordered from newest to oldest.
+      security:
+        - betterAuthSession: []
+      parameters:
+        - $ref: '#/components/parameters/LearningRelationshipId'
+      responses:
+        '200':
+          description: 节点最佳成绩、完成状态与历史摘要
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningProgressSummary'
+        '401':
+          $ref: '#/components/responses/AuthenticationRequired'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     betterAuthSession:
@@ -123,6 +222,23 @@ components:
       schema:
         type: string
         minLength: 1
+    NodeId:
+      name: nodeId
+      in: path
+      required: true
+      description: Node in the relationship's pinned map version.
+      schema:
+        type: string
+        minLength: 1
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Repeated submissions with the same relationship-scoped key return the same result.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 256
   headers:
     PrivateNoStore:
       description: Protected content must not enter shared or cross-account caches.
@@ -323,6 +439,298 @@ components:
           items:
             type: string
             minLength: 1
+    LearningNodeAssessment:
+      type: object
+      additionalProperties: false
+      required:
+        - learningRelationshipId
+        - questionSetId
+        - versionId
+        - nodeId
+        - questions
+      properties:
+        learningRelationshipId:
+          type: string
+          minLength: 1
+        questionSetId:
+          type: string
+          minLength: 1
+          description: Immutable question-set version bound to the relationship.
+        versionId:
+          type: string
+          minLength: 1
+        nodeId:
+          type: string
+          minLength: 1
+        questions:
+          type: array
+          minItems: 2
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/AssessmentQuestionPrompt'
+    AssessmentQuestionPrompt:
+      type: object
+      additionalProperties: false
+      required:
+        - questionId
+        - nodeId
+        - type
+        - prompt
+        - options
+        - sourceIds
+      properties:
+        questionId:
+          type: string
+          minLength: 1
+        nodeId:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+            - single_choice
+            - multiple_choice
+            - matching
+            - opinion_analysis
+        prompt:
+          type: string
+          minLength: 1
+        options:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/AssessmentQuestionOption'
+        sourceIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+    AssessmentQuestionOption:
+      type: object
+      additionalProperties: false
+      required:
+        - optionId
+        - label
+      properties:
+        optionId:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+    AssessmentSubmission:
+      type: object
+      additionalProperties: false
+      required:
+        - answers
+      properties:
+        answers:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/AssessmentAnswer'
+    AssessmentAnswer:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - questionId
+            - selectedOptionIds
+          properties:
+            questionId:
+              type: string
+              minLength: 1
+            selectedOptionIds:
+              type: array
+              uniqueItems: true
+              items:
+                type: string
+                minLength: 1
+        - type: object
+          additionalProperties: false
+          required:
+            - questionId
+            - matches
+          properties:
+            questionId:
+              type: string
+              minLength: 1
+            matches:
+              type: array
+              items:
+                $ref: '#/components/schemas/AssessmentMatchingAnswer'
+    AssessmentMatchingAnswer:
+      type: object
+      additionalProperties: false
+      required:
+        - leftOptionId
+        - rightOptionId
+      properties:
+        leftOptionId:
+          type: string
+          minLength: 1
+        rightOptionId:
+          type: string
+          minLength: 1
+    AssessmentSubmissionResult:
+      type: object
+      additionalProperties: false
+      required:
+        - attemptId
+        - learningRelationshipId
+        - questionSetId
+        - versionId
+        - nodeId
+        - nodeScore
+        - bestScore
+        - completed
+        - submittedAt
+        - questions
+      properties:
+        attemptId:
+          type: string
+          minLength: 1
+        learningRelationshipId:
+          type: string
+          minLength: 1
+        questionSetId:
+          type: string
+          minLength: 1
+        versionId:
+          type: string
+          minLength: 1
+        nodeId:
+          type: string
+          minLength: 1
+        nodeScore:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: Node score in integer basis points.
+        bestScore:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        completed:
+          type: boolean
+        submittedAt:
+          type: string
+          format: date-time
+        questions:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/AssessmentQuestionResult'
+    AssessmentQuestionResult:
+      type: object
+      additionalProperties: false
+      required:
+        - questionId
+        - correct
+        - scoreBasisPoints
+        - explanation
+        - sourceIds
+      properties:
+        questionId:
+          type: string
+          minLength: 1
+        correct:
+          type: boolean
+        scoreBasisPoints:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        explanation:
+          type: string
+          minLength: 1
+        sourceIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+    LearningProgressSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - learningRelationshipId
+        - versionId
+        - questionSetId
+        - nodes
+        - attempts
+      properties:
+        learningRelationshipId:
+          type: string
+          minLength: 1
+        versionId:
+          type: string
+          minLength: 1
+        questionSetId:
+          type: string
+          minLength: 1
+        nodes:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/LearningNodeProgress'
+        attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningAttemptSummary'
+    LearningNodeProgress:
+      type: object
+      additionalProperties: false
+      required:
+        - nodeId
+        - bestScore
+        - completed
+        - completedAt
+        - bestAttemptId
+      properties:
+        nodeId:
+          type: string
+          minLength: 1
+        bestScore:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        completed:
+          type: boolean
+        completedAt:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        bestAttemptId:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+    LearningAttemptSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - attemptId
+        - nodeId
+        - nodeScore
+        - submittedAt
+      properties:
+        attemptId:
+          type: string
+          minLength: 1
+        nodeId:
+          type: string
+          minLength: 1
+        nodeScore:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        submittedAt:
+          type: string
+          format: date-time
     ApiError:
       type: object
       additionalProperties: false

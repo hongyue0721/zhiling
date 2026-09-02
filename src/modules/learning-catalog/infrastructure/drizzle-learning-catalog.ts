@@ -15,6 +15,7 @@ import {
   learningViewpoint,
   learningViewpointSource,
 } from "@/platform/database/catalog-schema";
+import { learningAssessmentQuestionSet } from "@/platform/database/assessment-schema";
 import { databaseSchema } from "@/platform/database/schema";
 
 import type { LearningMapPublisher } from "../application/learning-catalog";
@@ -276,23 +277,43 @@ export class DrizzleLearningCatalogRepository
         return null;
       }
 
+      const questionSets = await transaction
+        .select({ questionSetId: learningAssessmentQuestionSet.id })
+        .from(learningAssessmentQuestionSet)
+        .where(
+          and(
+            eq(learningAssessmentQuestionSet.versionId, version.versionId),
+            eq(learningAssessmentQuestionSet.status, "published"),
+          ),
+        )
+        .limit(1);
+      const questionSetId = questionSets[0]?.questionSetId ?? null;
+
       const relationships = await transaction
         .insert(learningRelationship)
         .values({
           id: `learning_${crypto.randomUUID()}`,
           userId,
           versionId,
+          questionSetId,
         })
         .onConflictDoUpdate({
           target: [learningRelationship.userId, learningRelationship.versionId],
-          set: { userId },
+          set: {
+            userId,
+            questionSetId: sql`COALESCE(${learningRelationship.questionSetId}, ${questionSetId})`,
+          },
         })
-        .returning({ learningRelationshipId: learningRelationship.id });
+        .returning({
+          learningRelationshipId: learningRelationship.id,
+          questionSetId: learningRelationship.questionSetId,
+        });
 
       return {
         learningRelationshipId: relationships[0]!.learningRelationshipId,
         mapId: version.mapId,
         versionId: version.versionId,
+        questionSetId: relationships[0]!.questionSetId,
       };
     });
   }

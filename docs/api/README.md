@@ -11,7 +11,7 @@ API 采用契约优先。机器可读的单一事实源是 [`api/openapi.yaml`](
 - 兼容性影响、废弃标记和迁移说明；
 - 契约与实现测试。
 
-当前已发布的知径业务接口包括需要正式 Session 的精选学习地图目录、精选详情，以及按账户学习关系读取的不可变地图版本。前端接入见[精选学习地图契约](featured-learning-maps.md)和[学习关系地图读取契约](learning-relationships.md)。外部供应方协议不写入知径 OpenAPI，知乎接口单独记录在[知乎开放平台外部契约](zhihu-open-platform.md)。
+当前已发布的知径业务接口包括需要正式 Session 的精选学习地图目录、精选详情、按账户学习关系读取的不可变地图版本、节点验证题面、服务端判题提交，以及关系进度读取。前端接入见[精选学习地图契约](featured-learning-maps.md)、[学习关系地图读取契约](learning-relationships.md)和[学习验证与进度契约](learning-assessment.md)。外部供应方协议不写入知径 OpenAPI，知乎接口单独记录在[知乎开放平台外部契约](zhihu-open-platform.md)。
 
 后续接口仍须遵循 [API 约定](conventions.md)，尤其是统一错误模型、身份上下文和 SSE 恢复语义；未确认的接口不得提前写入 OpenAPI。
 

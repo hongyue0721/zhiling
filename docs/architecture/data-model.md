@@ -51,9 +51,17 @@
 - `GET /api/learning-relationships/{learningRelationshipId}/map` 同时按正式账户和关系 ID 解析版本，返回关系固定绑定的完整地图投影；
 - 物理模式由 `drizzle/0002_learning_relationship.sql` 建立。生成成功和缓存命中调用同一建立能力，不另建平行授权数据。
 
+## 已落地的学习验证与进度持久化
+
+- `learning_assessment_question_set` 以 `questionSetId` 绑定一个不可变地图 `versionId`；题目、选项、标准答案、题目来源关系分表保存，来源关系通过同版本节点来源复合外键约束。
+- 发布入口先校验四类题型、答案引用和来源 ID，再在事务中写入草稿题目集及全部关系，最后转换为已发布；已发布题目集及其子行由数据库触发器拒绝覆写和删除。
+- `learning_relationship.question_set_id` 在建立关系时固定当时已发布题目集；旧地图版本或精选指针切换不会迁移关系。
+- `learning_assessment_attempt` 以关系、题目集和幂等键唯一；尝试答案、判题结果和分数只追加不修改。
+- `learning_progress_node` 保存节点最佳基点分数、最佳尝试引用和首次完成时间。判题事务锁定学习关系行，原子执行幂等检查、尝试写入和 `GREATEST` 最佳成绩更新；完成时间只从空值变为非空。
+- 物理模式由 `drizzle/0003_learning_assessment.sql` 建立，并与 `assessment-schema.ts`、`progress-schema.ts` 同步维护；读取通过公开应用契约返回安全题面和历史摘要。
+
 ## 已接受但待实现的不变量
 
-- ADR-0013 固定等权计分、80% 完成阈值、无限重试、幂等提交、最佳成绩原子更新和题目版本隔离；
 - ADR-0014 的生成任务参与关系、缓存命中事务接线和任务状态/SSE 隔离仍随 D1 实现；自定义地图按账户学习关系读取已经落地；
 - ADR-0012 取消一期分享能力，不得创建分享占位实体或把资源 ID 当作隐式分享入口。
 

@@ -26,34 +26,34 @@
 
 ## 已完成决策
 
-| 来源 | 决策结果 | 落地证据 |
-| --- | --- | --- |
-| [#4](https://github.com/hongyue0721/zhiling/issues/4) | 强制邮箱验证、数据库 Session、Resend 发信、一期不提供密码恢复 | ADR-0010、工作包 C1 |
-| C2 地图版本评审 | 稳定地图身份、不可变版本、精选指针、既有学习关系绑定原版本 | ADR-0011、工作包 C2a |
-| [#1](https://github.com/hongyue0721/zhiling/issues/1) | 一期不实现分享，结课报告仅所属账户可读 | ADR-0012 |
-| [#2](https://github.com/hongyue0721/zhiling/issues/2) | 自管 VPS Docker、数据库租约 Worker、可恢复 SSE 与原子发布 | ADR-0004 |
-| [#3](https://github.com/hongyue0721/zhiling/issues/3) | 等权计分、80% 完成、无限重试、不可变版本成绩 | ADR-0013 |
-| [#5](https://github.com/hongyue0721/zhiling/issues/5) | 参与者任务授权、缓存复用、私有自定义地图 | ADR-0014 |
+| 来源                                                  | 决策结果                                                      | 落地证据             |
+| ----------------------------------------------------- | ------------------------------------------------------------- | -------------------- |
+| [#4](https://github.com/hongyue0721/zhiling/issues/4) | 强制邮箱验证、数据库 Session、Resend 发信、一期不提供密码恢复 | ADR-0010、工作包 C1  |
+| C2 地图版本评审                                       | 稳定地图身份、不可变版本、精选指针、既有学习关系绑定原版本    | ADR-0011、工作包 C2a |
+| [#1](https://github.com/hongyue0721/zhiling/issues/1) | 一期不实现分享，结课报告仅所属账户可读                        | ADR-0012             |
+| [#2](https://github.com/hongyue0721/zhiling/issues/2) | 自管 VPS Docker、数据库租约 Worker、可恢复 SSE 与原子发布     | ADR-0004             |
+| [#3](https://github.com/hongyue0721/zhiling/issues/3) | 等权计分、80% 完成、无限重试、不可变版本成绩                  | ADR-0013             |
+| [#5](https://github.com/hongyue0721/zhiling/issues/5) | 参与者任务授权、缓存复用、私有自定义地图                      | ADR-0014             |
 
 ## 外部契约准备
 
-| Issue | 任务 | 状态 | 下游 |
-| --- | --- | --- | --- |
+| Issue                                                 | 任务                              | 状态   | 下游   |
+| ----------------------------------------------------- | --------------------------------- | ------ | ------ |
 | [#6](https://github.com/hongyue0721/zhiling/issues/6) | 获取并冻结知乎与模型 API 真实契约 | 可领取 | C3、D1 |
 
 ## 工作包队列
 
-| 工作包 | Issue | 当前状态 | 主要前置 |
-| --- | --- | --- | --- |
-| B 工程基础 | [#7](https://github.com/hongyue0721/zhiling/issues/7) | 已提交 `main` | ADR-0008、ADR-0009 已接受 |
-| C1 身份与会话 | [#8](https://github.com/hongyue0721/zhiling/issues/8) | 已提交 `main` | B、ADR-0010 已完成 |
-| C2 学习目录与来源 | [#10](https://github.com/hongyue0721/zhiling/issues/10) | 已提交 `main` | B、ADR-0002、ADR-0011、ADR-0014 |
-| C3 外部适配器 | [#9](https://github.com/hongyue0721/zhiling/issues/9) | 阻塞 | #6 |
-| D1 地图生成 | [#12](https://github.com/hongyue0721/zhiling/issues/12) | 阻塞 | #6、#9 |
-| D2 验证与进度 | [#11](https://github.com/hongyue0721/zhiling/issues/11) | 可领取 | #10 已完成 |
-| E1 匿名数据合并 | 无 | 已取消 | ADR-0005 Rejected、ADR-0007 Accepted；编号不复用 |
-| E2 结课报告 | [#13](https://github.com/hongyue0721/zhiling/issues/13) | 阻塞 | #11；分享已由 ADR-0012 移出一期 |
-| F 用户闭环 | [#14](https://github.com/hongyue0721/zhiling/issues/14) | 阻塞 | #9 至 #13 中仍未完成的相关工作包 |
+| 工作包            | Issue                                                   | 当前状态         | 主要前置                                         |
+| ----------------- | ------------------------------------------------------- | ---------------- | ------------------------------------------------ |
+| B 工程基础        | [#7](https://github.com/hongyue0721/zhiling/issues/7)   | 已提交 `main`    | ADR-0008、ADR-0009 已接受                        |
+| C1 身份与会话     | [#8](https://github.com/hongyue0721/zhiling/issues/8)   | 已提交 `main`    | B、ADR-0010 已完成                               |
+| C2 学习目录与来源 | [#10](https://github.com/hongyue0721/zhiling/issues/10) | 已提交 `main`    | B、ADR-0002、ADR-0011、ADR-0014                  |
+| C3 外部适配器     | [#9](https://github.com/hongyue0721/zhiling/issues/9)   | 阻塞             | #6                                               |
+| D1 地图生成       | [#12](https://github.com/hongyue0721/zhiling/issues/12) | 阻塞             | #6、#9                                           |
+| D2 验证与进度     | [#11](https://github.com/hongyue0721/zhiling/issues/11) | 已提交 `main`    | #10 已完成；ADR-0013                             |
+| E1 匿名数据合并   | 无                                                      | 已取消           | ADR-0005 Rejected、ADR-0007 Accepted；编号不复用 |
+| E2 结课报告       | [#13](https://github.com/hongyue0721/zhiling/issues/13) | 可领取           | #11 已完成；分享已由 ADR-0012 移出一期           |
+| F 用户闭环        | [#14](https://github.com/hongyue0721/zhiling/issues/14) | 阻塞             | #9 至 #13 中仍未完成的相关工作包                 |
 
 ## 领取规则
 

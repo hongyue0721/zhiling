@@ -2,13 +2,13 @@
 
 测试层级使用独立命令，`pnpm test` 按层组合执行；端到端通过不能替代架构、契约或领域失败路径验证。
 
-| 层级 | 命令 | 文件归属 | 当前职责 |
-| --- | --- | --- | --- |
-| 单元 | `pnpm test:unit` | 邻近源码的 `*.test.ts(x)` | 纯规则、配置验证和值转换 |
-| 架构 | `pnpm test:architecture` | `tests/architecture` | 依赖方向、循环、运行时与生成代码边界 |
-| 契约 | `pnpm test:contracts` | 邻近源码的 `*.contract.test.ts(x)`、`tests/contracts` | HTTP/SSE、公开模块契约及第三方契约 |
-| 集成 | `pnpm test:integration` | `tests/integration` | 真实数据库和关键基础设施边界 |
-| 端到端 | `pnpm test:e2e` | `tests/e2e` | 少量关键用户闭环 |
+| 层级   | 命令                     | 文件归属                                              | 当前职责                             |
+| ------ | ------------------------ | ----------------------------------------------------- | ------------------------------------ |
+| 单元   | `pnpm test:unit`         | 邻近源码的 `*.test.ts(x)`                             | 纯规则、配置验证和值转换             |
+| 架构   | `pnpm test:architecture` | `tests/architecture`                                  | 依赖方向、循环、运行时与生成代码边界 |
+| 契约   | `pnpm test:contracts`    | 邻近源码的 `*.contract.test.ts(x)`、`tests/contracts` | HTTP/SSE、公开模块契约及第三方契约   |
+| 集成   | `pnpm test:integration`  | `tests/integration`                                   | 真实数据库和关键基础设施边界         |
+| 端到端 | `pnpm test:e2e`          | `tests/e2e`                                           | 少量关键用户闭环                     |
 
 单元、架构、契约和集成层已有真实测试，命令在测试文件被误删时必须失败。产品前端闭环尚未实现，因此仅 Playwright 暂时使用 `--pass-with-no-tests` 保持入口可组合；这不算端到端覆盖，也不得用空测试伪装进度。
 
@@ -54,6 +54,12 @@
 - 已发布版本及子内容不可变，精选指针不能指向草稿；
 - HTTP 目录和详情要求正式身份，统一返回 `401`、安全 `404` 或 `500` 信封，并禁止共享缓存；
 - 公共 DTO 与应用/数据库对象隔离，外部突变不能改变已校验发布快照。
+
+## 学习验证与进度测试
+
+`src/modules/learning-assessment/domain/assessment.test.ts` 覆盖四类题型、服务端不变量、多选误选扣分、基点取整和 80% 边界。`tests/integration/learning-assessment.test.ts` 使用真实 PostgreSQL 覆盖题目集版本/来源拒绝、题面答案隔离、幂等重复、低分后高分、高分后低分不回退、不可变尝试与重新读取进度恢复。
+
+HTTP 契约测试验证节点题面、答案提交和关系进度路由的 DTO、错误信封与 `Idempotency-Key`；不得把标准答案或提交答案放入公开题面及历史摘要。正式身份门禁复用统一 Route Handler 模式和既有身份契约测试。
 
 ## 编写要求
 

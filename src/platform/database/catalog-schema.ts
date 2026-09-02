@@ -202,6 +202,7 @@ export const learningRelationship = pgTable(
     versionId: text("version_id")
       .notNull()
       .references(() => learningMapVersion.id, { onDelete: "restrict" }),
+    questionSetId: text("question_set_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

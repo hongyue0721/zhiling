@@ -72,7 +72,10 @@ async function managedRequest(
     headers.set("content-type", "application/json");
   }
 
-  return auth.handler(
+  const handler =
+    method === "GET" ? authRouteHandlers.GET : authRouteHandlers.POST;
+
+  return handler(
     new Request(`${baseUrl}/api/auth${path}`, {
       method,
       headers,
@@ -100,7 +103,9 @@ async function registerAndVerify(email: string) {
     throw new Error("Expected a recorded verification email");
   }
 
-  const verification = await auth.handler(new Request(message.verificationUrl));
+  const verification = await authRouteHandlers.GET(
+    new Request(message.verificationUrl),
+  );
   expect([200, 302]).toContain(verification.status);
   expect(verification.headers.get("set-cookie")).toBeNull();
 }
@@ -171,7 +176,7 @@ describe("identity authentication with PostgreSQL", () => {
     if (!verificationMessage) {
       throw new Error("Expected verification mail after explicit resend");
     }
-    const verification = await auth.handler(
+    const verification = await authRouteHandlers.GET(
       new Request(verificationMessage.verificationUrl),
     );
     expect([200, 302]).toContain(verification.status);

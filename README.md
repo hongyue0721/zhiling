@@ -19,7 +19,8 @@
 - [x] 建立账户与不可变地图版本的唯一学习关系，以及按关系读取地图的纵向切片
   - 前端接入见[学习关系地图接口](docs/api/learning-relationships.md)
 - [x] 将分享移出一期范围，结课报告收敛为所属账户私有能力
-- [ ] 冻结外部真实样本，推进地图生成和学习验证闭环
+- [x] 建立来源验证题、服务端判题、不可变尝试、节点 80% 完成和关系进度恢复闭环
+  - 前端接入见[学习验证与进度接口](docs/api/learning-assessment.md)
 
 完整阅读入口见 [项目文档索引](docs/README.md)。范围索引见 [产品需求](docs/product/requirements.md)，架构入口见 [架构总览](docs/architecture/overview.md)，API 契约入口见 [API 文档](docs/api/README.md)。
 

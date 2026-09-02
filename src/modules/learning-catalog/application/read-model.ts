@@ -44,6 +44,7 @@ export type LearningRelationship = Readonly<{
   learningRelationshipId: string;
   mapId: string;
   versionId: string;
+  questionSetId?: string | null;
 }>;
 
 export interface LearningCatalogReader {

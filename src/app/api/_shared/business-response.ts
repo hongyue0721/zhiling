@@ -6,7 +6,10 @@ const privateHeaders = {
 } as const;
 
 type BusinessErrorCode =
-  "authentication_required" | "resource_not_found" | "internal_error";
+  | "authentication_required"
+  | "resource_not_found"
+  | "invalid_request"
+  | "internal_error";
 
 export function privateJson(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: privateHeaders });
@@ -17,7 +20,7 @@ function createRequestId(): string {
 }
 
 function businessErrorWithRequestId(
-  status: 401 | 404 | 500,
+  status: 400 | 401 | 404 | 500,
   code: BusinessErrorCode,
   message: string,
   requestId: string,
@@ -35,7 +38,7 @@ function businessErrorWithRequestId(
 }
 
 export function businessError(
-  status: 401 | 404 | 500,
+  status: 400 | 401 | 404 | 500,
   code: BusinessErrorCode,
   message: string,
 ): Response {

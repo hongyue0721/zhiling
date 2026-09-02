@@ -25,7 +25,7 @@ Route Handler 只允许下表中的方法与路径进入 Better Auth `1.7.2`；�
 | 方法与路径 | 一期用途 | 已验证约束 |
 | --- | --- | --- |
 | `POST /api/auth/sign-up/email` | 创建邮箱账户 | `name`、`email`、`password`；密码 12–128；创建后不建立 Session；触发验证邮件 |
-| `POST /api/auth/sign-in/email` | 显式登录 | 邮箱未验证时拒绝；成功后设置不透明 Session Cookie |
+| `POST /api/auth/sign-in/email` | 显式登录 | 正确密码但邮箱未验证时返回 `403 EMAIL_NOT_VERIFIED`；账户或密码无效时返回 `401 INVALID_EMAIL_OR_PASSWORD`；成功后设置不透明 Session Cookie |
 | `POST /api/auth/send-verification-email` | 显式重发验证邮件 | 允许未登录调用；受数据库限流保护 |
 | `GET /api/auth/verify-email` | 消费一次性验证链接 | Token 1 小时有效；成功后不自动登录 |
 | `GET /api/auth/get-session` | 读取当前框架 Session | 业务代码不得把返回对象直接作为跨模块身份 |

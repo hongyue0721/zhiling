@@ -79,7 +79,11 @@ function toPublicDetail(detail: InternalDetail): LearningMapDetail {
 function toPublicRelationship(
   relationship: InternalRelationship,
 ): LearningRelationship {
-  return { ...relationship };
+  return {
+    learningRelationshipId: relationship.learningRelationshipId,
+    mapId: relationship.mapId,
+    versionId: relationship.versionId,
+  };
 }
 
 export function createLearningCatalogRuntime(
