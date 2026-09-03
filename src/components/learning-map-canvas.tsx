@@ -2,6 +2,7 @@
 
 import type { PointerEvent, WheelEvent } from "react";
 import { useMemo, useRef, useState } from "react";
+import { Button } from "antd";
 
 import type {
   LearningMapDetail,
@@ -214,32 +215,35 @@ export function LearningMapCanvas({
       <div className="map-canvas-toolbar">
         <p className="map-canvas-hint">拖动画布浏览 · 滚轮缩放</p>
         <div className="map-controls" aria-label="地图缩放控制">
-          <button
-            type="button"
+          <Button
+            type="text"
+            size="small"
             className="map-control-button"
             onClick={() => zoomBy(0.1)}
             aria-label="放大地图"
           >
             +
-          </button>
+          </Button>
           <span className="map-scale" aria-live="polite">
             {Math.round(scale * 100)}%
           </span>
-          <button
-            type="button"
+          <Button
+            type="text"
+            size="small"
             className="map-control-button"
             onClick={() => zoomBy(-0.1)}
             aria-label="缩小地图"
           >
             −
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            type="text"
+            size="small"
             className="map-control-button map-control-reset"
             onClick={resetView}
           >
             重置
-          </button>
+          </Button>
         </div>
       </div>
       <div className="map-canvas-viewport">

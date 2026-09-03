@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { Alert, Button, Form, Input, Segmented } from "antd";
 
 import { ApiRequestError, isApiRequestError } from "@/shared/ui/api-client";
 
@@ -199,44 +200,38 @@ export function AuthForm({
         </h1>
         <p>
           {isVerify
-            ? "邮箱验证完成后，再次登录即可恢复你的学习地图和进度。"
-            : "真实来源、可验证的节点，以及只属于你的学习记录。"}
+            ? "邮箱验证完成后，再次登录即可恢复学习进度。"
+            : "登录后继续你的学习地图与节点进度。"}
         </p>
       </div>
       {!registrationEnabled ? (
-        <p className="form-message form-message-info" role="status">
-          本地演示只开放固定账号登录，不会注册账户或发送验证邮件。
-        </p>
+        <Alert
+          className="form-message"
+          type="info"
+          showIcon
+          message="本地演示只开放固定账号登录，不会注册账户或发送验证邮件。"
+        />
       ) : null}
 
       {!isVerify && registrationEnabled ? (
-        <div className="auth-tabs" role="tablist" aria-label="认证方式">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "sign-in"}
-            className={mode === "sign-in" ? "auth-tab active" : "auth-tab"}
-            onClick={() => changeMode("sign-in")}
-          >
-            登录
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "sign-up"}
-            className={mode === "sign-up" ? "auth-tab active" : "auth-tab"}
-            onClick={() => changeMode("sign-up")}
-          >
-            注册
-          </button>
-        </div>
+        <Segmented
+          className="auth-tabs"
+          aria-label="认证方式"
+          block
+          value={mode}
+          options={[
+            { label: "登录", value: "sign-in" },
+            { label: "注册", value: "sign-up" },
+          ]}
+          onChange={(value) => changeMode(value as AuthMode)}
+        />
       ) : null}
 
-      <form className="auth-form" onSubmit={submitAuth} noValidate>
+      <Form className="auth-form" onSubmitCapture={submitAuth} noValidate>
         {isSignUp ? (
           <label className="field-label">
             称呼
-            <input
+            <Input
               className="field-input"
               type="text"
               name="name"
@@ -251,7 +246,7 @@ export function AuthForm({
         ) : null}
         <label className="field-label">
           邮箱
-          <input
+          <Input
             className="field-input"
             type="email"
             name="email"
@@ -265,7 +260,7 @@ export function AuthForm({
         {!isVerify ? (
           <label className="field-label">
             密码
-            <input
+            <Input
               className="field-input"
               type="password"
               name="password"
@@ -283,44 +278,51 @@ export function AuthForm({
         ) : null}
 
         {error ? (
-          <p className="form-message form-message-error" role="alert">
-            {error}
-          </p>
+          <Alert
+            className="form-message"
+            type="error"
+            showIcon
+            message={error}
+          />
         ) : null}
         {message ? (
-          <p className="form-message form-message-info" role="status">
-            {message}
-          </p>
+          <Alert
+            className="form-message"
+            type="info"
+            showIcon
+            message={message}
+          />
         ) : null}
 
-        <button
+        <Button
           className="button button-primary button-block"
-          type="submit"
-          disabled={isPending}
+          type="primary"
+          htmlType="submit"
+          block
+          loading={isPending}
         >
-          {isPending
-            ? "处理中…"
-            : isVerify
-              ? "重新发送验证邮件"
-              : isSignUp
-                ? "注册并验证邮箱"
-                : "登录知径"}
-        </button>
-      </form>
+          {isVerify
+            ? "重新发送验证邮件"
+            : isSignUp
+              ? "注册并验证邮箱"
+              : "登录知径"}
+        </Button>
+      </Form>
 
       {isVerify ? (
-        <button
-          type="button"
+        <Button
+          type="default"
           className="button button-secondary button-block"
           onClick={() => changeMode("sign-in")}
           disabled={isPending}
+          block
         >
           返回登录
-        </button>
+        </Button>
       ) : null}
 
       <div className="auth-card-footer">
-        <p>登录即表示你同意只用本人 Session 访问学习内容。</p>
+        <p>仅使用本人 Session 访问学习内容。</p>
         <Link href="/">返回知径首页</Link>
       </div>
     </section>

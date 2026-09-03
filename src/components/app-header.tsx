@@ -1,10 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { Alert, Button } from "antd";
 
 import { apiRequest } from "@/shared/ui/api-client";
+
+const APP_NAV_ITEMS = [
+  { href: "/", label: "首页" },
+  { href: "/featured", label: "精选地图" },
+  { href: "/learning", label: "我的学习" },
+  { href: "/generate", label: "现场生成" },
+] as const;
+
+function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  if (href === "/learning") {
+    return pathname === "/learning" || pathname.startsWith("/learn/");
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 type AppHeaderProps = Readonly<{
   email: string;
@@ -12,6 +28,7 @@ type AppHeaderProps = Readonly<{
 }>;
 
 export function AppHeader({ email, eyebrow = "知径" }: AppHeaderProps) {
+  const pathname = usePathname() ?? "";
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +37,10 @@ export function AppHeader({ email, eyebrow = "知径" }: AppHeaderProps) {
     setError(null);
     setIsSigningOut(true);
     try {
-      await apiRequest<unknown>("/api/auth/sign-out", { method: "POST" });
+      await apiRequest<unknown>("/api/auth/sign-out", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
       router.replace("/auth");
       router.refresh();
     } catch {
@@ -43,27 +63,42 @@ export function AppHeader({ email, eyebrow = "知径" }: AppHeaderProps) {
           </span>
         </Link>
         <nav className="app-nav" aria-label="主要导航">
-          <Link href="/">我的学习</Link>
-          <Link href="/generate">现场生成</Link>
+          {APP_NAV_ITEMS.map((item) => {
+            const isActive = isNavItemActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                className={isActive ? "is-active" : undefined}
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="account-area">
           <span className="account-email" title={email}>
             {email}
           </span>
-          <button
-            type="button"
+          <Button
+            type="text"
+            size="small"
             className="button button-quiet button-small"
-            onClick={signOut}
-            disabled={isSigningOut}
+            onClick={() => void signOut()}
+            loading={isSigningOut}
           >
-            {isSigningOut ? "退出中…" : "退出登录"}
-          </button>
+            退出登录
+          </Button>
         </div>
       </div>
       {error ? (
-        <div className="app-header-message" role="status">
-          {error}
-        </div>
+        <Alert
+          className="app-header-message"
+          type="error"
+          showIcon
+          message={error}
+        />
       ) : null}
     </header>
   );

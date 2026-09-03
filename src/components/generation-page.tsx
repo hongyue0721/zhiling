@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { Alert, Button, Form, Input, Progress, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
 import {
@@ -52,6 +53,23 @@ const statusLabels: Record<string, string> = {
   succeeded: "地图已生成",
   failed: "生成未完成",
 };
+
+const statusProgress: Readonly<Record<string, number>> = {
+  queued: 6,
+  normalizing: 12,
+  cache_lookup: 20,
+  planning: 28,
+  searching: 40,
+  structuring: 54,
+  supplementing: 64,
+  extracting: 72,
+  assessing: 82,
+  validating: 90,
+  publishing: 96,
+  succeeded: 100,
+};
+
+const { TextArea } = Input;
 
 const failureLabels: Record<string, string> = {
   invalid_topic: "这个主题暂时无法生成，请换一个更具体的学习目标。",
@@ -619,33 +637,31 @@ export function GenerationPage({
       <AppHeader email={email} eyebrow="现场生成" />
       <main className="generation-main">
         <div className="generation-heading">
-          <Link className="back-link" href="/">
+          <Link className="back-link" href="/learning">
             ← 我的学习
           </Link>
           <span className="section-kicker">现场生成</span>
           <h1>从一个问题，建立一张可验证的地图。</h1>
-          <p>
-            生成任务只在服务端使用真实来源和受控模型。未经校验的内容不会提前展示，任务可以在连接中断后恢复。
-          </p>
+          <p>任务只使用服务端真实来源；未经校验的内容不会提前展示。</p>
         </div>
 
         <section
           className="generation-layout"
           aria-labelledby="generation-form-title"
         >
-          <div className="generation-form-card">
+          <div className="generation-form-panel">
             <div className="panel-heading">
               <h2 id="generation-form-title">你的学习目标</h2>
-              <p>尽量写清楚你想理解的范围，最多 200 个字符。</p>
+              <p>写清楚想理解的范围，最多 200 个字符。</p>
             </div>
-            <form
+            <Form
               className="generation-form"
-              onSubmit={submitGeneration}
+              onSubmitCapture={submitGeneration}
               noValidate
             >
               <label className="field-label" htmlFor="generation-topic">
                 学习主题
-                <textarea
+                <TextArea
                   id="generation-topic"
                   className="field-input field-textarea"
                   value={topic}
@@ -654,7 +670,7 @@ export function GenerationPage({
                     if (error) setError(null);
                   }}
                   maxLength={200}
-                  rows={4}
+                  rows={5}
                   placeholder="例如：如何为高流量网站设计可靠的缓存系统"
                   disabled={isGenerationDisabled}
                 />
@@ -663,106 +679,124 @@ export function GenerationPage({
                 {topic.length}/200
               </div>
               {!generationRequestsEnabled ? (
-                <p className="form-message form-message-info" role="status">
-                  本地演示未启动真实供应方和 generation
-                  Worker；请使用首页固定学习地图体验完整学习流程。
-                </p>
+                <Alert
+                  className="form-message"
+                  type="info"
+                  showIcon
+                  message="本地演示未启动真实供应方和 generation Worker；请使用首页固定学习地图体验完整学习流程。"
+                />
               ) : null}
               {error ? (
-                <p className="form-message form-message-error" role="alert">
-                  {error}
-                </p>
+                <Alert
+                  className="form-message"
+                  type="error"
+                  showIcon
+                  message={error}
+                />
               ) : null}
-              <button
+              <Button
                 className="button button-primary button-block"
-                type="submit"
-                disabled={isGenerationDisabled}
+                type="primary"
+                htmlType="submit"
+                block
+                loading={isBusy}
+                disabled={!generationRequestsEnabled}
               >
-                {!generationRequestsEnabled
-                  ? "本地演示未启用"
-                  : isBusy
-                    ? "任务进行中…"
-                    : "开始现场生成"}
-              </button>
-            </form>
+                {!generationRequestsEnabled ? "本地演示未启用" : "开始现场生成"}
+              </Button>
+            </Form>
             <p className="privacy-note">
               {generationRequestsEnabled
-                ? "你的主题会随当前正式 Session 提交；前端不会发送用户 ID，也不会接收候选正文或供应方错误详情。"
+                ? "主题随当前 Session 提交；前端不发送用户 ID，也不接收候选正文或供应方错误详情。"
                 : "当前运行模式不会提交主题，也不会创建生成任务。"}
             </p>
           </div>
 
           <section
-            className="generation-status-card"
-            aria-labelledby="generation-status-title"
+            className="generation-status-panel"
+            aria-label="生成任务状态"
           >
             <div className="status-card-topline">
               <span className="section-kicker">任务状态</span>
-              {taskId ? <span className="status-live">可恢复</span> : null}
+              {taskId ? <Tag color="processing">可恢复</Tag> : null}
             </div>
             <h2 id="generation-status-title">
               {!generationRequestsEnabled
                 ? "本地演示未启用"
                 : state === "idle"
                   ? "准备开始"
-                  : statusLabel}
+                  : state === "failed"
+                    ? "任务已结束"
+                    : statusLabel}
             </h2>
             {!generationRequestsEnabled ? (
-              <p className="status-card-description">
-                现场生成不会接收任务，也不会留下无法处理的排队任务。
-              </p>
+              <Alert
+                type="info"
+                showIcon
+                message="现场生成不会接收任务，也不会留下无法处理的排队任务。"
+              />
             ) : state === "idle" ? (
               <p className="status-card-description">
-                提交后，这里会按服务端事件显示规范化、检索、结构化和校验进度。
+                提交后显示规范化、检索、结构化和校验进度。
               </p>
             ) : state === "reconnecting" ? (
-              <p className="status-card-description" role="status">
-                连接暂时中断，正在用 Last-Event-ID 恢复进度（第{" "}
-                {reconnectAttempt} 次尝试）。
-              </p>
+              <Alert
+                type="warning"
+                showIcon
+                message={`连接暂时中断，正在恢复进度（第 ${reconnectAttempt} 次尝试）。`}
+              />
             ) : state === "connection_error" ? (
-              <p className="status-card-description" role="alert">
-                {error ?? "进度连接暂时不可用。"}
-              </p>
+              <Alert
+                role="alert"
+                type="error"
+                showIcon
+                message={error ?? "进度连接暂时不可用。"}
+              />
             ) : state === "failed" ? (
-              <div className="generation-failure" role="alert">
-                <strong>{failureLabel}</strong>
-                <p>
-                  {failure?.retryable === true
-                    ? "该失败标记为可重试，你可以重新提交主题。"
-                    : failure?.retryable === false
-                      ? "这是一次安全失败，未发布不完整的学习地图。"
-                      : "失败原因尚未确认，请稍后重新提交主题。"}
-                </p>
-              </div>
+              <section
+                className="generation-failure"
+                role="region"
+                aria-labelledby="generation-failure-title"
+              >
+                <h3 id="generation-failure-title">生成未完成</h3>
+                <Alert
+                  type="error"
+                  showIcon
+                  message={failureLabel}
+                  description={
+                    failure?.retryable === true
+                      ? "该失败标记为可重试，你可以重新提交主题。"
+                      : failure?.retryable === false
+                        ? "这是一次安全失败，未发布不完整的学习地图。"
+                        : "失败原因尚未确认，请稍后重新提交主题。"
+                  }
+                />
+              </section>
             ) : (
               <div
                 className="generation-progress"
                 role="status"
                 aria-live="polite"
               >
-                <div className="progress-track">
-                  <span className="progress-indicator" />
-                </div>
-                <p>{statusLabel}</p>
+                <Progress
+                  percent={statusProgress[status] ?? 8}
+                  status={state === "succeeded" ? "success" : "active"}
+                  showInfo={false}
+                />
+                <strong>{statusLabel}</strong>
                 <span className="progress-caption">
                   事件来自服务端，断线会自动恢复
                 </span>
               </div>
             )}
             {state === "connection_error" && taskId ? (
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={reconnectTask}
-              >
+              <Button type="default" onClick={reconnectTask}>
                 重新连接任务
-              </button>
+              </Button>
             ) : null}
             {state === "failed" ? (
-              <button
-                type="button"
-                className="button button-secondary"
+              <Button
+                type="default"
                 onClick={() => {
                   setState("idle");
                   setFailure(null);
@@ -772,7 +806,7 @@ export function GenerationPage({
                 }}
               >
                 重新提交主题
-              </button>
+              </Button>
             ) : null}
           </section>
         </section>

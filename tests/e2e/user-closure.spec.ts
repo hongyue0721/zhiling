@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { expect, test } from "./fixtures";
+import { E2E_BASE_URL, expect, test } from "./fixtures";
 import type { APIResponse } from "@playwright/test";
 
 type JsonRecord = Record<string, unknown>;
@@ -68,9 +68,13 @@ async function expectSecureNotFound(
 }
 
 test.describe("用户学习闭环", () => {
+  test.setTimeout(60_000);
+
   test("匿名业务页面统一重定向到认证入口", async ({ page }) => {
     for (const path of [
       "/",
+      "/featured",
+      "/learning",
       "/generate",
       "/learn/not-a-real-relationship",
       "/learn/not-a-real-relationship/report",
@@ -83,18 +87,59 @@ test.describe("用户学习闭环", () => {
     }
   });
 
+  test("登录用户可以退出并回到认证入口", async ({ browser, scenario }) => {
+    const logoutContext = await browser.newContext({
+      baseURL: E2E_BASE_URL,
+      extraHTTPHeaders: { Accept: "application/json", Origin: E2E_BASE_URL },
+    });
+
+    try {
+      const signInResponse = await logoutContext.request.post(
+        "/api/auth/sign-in/email",
+        {
+          data: {
+            email: scenario.primary.email,
+            password: scenario.primary.password,
+            callbackURL: "/",
+          },
+        },
+      );
+      expect(signInResponse.status()).toBe(200);
+
+      const page = await logoutContext.newPage();
+      await page.goto("/");
+      const signOutResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith("/api/auth/sign-out") &&
+          response.request().method() === "POST",
+      );
+      await page.getByRole("button", { name: "退出登录" }).click();
+      expect((await signOutResponse).status()).toBe(200);
+      await expect(page).toHaveURL(/\/auth$/);
+      await expect(
+        page.getByRole("heading", { name: "继续你的学习路径" }),
+      ).toBeVisible();
+    } finally {
+      await logoutContext.close();
+    }
+  });
+
   test("登录后区分精选与现场生成并完成地图答题报告闭环", async ({
     scenario,
   }) => {
     const page = scenario.primaryPage;
     await page.goto("/");
-
+    await expect(page).toHaveURL(/\/$/);
+    await expect(
+      page.getByRole("heading", { name: "继续你的学习路径" }),
+    ).toBeVisible();
+    await page.goto("/featured");
+    await expect(page).toHaveURL(/\/featured$/);
     await expect(
       page.getByRole("heading", { name: "从可靠路径开始" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "你现在想弄懂什么？" }),
-    ).toBeVisible();
+    await page.goto("/featured?page=999");
+    await expect(page).toHaveURL(/\/featured\?page=1$/);
     const featuredCard = page
       .getByRole("article")
       .filter({ hasText: "E2E 精选五节点地图" });
@@ -163,7 +208,8 @@ test.describe("用户学习闭环", () => {
     };
     expect(relationships.items).toHaveLength(1);
     expect(relationships.items[0]?.learningRelationshipId).toBe(relationshipId);
-    await page.goto("/");
+    await page.goto("/learning?page=999");
+    await expect(page).toHaveURL(/\/learning\?page=1$/);
     await expect(
       page.getByRole("link", { name: /E2E 精选五节点地图/ }),
     ).toBeVisible();
@@ -263,23 +309,34 @@ test.describe("用户学习闭环", () => {
     await expect(
       assessmentPanel.getByText("观点辨析", { exact: true }),
     ).toBeVisible();
-    await expect(assessmentPanel.locator(".matching-row")).toHaveCount(2);
+    const matchingRows = assessmentPanel.locator(".matching-row");
+    await expect(matchingRows).toHaveCount(2);
     await expect(
       assessmentPanel.getByText("概念一", { exact: true }),
     ).toBeVisible();
-    await expect(
-      assessmentPanel.getByText("关系一", { exact: true }),
-    ).toHaveCount(2);
-    await assessmentPanel
-      .locator(".matching-row")
+    const firstMatchingSelect = matchingRows
       .nth(0)
-      .locator("select")
-      .selectOption("relation-one");
-    await assessmentPanel
-      .locator(".matching-row")
+      .getByRole("combobox", { name: "概念一的对应项" });
+    await firstMatchingSelect.click();
+    const firstListboxId =
+      await firstMatchingSelect.getAttribute("aria-controls");
+    expect(firstListboxId).not.toBeNull();
+    await page
+      .locator(`[id="${firstListboxId}"]`)
+      .getByRole("option", { name: "关系一", exact: true })
+      .click();
+
+    const secondMatchingSelect = matchingRows
       .nth(1)
-      .locator("select")
-      .selectOption("relation-two");
+      .getByRole("combobox", { name: "概念二的对应项" });
+    await secondMatchingSelect.click();
+    const secondListboxId =
+      await secondMatchingSelect.getAttribute("aria-controls");
+    expect(secondListboxId).not.toBeNull();
+    await page
+      .locator(`[id="${secondListboxId}"]`)
+      .getByRole("option", { name: "关系二", exact: true })
+      .click();
     await assessmentPanel
       .locator('input[name="e2e-question-2-second"]')
       .nth(1)

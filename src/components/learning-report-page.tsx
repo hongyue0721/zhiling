@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Empty, List, Progress, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
 import { apiRequest, isApiRequestError } from "@/shared/ui/api-client";
@@ -20,6 +21,8 @@ const viewpointKindLabels: Record<string, string> = {
   practical_experience: "实践经验",
   supplementary: "补充材料",
 };
+
+const { Item: ListItem } = List;
 
 function reportErrorMessage(error: unknown): string {
   if (!isApiRequestError(error)) {
@@ -127,41 +130,36 @@ export function LearningReportPage({
           {report ? (
             <p aria-label="地图版本">版本：{report.map.versionId}</p>
           ) : null}
-          <p>
-            报告只投影当前学习关系的服务端事实，不包含答案、尝试明细或任何分享入口。
-          </p>
+          <p>报告仅展示当前学习关系的服务端事实，不含答案与尝试明细。</p>
         </div>
 
         {isLoading ? (
           <div className="report-loading" aria-busy="true">
-            <div className="loading-card loading-card-large" />
-            <div className="loading-card loading-card-large" />
+            <Skeleton active paragraph={{ rows: 10 }} />
           </div>
         ) : report ? (
           <ReportContent report={report} />
         ) : (
-          <div className="empty-panel page-empty" role="alert">
-            <span className="empty-panel-mark" aria-hidden="true">
-              —
-            </span>
-            <h2>报告还没有准备好</h2>
-            <p>{error ?? "完成至少一次节点验证后再回来查看。"}</p>
-            <div className="empty-panel-actions">
-              <Link
-                className="button button-primary"
-                href={`/learn/${encodeURIComponent(relationshipId)}`}
-              >
-                返回地图答题
-              </Link>
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={() => void loadReport()}
-              >
-                重试
-              </button>
-            </div>
-          </div>
+          <Empty
+            className="empty-panel page-empty"
+            description={
+              <div role="alert">
+                <h2>报告还没有准备好</h2>
+                <p>{error ?? "完成至少一次节点验证后再回来查看。"}</p>
+                <div className="empty-panel-actions">
+                  <Link
+                    className="button button-primary"
+                    href={`/learn/${encodeURIComponent(relationshipId)}`}
+                  >
+                    返回地图答题
+                  </Link>
+                  <Button type="default" onClick={() => void loadReport()}>
+                    重试
+                  </Button>
+                </div>
+              </div>
+            }
+          />
         )}
       </main>
     </div>
@@ -193,13 +191,11 @@ function ReportContent({ report }: ReportContentProps) {
           aria-label={`完成度 ${completionPercent}%`}
         >
           <strong>{completionPercent.toFixed(0)}%</strong>
-          <span className="completion-track">
-            <span
-              style={{
-                width: `${Math.max(0, Math.min(100, completionPercent))}%`,
-              }}
-            />
-          </span>
+          <Progress
+            percent={Math.max(0, Math.min(100, completionPercent))}
+            showInfo={false}
+            status={completionPercent >= 100 ? "success" : "active"}
+          />
         </div>
       </section>
 
@@ -210,21 +206,26 @@ function ReportContent({ report }: ReportContentProps) {
           count={report.weakNodes.length}
         >
           {report.weakNodes.length > 0 ? (
-            <div className="report-item-list">
-              {report.weakNodes.map((node) => (
-                <Link
-                  className="report-item report-item-link"
-                  href={`/learn/${encodeURIComponent(report.learningRelationshipId)}?node=${encodeURIComponent(node.nodeId)}`}
-                  key={node.nodeId}
-                >
-                  <span>
-                    <strong>{node.title}</strong>
-                    <small>最佳成绩 {Math.round(node.bestScore / 100)}%</small>
-                  </span>
-                  <span aria-hidden="true">→</span>
-                </Link>
-              ))}
-            </div>
+            <List
+              className="report-item-list"
+              dataSource={report.weakNodes.slice()}
+              renderItem={(node) => (
+                <ListItem key={node.nodeId}>
+                  <Link
+                    className="report-item report-item-link"
+                    href={`/learn/${encodeURIComponent(report.learningRelationshipId)}?node=${encodeURIComponent(node.nodeId)}`}
+                  >
+                    <span>
+                      <strong>{node.title}</strong>
+                      <small>
+                        最佳成绩 {Math.round(node.bestScore / 100)}%
+                      </small>
+                    </span>
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                </ListItem>
+              )}
+            />
           ) : (
             <p className="panel-muted">暂时没有已作答但未完成的节点。</p>
           )}
@@ -236,25 +237,28 @@ function ReportContent({ report }: ReportContentProps) {
           count={report.nextSteps.length}
         >
           {report.nextSteps.length > 0 ? (
-            <div className="report-item-list">
-              {report.nextSteps.map((step) => (
-                <Link
-                  className="report-item report-item-link"
-                  href={`/learn/${encodeURIComponent(report.learningRelationshipId)}?node=${encodeURIComponent(step.nodeId)}`}
-                  key={`${step.nodeId}:${step.reason}`}
-                >
-                  <span>
-                    <strong>{step.title}</strong>
-                    <small>
-                      {step.reason === "improve_score"
-                        ? "再次验证，巩固理解"
-                        : step.learningObjective}
-                    </small>
-                  </span>
-                  <span aria-hidden="true">→</span>
-                </Link>
-              ))}
-            </div>
+            <List
+              className="report-item-list"
+              dataSource={report.nextSteps.slice()}
+              renderItem={(step) => (
+                <ListItem key={`${step.nodeId}:${step.reason}`}>
+                  <Link
+                    className="report-item report-item-link"
+                    href={`/learn/${encodeURIComponent(report.learningRelationshipId)}?node=${encodeURIComponent(step.nodeId)}`}
+                  >
+                    <span>
+                      <strong>{step.title}</strong>
+                      <small>
+                        {step.reason === "improve_score"
+                          ? "再次验证，巩固理解"
+                          : step.learningObjective}
+                      </small>
+                    </span>
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                </ListItem>
+              )}
+            />
           ) : (
             <p className="panel-muted">当前没有新的服务端建议。</p>
           )}
@@ -280,9 +284,9 @@ function ReportContent({ report }: ReportContentProps) {
                 key={`${viewpoint.nodeId}:${viewpoint.viewpointId}`}
               >
                 <div className="viewpoint-meta">
-                  <span className="kind-badge">
+                  <Tag color="blue">
                     {viewpointKindLabels[viewpoint.kind] ?? viewpoint.kind}
-                  </span>
+                  </Tag>
                   <span>{viewpoint.sourceIds.length} 个来源</span>
                 </div>
                 <p>{viewpoint.statement}</p>

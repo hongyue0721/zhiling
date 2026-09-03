@@ -2,6 +2,17 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Form,
+  Progress,
+  Radio,
+  Select,
+  Skeleton,
+  Tag,
+} from "antd";
 
 import {
   apiRequest,
@@ -219,11 +230,7 @@ export function AssessmentPanel({
         aria-label="正在加载题目"
       >
         <div className="panel-back-link">← 返回节点</div>
-        <div className="loading-lines">
-          <span />
-          <span />
-          <span />
-        </div>
+        <Skeleton active paragraph={{ rows: 7 }} />
       </section>
     );
   }
@@ -234,13 +241,15 @@ export function AssessmentPanel({
         className="panel-card assessment-panel"
         aria-labelledby="assessment-error-title"
       >
-        <button type="button" className="panel-back-link" onClick={onBack}>
+        <Button type="text" className="panel-back-link" onClick={onBack}>
           ← 返回节点
-        </button>
-        <div className="inline-error" role="alert">
-          <h2 id="assessment-error-title">题目暂时不可用</h2>
-          <p>{error ?? "服务没有返回可展示的题面。"}</p>
-        </div>
+        </Button>
+        <Alert
+          role="alert"
+          type="error"
+          message={<h2 id="assessment-error-title">题目暂时不可用</h2>}
+          description={error ?? "服务没有返回可展示的题面。"}
+        />
       </section>
     );
   }
@@ -250,18 +259,16 @@ export function AssessmentPanel({
       className="panel-card assessment-panel"
       aria-labelledby="assessment-title"
     >
-      <button type="button" className="panel-back-link" onClick={onBack}>
+      <Button type="text" className="panel-back-link" onClick={onBack}>
         ← 返回节点
-      </button>
+      </Button>
       <div className="panel-heading">
         <span className="section-kicker">节点验证</span>
         <h2 id="assessment-title">完成这组题，确认你真的掌握了</h2>
-        <p>
-          题目只展示服务端提供的题面。提交后，评分、解释和来源也由服务端返回。
-        </p>
+        <p>提交后，评分、解释和来源均由服务端返回。</p>
       </div>
 
-      <form className="assessment-form" onSubmit={submitAssessment}>
+      <Form className="assessment-form" onSubmitCapture={submitAssessment}>
         {assessment.questions.map((question, questionIndex) => {
           const questionResult = resultByQuestionId.get(question.questionId);
           const isMultiple = question.type === "multiple_choice";
@@ -299,27 +306,27 @@ export function AssessmentPanel({
                     const checked = (
                       selection[question.questionId] ?? []
                     ).includes(option.optionId);
-                    return (
-                      <label
-                        className={`option-row ${checked ? "checked" : ""}`}
-                        key={option.optionId}
-                      >
-                        <input
-                          type={isMultiple ? "checkbox" : "radio"}
-                          name={question.questionId}
-                          value={option.optionId}
-                          checked={checked}
-                          onChange={() =>
-                            toggleSelection(
-                              question.questionId,
-                              option.optionId,
-                              isMultiple,
-                            )
-                          }
-                          disabled={result !== null || isSubmitting}
-                        />
-                        <span>{option.label}</span>
-                      </label>
+                    const optionProps = {
+                      name: question.questionId,
+                      value: option.optionId,
+                      checked,
+                      onChange: () =>
+                        toggleSelection(
+                          question.questionId,
+                          option.optionId,
+                          isMultiple,
+                        ),
+                      disabled: result !== null || isSubmitting,
+                      className: `option-row ${checked ? "checked" : ""}`,
+                    };
+                    return isMultiple ? (
+                      <Checkbox key={option.optionId} {...optionProps}>
+                        {option.label}
+                      </Checkbox>
+                    ) : (
+                      <Radio key={option.optionId} {...optionProps}>
+                        {option.label}
+                      </Radio>
                     );
                   })}
                 </div>
@@ -327,73 +334,80 @@ export function AssessmentPanel({
               <div className="question-sources">
                 <span>依据来源：</span>
                 {question.sourceIds.map((sourceId) => (
-                  <span
-                    className="source-chip"
-                    key={`${question.questionId}:${sourceId}`}
-                  >
+                  <Tag color="blue" key={`${question.questionId}:${sourceId}`}>
                     {sourceTitle(sourceId, map)}
-                  </span>
+                  </Tag>
                 ))}
               </div>
               {questionResult ? (
-                <div
-                  className={`question-result ${questionResult.correct ? "correct" : "incorrect"}`}
-                >
-                  <strong>
-                    {questionResult.correct ? "回答正确" : "这次未答对"}
-                  </strong>
-                  <p>{questionResult.explanation}</p>
-                  <div className="question-result-sources">
-                    {questionResult.sourceIds.map((sourceId) => (
-                      <span
-                        className="source-chip"
-                        key={`${question.questionId}:result:${sourceId}`}
-                      >
-                        {sourceTitle(sourceId, map)}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                <Alert
+                  className="question-result"
+                  type={questionResult.correct ? "success" : "error"}
+                  showIcon
+                  message={questionResult.correct ? "回答正确" : "这次未答对"}
+                  description={
+                    <div>
+                      <p>{questionResult.explanation}</p>
+                      <div className="question-result-sources">
+                        {questionResult.sourceIds.map((sourceId) => (
+                          <Tag
+                            color="blue"
+                            key={`${question.questionId}:result:${sourceId}`}
+                          >
+                            {sourceTitle(sourceId, map)}
+                          </Tag>
+                        ))}
+                      </div>
+                    </div>
+                  }
+                />
               ) : null}
             </fieldset>
           );
         })}
 
         {error ? (
-          <p className="form-message form-message-error" role="alert">
-            {error}
-          </p>
+          <Alert
+            className="form-message"
+            role="alert"
+            type="error"
+            showIcon
+            message={error}
+          />
         ) : null}
 
         {result ? (
           <div className="assessment-result" role="status">
-            <div>
+            <div className="assessment-result-score">
               <span className="result-label">本次节点得分</span>
               <strong>{Math.round(result.nodeScore / 100)}%</strong>
+              <Progress
+                percent={Math.round(result.nodeScore / 100)}
+                status={result.completed ? "success" : "active"}
+                showInfo={false}
+              />
             </div>
             <p>
               {result.completed
                 ? "服务端已记录该节点完成。"
-                : "服务端已保存本次尝试；达到完成标准后，节点会标记为完成。"}
+                : "服务端已保存本次尝试；达到完成标准后会标记完成。"}
             </p>
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={onBack}
-            >
+            <Button type="default" onClick={onBack}>
               返回地图
-            </button>
+            </Button>
           </div>
         ) : (
-          <button
+          <Button
             className="button button-primary button-block"
-            type="submit"
-            disabled={isSubmitting}
+            type="primary"
+            htmlType="submit"
+            block
+            loading={isSubmitting}
           >
-            {isSubmitting ? "提交并评分中…" : "提交答案"}
-          </button>
+            提交答案
+          </Button>
         )}
-      </form>
+      </Form>
     </section>
   );
 }
@@ -417,25 +431,25 @@ function MatchingQuestion({
       {left.map((leftOption) => (
         <label className="matching-row" key={leftOption.optionId}>
           <span>{leftOption.label}</span>
-          <select
+          <Select
             className="field-input"
-            value={values[leftOption.optionId] ?? ""}
-            onChange={(event) =>
-              onChange(leftOption.optionId, event.target.value)
-            }
-            disabled={disabled}
-          >
-            <option value="">选择对应项</option>
-            {right
+            aria-label={`${leftOption.label}的对应项`}
+            virtual={false}
+            value={values[leftOption.optionId] || undefined}
+            placeholder="选择对应项"
+            options={right
               .filter(
                 (rightOption) => rightOption.optionId !== leftOption.optionId,
               )
-              .map((rightOption) => (
-                <option key={rightOption.optionId} value={rightOption.optionId}>
-                  {rightOption.label}
-                </option>
-              ))}
-          </select>
+              .map((rightOption) => ({
+                value: rightOption.optionId,
+                label: rightOption.label,
+              }))}
+            onChange={(rightOptionId) =>
+              onChange(leftOption.optionId, rightOptionId)
+            }
+            disabled={disabled}
+          />
         </label>
       ))}
     </div>

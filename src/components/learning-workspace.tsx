@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Button, Empty, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
 import { AssessmentPanel } from "@/components/assessment-panel";
@@ -230,12 +231,7 @@ export function LearningWorkspace({
         <AppHeader email={email} eyebrow="学习工作区" />
         <main className="workspace-main">
           <div className="workspace-loading" aria-busy="true">
-            <div className="loading-card loading-card-large" />
-            <div className="loading-lines">
-              <span />
-              <span />
-              <span />
-            </div>
+            <Skeleton active paragraph={{ rows: 8 }} />
           </div>
         </main>
       </div>
@@ -247,25 +243,23 @@ export function LearningWorkspace({
       <div className="app-frame">
         <AppHeader email={email} eyebrow="学习工作区" />
         <main className="workspace-main">
-          <div className="empty-panel page-empty" role="alert">
-            <span className="empty-panel-mark" aria-hidden="true">
-              !
-            </span>
-            <h1>地图内容暂时不可用</h1>
-            <p>{error ?? "服务没有返回可展示的学习节点。"}</p>
-            <div className="empty-panel-actions">
-              <Link href="/" className="button button-secondary">
-                返回首页
-              </Link>
-              <button
-                type="button"
-                className="button button-primary"
-                onClick={() => void loadWorkspace()}
-              >
-                重试
-              </button>
-            </div>
-          </div>
+          <Empty
+            className="empty-panel page-empty"
+            description={
+              <div role="alert">
+                <h1>地图内容暂时不可用</h1>
+                <p>{error ?? "服务没有返回可展示的学习节点。"}</p>
+                <div className="empty-panel-actions">
+                  <Link href="/" className="button button-secondary">
+                    返回首页
+                  </Link>
+                  <Button type="primary" onClick={() => void loadWorkspace()}>
+                    重试
+                  </Button>
+                </div>
+              </div>
+            }
+          />
         </main>
       </div>
     );
@@ -277,7 +271,7 @@ export function LearningWorkspace({
       <main className="workspace-main">
         <div className="workspace-heading">
           <div>
-            <Link className="back-link" href="/">
+            <Link className="back-link" href="/learning">
               ← 我的学习
             </Link>
             <span className="section-kicker">学习地图</span>
@@ -285,14 +279,15 @@ export function LearningWorkspace({
             <p>{map.summary}</p>
           </div>
           <div className="workspace-heading-actions">
-            <button
-              type="button"
+            <Button
+              type="text"
+              size="small"
               className="button button-quiet button-small"
               onClick={() => void refreshProgress()}
-              disabled={isRefreshingProgress}
+              loading={isRefreshingProgress}
             >
-              {isRefreshingProgress ? "刷新中…" : "刷新进度"}
-            </button>
+              刷新进度
+            </Button>
             <Link
               className="button button-secondary button-small"
               href={`/learn/${encodeURIComponent(relationshipId)}/report`}
@@ -303,9 +298,13 @@ export function LearningWorkspace({
         </div>
 
         {error ? (
-          <div className="page-alert" role="alert">
-            {error}
-          </div>
+          <Alert
+            className="page-alert"
+            role="alert"
+            type="error"
+            showIcon
+            message={error}
+          />
         ) : null}
 
         <div className="workspace-grid">
@@ -340,18 +339,16 @@ export function LearningWorkspace({
                     <p>{selectedNode.learningObjective}</p>
                   </div>
                   <div className="node-status-line">
-                    <span
-                      className={`status-dot ${selectedProgress?.completed ? "complete" : "pending"}`}
-                      aria-hidden="true"
-                    />
-                    <strong>
+                    <Tag
+                      color={selectedProgress?.completed ? "success" : "blue"}
+                    >
                       {selectedProgress?.completed ? "已完成" : "尚未完成"}
-                    </strong>
-                    {selectedProgress?.completed ? (
-                      <span>服务端已记录完成状态</span>
-                    ) : (
-                      <span>完成题目后更新状态</span>
-                    )}
+                    </Tag>
+                    <span>
+                      {selectedProgress?.completed
+                        ? "服务端已记录完成状态"
+                        : "完成题目后更新状态"}
+                    </span>
                   </div>
 
                   <section
@@ -423,10 +420,10 @@ export function LearningWorkspace({
                             key={`${viewpoint.nodeId}:${viewpoint.viewpointId}`}
                           >
                             <div className="viewpoint-meta">
-                              <span className="kind-badge">
+                              <Tag color="blue">
                                 {viewpointKindLabels[viewpoint.kind] ??
                                   viewpoint.kind}
-                              </span>
+                              </Tag>
                               <span>{viewpoint.sourceIds.length} 个来源</span>
                             </div>
                             <p>{viewpoint.statement}</p>
@@ -475,17 +472,18 @@ export function LearningWorkspace({
                   </section>
 
                   <div className="panel-action">
-                    <button
-                      type="button"
+                    <Button
+                      type="primary"
+                      block
                       className="button button-primary button-block"
                       onClick={() => setAssessmentOpen(true)}
                     >
                       {selectedProgress?.completed
                         ? "再次验证"
                         : "开始节点验证"}
-                    </button>
+                    </Button>
                     <p className="panel-action-help">
-                      每次提交都会由服务端评分，并保存最佳成绩。
+                      每次提交由服务端评分并保存最佳成绩。
                     </p>
                   </div>
                 </>

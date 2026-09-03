@@ -282,6 +282,7 @@ function isAllowedLocalDependency(
   if (isWithin(sourcePath, "src/app")) {
     return (
       isWithin(targetPath, "src/app") ||
+      isWithin(targetPath, "src/components") ||
       isWithin(targetPath, "src/bootstrap") ||
       isWithin(targetPath, "src/shared/ui") ||
       isWithin(targetPath, "src/generated") ||
