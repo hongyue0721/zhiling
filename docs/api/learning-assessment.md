@@ -93,4 +93,6 @@ D2 将题目、判题和节点进度绑定在 `learningRelationshipId` 上。地
 
 `nodes` 按关系地图的节点顺序返回，未作答节点的最佳分数为 `0`、`completed` 为 `false`。`attempts` 是不可变尝试摘要，按最新提交时间倒序；不返回用户提交答案或服务端标准答案。错误账户和不存在关系统一 `404 resource_not_found`。
 
+完成度、薄弱节点、已接触观点和下一步建议的汇总见[私人结课报告 API](learning-report.md)；报告不重复暴露 `attemptId` 或答案。
+
 机器可读字段和错误响应以 [`api/openapi.yaml`](../../api/openapi.yaml) 为准。

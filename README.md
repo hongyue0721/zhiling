@@ -4,7 +4,7 @@
 
 > 把知乎上的真实讨论，走成一条学会的路。
 
-完整产品事实以 [PROJECT_GOAL.md](PROJECT_GOAL.md) 为准。仓库已建立 Next.js 15 工程基础、PostgreSQL/Drizzle 迁移、Better Auth 邮箱身份后端、精选与账户学习关系读取、知乎开放平台与知乎直答适配，以及可恢复地图生成 Worker/API；当前页面仍是非业务工程壳，产品登录/注册和学习地图界面由前端工作继续实现。
+完整产品事实以 [PROJECT_GOAL.md](PROJECT_GOAL.md) 为准。仓库已建立 Next.js 15 工程基础、PostgreSQL/Drizzle 迁移、Better Auth 邮箱身份后端、精选与账户学习关系读取、私人结课报告、知乎开放平台与知乎直答适配，以及可恢复地图生成 Worker/API；当前页面仍是非业务工程壳，产品登录/注册和学习地图界面由前端工作继续实现。
 
 ## 当前阶段
 
@@ -21,6 +21,8 @@
 - [x] 将分享移出一期范围，结课报告收敛为所属账户私有能力
 - [x] 建立来源验证题、服务端判题、不可变尝试、节点 80% 完成和关系进度恢复闭环
   - 前端接入见[学习验证与进度接口](docs/api/learning-assessment.md)
+- [x] 提供按学习关系读取的私人结课报告，固定地图版本与题目集并投影完成度、薄弱节点、观点接触和下一步建议
+  - 前端接入见[私人结课报告接口](docs/api/learning-report.md)
 - [x] 接入真实知乎搜索与知乎直答模型协议，封闭鉴权、超时、错误和结构化输出边界
 - [x] 建立持久化地图生成状态机、数据库租约 Worker、缓存去重、参与者授权、SSE 恢复与原子发布
   - 前端与运维接入见[地图生成接口](docs/api/map-generation.md)和[生成 Worker 部署](docs/development/generation-worker-deployment.md)
