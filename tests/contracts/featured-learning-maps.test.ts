@@ -5,21 +5,28 @@ import { FormalIdentityRequiredError } from "@/modules/identity/public/server";
 const runtime = vi.hoisted(() => ({
   requireIdentity: vi.fn(),
   listFeatured: vi.fn(),
+  listLearningRelationships: vi.fn(),
   findFeatured: vi.fn(),
   findByLearningRelationship: vi.fn(),
+  establishFeaturedLearningRelationship: vi.fn(),
 }));
 
 vi.mock("@/bootstrap/server", () => ({
   identity: { require: runtime.requireIdentity },
   learningCatalog: {
     listFeatured: runtime.listFeatured,
+    listLearningRelationships: runtime.listLearningRelationships,
     findFeatured: runtime.findFeatured,
     findByLearningRelationship: runtime.findByLearningRelationship,
+    establishFeaturedLearningRelationship:
+      runtime.establishFeaturedLearningRelationship,
   },
 }));
 
+import { POST as establishFeaturedLearningRelationship } from "@/app/api/featured-learning-maps/[mapId]/learning-relationship/route";
 import { GET as getFeaturedDetail } from "@/app/api/featured-learning-maps/[mapId]/route";
 import { GET as listFeaturedMaps } from "@/app/api/featured-learning-maps/route";
+import { GET as listLearningRelationships } from "@/app/api/learning-relationships/route";
 import { GET as getRelationshipMap } from "@/app/api/learning-relationships/[learningRelationshipId]/map/route";
 
 const detail = {
@@ -61,8 +68,10 @@ beforeEach(() => {
     emailVerified: true,
   });
   runtime.listFeatured.mockReset();
+  runtime.listLearningRelationships.mockReset();
   runtime.findFeatured.mockReset();
   runtime.findByLearningRelationship.mockReset();
+  runtime.establishFeaturedLearningRelationship.mockReset();
 });
 
 describe("featured learning map HTTP contract", () => {
@@ -177,6 +186,89 @@ describe("featured learning map HTTP contract", () => {
     expect(JSON.stringify(body)).not.toContain(sensitiveMessage);
     expect(JSON.stringify(logged)).not.toContain(sensitiveMessage);
     log.mockRestore();
+  });
+});
+
+describe("learning relationship HTTP contract", () => {
+  it("establishes the current featured version without a client payload", async () => {
+    runtime.establishFeaturedLearningRelationship.mockResolvedValue({
+      learningRelationshipId: "learning-1",
+      mapId: "map-1",
+      versionId: "version-2",
+    });
+
+    const response = await establishFeaturedLearningRelationship(
+      new Request(
+        "http://localhost/api/featured-learning-maps/map-1/learning-relationship",
+        { method: "POST" },
+      ),
+      { params: Promise.resolve({ mapId: "map-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(await response.json()).toEqual({
+      learningRelationshipId: "learning-1",
+      mapId: "map-1",
+      versionId: "version-2",
+    });
+    expect(runtime.establishFeaturedLearningRelationship).toHaveBeenCalledWith(
+      "user-1",
+      "map-1",
+    );
+  });
+
+  it("hides missing, non-featured, and incomplete question-set joins", async () => {
+    runtime.establishFeaturedLearningRelationship.mockResolvedValue(null);
+
+    const response = await establishFeaturedLearningRelationship(
+      new Request(
+        "http://localhost/api/featured-learning-maps/hidden/learning-relationship",
+        { method: "POST" },
+      ),
+      { params: Promise.resolve({ mapId: "hidden" }) },
+    );
+    const body = (await response.json()) as {
+      error: { code: string; requestId: string };
+    };
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(body.error.code).toBe("resource_not_found");
+    expect(body.error.requestId).toMatch(/^req_[0-9a-f]{32}$/);
+  });
+
+  it("lists only the current account's relationship summaries", async () => {
+    runtime.listLearningRelationships.mockResolvedValue([
+      {
+        learningRelationshipId: "learning-1",
+        mapId: "map-1",
+        versionId: "version-2",
+        title: "Map",
+        summary: "Summary",
+      },
+    ]);
+
+    const response = await listLearningRelationships(
+      new Request("http://localhost/api/learning-relationships"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    const body = await response.json();
+    expect(body).toEqual({
+      items: [
+        {
+          learningRelationshipId: "learning-1",
+          mapId: "map-1",
+          versionId: "version-2",
+          title: "Map",
+          summary: "Summary",
+        },
+      ],
+    });
+    expect(JSON.stringify(body)).not.toContain("userId");
+    expect(runtime.listLearningRelationships).toHaveBeenCalledWith("user-1");
   });
 });
 

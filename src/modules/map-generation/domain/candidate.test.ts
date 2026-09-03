@@ -106,6 +106,80 @@ describe("generation candidate gate", () => {
       GenerationCandidateValidationError,
     );
   });
+  it("accepts matching options with arbitrary IDs when pairs cover both sides", () => {
+    const value = candidate();
+    const matchingQuestion = {
+      ...value.questions[0]!,
+      type: "matching" as const,
+      options: [
+        { optionId: "concept-a", label: "Concept A" },
+        { optionId: "concept-b", label: "Concept B" },
+        { optionId: "description-a", label: "Description A" },
+        { optionId: "description-b", label: "Description B" },
+      ],
+      correctOptionIds: [],
+      correctMatches: [
+        { leftOptionId: "concept-a", rightOptionId: "description-b" },
+        { leftOptionId: "concept-b", rightOptionId: "description-a" },
+      ],
+    };
+    const validated = validateGenerationCandidate({
+      ...value,
+      questions: [matchingQuestion, ...value.questions.slice(1)],
+    });
+
+    expect(validated.questions[0]).toMatchObject({
+      type: "matching",
+      correctMatches: [
+        { leftOptionId: "concept-a", rightOptionId: "description-b" },
+        { leftOptionId: "concept-b", rightOptionId: "description-a" },
+      ],
+    });
+  });
+
+  it.each([
+    {
+      name: "does not cover every option",
+      options: [
+        { optionId: "concept-a", label: "Concept A" },
+        { optionId: "concept-b", label: "Concept B" },
+        { optionId: "description-a", label: "Description A" },
+      ],
+      correctMatches: [
+        { leftOptionId: "concept-a", rightOptionId: "description-a" },
+      ],
+    },
+    {
+      name: "does not keep sides disjoint",
+      options: [
+        { optionId: "concept-a", label: "Concept A" },
+        { optionId: "concept-b", label: "Concept B" },
+        { optionId: "description-a", label: "Description A" },
+        { optionId: "description-b", label: "Description B" },
+      ],
+      correctMatches: [
+        { leftOptionId: "concept-a", rightOptionId: "description-a" },
+        { leftOptionId: "description-a", rightOptionId: "description-b" },
+      ],
+    },
+  ])("$name", ({ options, correctMatches }) => {
+    const value = candidate();
+    const matchingQuestion = {
+      ...value.questions[0]!,
+      type: "matching" as const,
+      options,
+      correctOptionIds: [],
+      correctMatches,
+    };
+
+    expect(() =>
+      validateGenerationCandidate({
+        ...value,
+        questions: [matchingQuestion, ...value.questions.slice(1)],
+      }),
+    ).toThrow(GenerationCandidateValidationError);
+  });
+
   it("rejects an unknown viewpoint kind at the final candidate gate", () => {
     const malformed = {
       ...candidate(),

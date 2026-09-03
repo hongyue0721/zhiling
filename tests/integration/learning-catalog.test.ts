@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 import { PublishFeaturedLearningMap } from "@/modules/learning-catalog/application/learning-catalog";
@@ -16,6 +16,10 @@ import {
   learningRelationship,
   learningViewpointSource,
 } from "@/platform/database/catalog-schema";
+import {
+  learningAssessmentQuestion,
+  learningAssessmentQuestionSet,
+} from "@/platform/database/assessment-schema";
 import { user } from "@/platform/database/auth-schema";
 import { createPostgresDatabase } from "@/platform/database/postgres";
 
@@ -73,13 +77,58 @@ function publication(
   };
 }
 
+async function insertPublishedQuestionSet(
+  questionSetId: string,
+  versionId: string,
+  questionCountsByNode: Readonly<Record<string, number>>,
+): Promise<void> {
+  await database.insert(learningAssessmentQuestionSet).values({
+    id: questionSetId,
+    versionId,
+    status: "draft",
+    publishedAt: null,
+  });
+  const questions = Object.entries(questionCountsByNode)
+    .flatMap(([nodeId, count]) =>
+      Array.from({ length: count }, (_, index) => ({
+        questionSetId,
+        questionId: `${questionSetId}-${nodeId}-${index}`,
+        versionId,
+        nodeId,
+        type: "single_choice" as const,
+        prompt: `Question ${nodeId} ${index}`,
+        explanation: `Explanation ${nodeId} ${index}`,
+      })),
+    )
+    .map((question, position) => ({ ...question, position }));
+  if (questions.length > 0) {
+    await database.insert(learningAssessmentQuestion).values(questions);
+  }
+  await database
+    .update(learningAssessmentQuestionSet)
+    .set({ status: "published", publishedAt: new Date() })
+    .where(eq(learningAssessmentQuestionSet.id, questionSetId));
+}
+
+function questionCounts(
+  countByNode: Readonly<Record<string, number>> = {},
+  defaultCount = 2,
+): Record<string, number> {
+  return Object.fromEntries(
+    Array.from({ length: 5 }, (_, index) => [
+      `node-${index}`,
+      countByNode[`node-${index}`] ?? defaultCount,
+    ]),
+  );
+}
+
 beforeAll(async () => {
   await migrate(database, { migrationsFolder: "drizzle" });
 });
 
 beforeEach(async () => {
   await pool.query(
-    'TRUNCATE TABLE "learning_relationship", "featured_learning_map", "learning_viewpoint_source", "learning_viewpoint", "learning_map_node_source", "knowledge_source", "learning_map_prerequisite", "learning_map_node", "learning_map_version", "learning_map", "user" CASCADE',
+    'TRUNCATE TABLE "learning_relationship", "learning_assessment_question_source", "learning_assessment_question_matching_answer", "learning_assessment_question_correct_option", "learning_assessment_question_option", "learning_assessment_question", "learning_assessment_question_set", "featured_learning_map", "learning_viewpoint_source", "learning_viewpoint", "learning_map_node_source", "knowledge_source", "learning_map_prerequisite", "learning_map_node", "learning_map_version", "learning_map", "user" CASCADE',
   );
 });
 
@@ -318,5 +367,192 @@ describe("learning relationship persistence", () => {
         .select({ id: learningRelationship.id })
         .from(learningRelationship),
     ).resolves.toHaveLength(1);
+  });
+
+  it("rejects an empty published question set without an orphan relationship", async () => {
+    await database.insert(user).values({
+      id: "user-1",
+      name: "Owner",
+      email: "owner@example.com",
+      emailVerified: true,
+    });
+    await publish.execute(publication("map-1", "version-1"));
+    await insertPublishedQuestionSet(
+      "question-set-empty",
+      "version-1",
+      questionCounts({}, 0),
+    );
+
+    await expect(
+      repository.establishFeatured("user-1", "map-1"),
+    ).resolves.toBeNull();
+    await expect(
+      database
+        .select({ id: learningRelationship.id })
+        .from(learningRelationship),
+    ).resolves.toEqual([]);
+  });
+
+  it("rejects a published question set missing a map node without an orphan relationship", async () => {
+    await database.insert(user).values({
+      id: "user-1",
+      name: "Owner",
+      email: "owner@example.com",
+      emailVerified: true,
+    });
+    await publish.execute(publication("map-1", "version-1"));
+    await insertPublishedQuestionSet(
+      "question-set-partial",
+      "version-1",
+      questionCounts({ "node-0": 2 }, 0),
+    );
+
+    await expect(
+      repository.establishFeatured("user-1", "map-1"),
+    ).resolves.toBeNull();
+    await expect(
+      database
+        .select({ id: learningRelationship.id })
+        .from(learningRelationship),
+    ).resolves.toEqual([]);
+  });
+
+  it("rejects a published question set with an invalid per-node count", async () => {
+    await database.insert(user).values({
+      id: "user-1",
+      name: "Owner",
+      email: "owner@example.com",
+      emailVerified: true,
+    });
+    await publish.execute(publication("map-1", "version-1"));
+    await insertPublishedQuestionSet(
+      "question-set-invalid",
+      "version-1",
+      questionCounts({ "node-0": 4, "node-1": 1 }),
+    );
+    await expect(
+      repository.establishFeatured("user-1", "map-1"),
+    ).resolves.toBeNull();
+    await expect(
+      database
+        .select({ id: learningRelationship.id })
+        .from(learningRelationship),
+    ).resolves.toEqual([]);
+  });
+
+  it("establishes a complete current featured version idempotently and switches versions safely", async () => {
+    await database.insert(user).values({
+      id: "user-1",
+      name: "Owner",
+      email: "owner@example.com",
+      emailVerified: true,
+    });
+    await publish.execute(publication("map-1", "version-1"));
+    await insertPublishedQuestionSet(
+      "question-set-1",
+      "version-1",
+      questionCounts({ "node-0": 3 }),
+    );
+
+    const [relationship, repeated] = await Promise.all([
+      repository.establishFeatured("user-1", "map-1"),
+      repository.establishFeatured("user-1", "map-1"),
+    ]);
+    expect(relationship).toMatchObject({
+      mapId: "map-1",
+      versionId: "version-1",
+      questionSetId: "question-set-1",
+    });
+    expect(repeated).toEqual(relationship);
+    await expect(
+      database
+        .select({ id: learningRelationship.id })
+        .from(learningRelationship),
+    ).resolves.toHaveLength(1);
+
+    await publish.execute(publication("map-1", "version-2"));
+    await expect(
+      repository.establishFeatured("user-1", "map-1"),
+    ).resolves.toBeNull();
+    await expect(
+      database
+        .select({
+          versionId: learningRelationship.versionId,
+          questionSetId: learningRelationship.questionSetId,
+        })
+        .from(learningRelationship),
+    ).resolves.toEqual([
+      { versionId: "version-1", questionSetId: "question-set-1" },
+    ]);
+
+    await insertPublishedQuestionSet(
+      "question-set-2",
+      "version-2",
+      questionCounts(),
+    );
+    const current = await repository.establishFeatured("user-1", "map-1");
+    expect(current).toMatchObject({
+      mapId: "map-1",
+      versionId: "version-2",
+      questionSetId: "question-set-2",
+    });
+    await expect(
+      database
+        .select({ versionId: learningRelationship.versionId })
+        .from(learningRelationship)
+        .orderBy(asc(learningRelationship.versionId)),
+    ).resolves.toEqual([
+      { versionId: "version-1" },
+      { versionId: "version-2" },
+    ]);
+  });
+
+  it("lists only the account's published relationships in a stable order", async () => {
+    await database.insert(user).values([
+      {
+        id: "user-1",
+        name: "Owner",
+        email: "owner@example.com",
+        emailVerified: true,
+      },
+      {
+        id: "user-2",
+        name: "Other",
+        email: "other@example.com",
+        emailVerified: true,
+      },
+    ]);
+    await publish.execute(publication("map-1", "version-1", 1));
+    await publish.execute(publication("map-2", "version-2", 2));
+
+    await repository.establish("user-1", "version-1");
+    await repository.establish("user-1", "version-2");
+    await repository.establish("user-2", "version-1");
+
+    const first = await repository.listLearningRelationships("user-1");
+    const second = await repository.listLearningRelationships("user-1");
+
+    expect(first).toEqual(second);
+    expect(first).toEqual(
+      expect.arrayContaining([
+        {
+          learningRelationshipId: expect.any(String),
+          mapId: "map-1",
+          versionId: "version-1",
+          title: "Title version-1",
+          summary: "Summary version-1",
+        },
+        {
+          learningRelationshipId: expect.any(String),
+          mapId: "map-2",
+          versionId: "version-2",
+          title: "Title version-2",
+          summary: "Summary version-2",
+        },
+      ]),
+    );
+    expect(first).toHaveLength(2);
+    expect(first[0]).not.toHaveProperty("userId");
+    expect(first[0]).not.toHaveProperty("questionSetId");
   });
 });

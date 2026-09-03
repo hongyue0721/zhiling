@@ -24,7 +24,7 @@ pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-`.env.local` 中必须替换 `BETTER_AUTH_SECRET`。实际发送验证邮件前，还必须配置真实 `RESEND_API_KEY` 与已在 Resend 验证域名下的 `AUTH_EMAIL_FROM`；运行现场地图生成 Worker 前必须配置真实 `ZHIHU_ACCESS_SECRET`。项目不提供万能密钥、假发信成功、假供应方成功或生产默认值。
+`.env.local` 中必须配置 `BETTER_AUTH_SECRET`。实际发送验证邮件前，还必须配置真实 `RESEND_API_KEY` 与已在 Resend 验证域名下的 `AUTH_EMAIL_FROM`；运行现场地图生成 Worker 前必须配置真实知乎供应方凭据。项目不提供万能密钥、假发信成功、假供应方成功或生产默认值。
 
 ## 数据库与迁移
 
@@ -54,7 +54,7 @@ pnpm start
 pnpm worker:generation
 ```
 
-`pnpm dev` 默认在 `http://localhost:3000` 启动。`pnpm start` 需要先完成 `pnpm build`。`pnpm worker:generation` 在独立进程轮询 PostgreSQL；Web 无需读取知乎密钥。产品登录/注册页面尚未实现；认证托管端点及调用约束见[认证框架契约](../api/authentication.md)。
+`pnpm dev` 默认在 `http://localhost:3000` 启动。`pnpm start` 需要先完成 `pnpm build`。`pnpm worker:generation` 在独立进程轮询 PostgreSQL；Web 无需读取供应方凭据。正式登录/注册、精选加入与关系恢复、学习地图、答题、报告和现场生成状态页面已实现；认证托管端点及调用约束见[认证框架契约](../api/authentication.md)。
 
 ## 质量与测试
 
@@ -69,6 +69,10 @@ pnpm check
 ```
 
 `pnpm check` 是本地与 CI 共用入口，要求应用库、测试库与认证环境变量可用，依次执行格式、静态、类型、架构、所有测试层级和构建。各测试层的独立命令见[测试策略](testing.md)。
+
+Issue #14 本地验收使用专用测试 PostgreSQL。E2E fixture 会注册测试账户、在测试库中完成邮箱验证标记，并发布固定五节点合成地图和四题型题目集；fixture 仅用于测试，不是生产精选内容或在线生成成功证据。浏览器 smoke 与定向证据见[Issue #14 验收证据](issue-14-acceptance.md)。
+
+本次验收没有执行上述全量 `pnpm check`、完整测试、构建或生产演练；不要把本地测试库、合成来源或 `202 queued` 任务解释为真实供应方成功。
 
 首次执行端到端测试前安装浏览器：
 

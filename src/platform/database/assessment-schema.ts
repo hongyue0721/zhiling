@@ -109,6 +109,7 @@ export const learningAssessmentQuestionOption = pgTable(
     optionId: text("option_id").notNull(),
     label: text("label").notNull(),
     position: integer("position").notNull(),
+    side: text("side"),
   },
   (table) => [
     primaryKey({
@@ -126,6 +127,10 @@ export const learningAssessmentQuestionOption = pgTable(
       table.questionSetId,
       table.questionId,
       table.position,
+    ),
+    check(
+      "learning_assessment_question_option_side_check",
+      sql`${table.side} IS NULL OR ${table.side} IN ('left', 'right')`,
     ),
   ],
 );
@@ -256,10 +261,11 @@ export const learningAssessmentAttempt = pgTable(
   },
   (table) => [
     unique(
-      "learning_assessment_attempt_relationship_question_set_key_unique",
+      "learning_assessment_attempt_relationship_question_set_node_key_unique",
     ).on(
       table.learningRelationshipId,
       table.questionSetId,
+      table.nodeId,
       table.idempotencyKey,
     ),
     foreignKey({

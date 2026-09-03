@@ -4,18 +4,21 @@
 
 ## 可用能力
 
-前端可以并行推进两个只读页面：
+前端可以使用三个精选地图闭环接口：
 
 1. 精选目录：`GET /api/featured-learning-maps`；
-2. 精选地图详情：`GET /api/featured-learning-maps/{mapId}`。
+2. 精选地图详情：`GET /api/featured-learning-maps/{mapId}`；
+3. 建立或恢复本人学习关系：`POST /api/featured-learning-maps/{mapId}/learning-relationship`。
 
-两个接口只读取已发布且当前仍被精选指针选中的版本，不触发知乎 API、模型生成或后台刷新。干净数据库返回空目录是合法状态，不得用前端假数据伪装成精选内容。
+两个读取接口只读取已发布且当前仍被精选指针选中的版本；加入接口在同一事务中解析当前精选版本，并只在该版本绑定的已发布题目集完整覆盖每个地图节点（每节点 2–3 道题）时固定题目集。它们都不触发知乎 API、模型生成或后台刷新。干净数据库返回空目录是合法状态，不得用前端假数据伪装成精选内容。
 
-本契约不包含自定义地图、加入学习、题面、答案、进度或报告。前端不得据此自行创建这些请求；一期不提供分享能力。
+加入成功后，前端应保存响应中的 `learningRelationshipId`，并通过[学习关系地图接口](learning-relationships.md)恢复固定版本；不要凭 `mapId` 或 `versionId` 自行创建关系。
+
+本契约不包含自定义地图、题面、答案、进度或报告；一期不提供分享能力。
 
 ## 认证与缓存
 
-- 两个接口都要求 Better Auth 正式 Session，且账户邮箱已验证；
+- 三个接口都要求 Better Auth 正式 Session，且账户邮箱已验证；
 - 同源浏览器请求默认携带 Cookie；封装请求时应显式使用 `credentials: "include"`，避免未来跨封装行为不一致；
 - 请求体、查询参数和自定义请求头都不传 `userId`；服务端只从 Session 解析身份；
 - 响应使用 `Cache-Control: private, no-store`。不要把正文写入共享 CDN、公共 Service Worker 缓存或跨账户持久缓存；
@@ -68,10 +71,7 @@ export type KnowledgeSource = Readonly<{
 }>;
 
 export type ViewpointKind =
-  | "consensus"
-  | "disagreement"
-  | "practical_experience"
-  | "supplementary";
+  "consensus" | "disagreement" | "practical_experience" | "supplementary";
 
 export type SourcedViewpoint = Readonly<{
   viewpointId: string;
@@ -91,6 +91,12 @@ export type LearningMapDetail = Readonly<{
   prerequisites: readonly LearningMapPrerequisite[];
   sources: readonly KnowledgeSource[];
   viewpoints: readonly SourcedViewpoint[];
+}>;
+
+export type LearningRelationshipCreation = Readonly<{
+  learningRelationshipId: string;
+  mapId: string;
+  versionId: string;
 }>;
 ```
 
@@ -136,13 +142,10 @@ Cookie: <Better Auth Session>
 
 ```ts
 export async function getFeaturedLearningMap(mapId: string) {
-  return fetch(
-    `/api/featured-learning-maps/${encodeURIComponent(mapId)}`,
-    {
-      credentials: "include",
-      cache: "no-store",
-    },
-  );
+  return fetch(`/api/featured-learning-maps/${encodeURIComponent(mapId)}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
 }
 ```
 
@@ -228,6 +231,43 @@ export async function getFeaturedLearningMap(mapId: string) {
 
 示例是结构完整的合成契约数据，不是仓库种子数据，也不得作为前端运行时回退数据。
 
+## 建立或恢复本人学习关系
+
+### 请求
+
+```http
+POST /api/featured-learning-maps/map_system_design/learning-relationship
+Accept: application/json
+Cookie: <Better Auth Session>
+```
+
+请求没有请求体。`mapId` 是稳定精选主题身份；服务端只从正式 Session 读取账户，不接受 `userId`、`versionId` 或 `questionSetId`。
+
+服务端在同一持久化事务中解析当前精选指针指向的已发布版本，并确认该版本绑定的已发布题目集对地图中的每个节点恰好包含 2–3 道题，然后以 `(当前账户, versionId)` 唯一键建立或恢复关系。空题目集、缺少节点题目、单个节点题目少于 2 道或多于 3 道时均不会创建关系。相同账户重复加入同一当前版本返回同一个关系 ID，不会创建第二条关系；精选指针切换后再次加入会绑定新版本，旧关系保持不变。
+
+### 成功响应
+
+状态码 `200`，响应只包含后续恢复所需的安全标识：
+
+```json
+{
+  "learningRelationshipId": "learning_01JXEXAMPLE",
+  "mapId": "map_system_design",
+  "versionId": "mapver_system_design_20260902"
+}
+```
+
+响应不包含 `userId`、`questionSetId`、创建时间或数据库行。前端应保存 `learningRelationshipId`，随后使用[学习关系地图接口](learning-relationships.md)读取固定版本。
+示例标识仅用于说明字段形状，不是仓库种子数据或运行时回退值。
+
+### 失败响应
+
+- `401 authentication_required`：没有有效正式身份；
+- `404 resource_not_found`：精选主题不存在、未列入精选、版本未发布、没有可用的已发布题目集或题目集未覆盖每个节点 2–3 道题；这些情况统一处理，不暴露内部状态；
+- `500 internal_error`：服务端无法完成关系事务。
+
+成功与错误响应均为 `Cache-Control: private, no-store`。
+
 ## 图与证据渲染规则
 
 - 观点身份使用 `(nodeId, viewpointId)` 复合键；不同节点可能使用相同 `viewpointId`，React key 和前端索引不得只取 `viewpointId`；
@@ -267,11 +307,11 @@ export type ApiError = Readonly<{
 }>;
 ```
 
-| HTTP | `error.code` | 前端动作 |
-| --- | --- | --- |
-| 401 | `authentication_required` | 清理本地身份视图并进入登录流程；不要无限重试 |
-| 404 | `resource_not_found` | 展示统一“精选地图不存在或已下架”；不能区分未发布、非精选和不存在 |
-| 500 | `internal_error` | 展示安全失败状态，并携带 `requestId` 供问题定位 |
+| HTTP | `error.code`              | 前端动作                                                         |
+| ---- | ------------------------- | ---------------------------------------------------------------- |
+| 401  | `authentication_required` | 清理本地身份视图并进入登录流程；不要无限重试                     |
+| 404  | `resource_not_found`      | 展示统一“精选地图不存在或已下架”；不能区分未发布、非精选和不存在 |
+| 500  | `internal_error`          | 展示安全失败状态，并携带 `requestId` 供问题定位                  |
 
 `message` 是安全展示文案，不是稳定分支条件。不要显示响应之外的异常、SQL 或内部状态。
 

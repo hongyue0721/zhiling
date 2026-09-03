@@ -72,7 +72,17 @@ export async function POST(
         "请求必须包含 Idempotency-Key",
       );
     }
-    const payload = submissionSchema.parse(await request.json());
+    let input: unknown;
+    try {
+      input = await request.json();
+    } catch {
+      return businessError(400, "invalid_request", "请求内容不符合接口要求");
+    }
+    const parsed = submissionSchema.safeParse(input);
+    if (!parsed.success) {
+      return businessError(400, "invalid_request", "请求内容不符合接口要求");
+    }
+    const payload = parsed.data;
     const { learningRelationshipId, nodeId } = await context.params;
     const result = await learningAssessment.submit(
       formalIdentity.userId,
@@ -86,9 +96,6 @@ export async function POST(
     }
     return privateJson(result);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return businessError(400, "invalid_request", "请求内容不符合接口要求");
-    }
     if (error instanceof LearningAssessmentRequestError) {
       return businessError(400, "invalid_request", "请求内容不符合接口要求");
     }

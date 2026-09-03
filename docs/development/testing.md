@@ -1,6 +1,6 @@
 # 测试策略
 
-测试层级使用独立命令，`pnpm test` 按层组合执行；端到端通过不能替代架构、契约或领域失败路径验证。
+测试层级使用独立命令，`pnpm test` 按层组合执行；端到端通过不能替代架构、契约或领域失败路径验证。本页同时记录 Issue #14 已实际执行的定向证据；定向通过不等于全量质量门禁通过。
 
 | 层级   | 命令                     | 文件归属                                              | 当前职责                             |
 | ------ | ------------------------ | ----------------------------------------------------- | ------------------------------------ |
@@ -10,7 +10,7 @@
 | 集成   | `pnpm test:integration`  | `tests/integration`                                   | 真实数据库和关键基础设施边界         |
 | 端到端 | `pnpm test:e2e`          | `tests/e2e`                                           | 少量关键用户闭环                     |
 
-单元、架构、契约和集成层已有真实测试，命令在测试文件被误删时必须失败。产品前端闭环尚未实现，因此仅 Playwright 暂时使用 `--pass-with-no-tests` 保持入口可组合；这不算端到端覆盖，也不得用空测试伪装进度。
+单元、架构、契约、集成和端到端层均有真实测试入口。`tests/e2e/user-closure.spec.ts` 当前包含用户闭环用例；E2E fixture 使用专用测试 PostgreSQL、测试账户和合成内容，只证明测试路径，不是生产精选内容或在线生成成功证据。
 
 ## 架构测试
 
@@ -19,7 +19,7 @@
 - 跨模块只能访问 `public/contracts.ts`、`public/server.ts` 或 `public/client.ts`，且依赖必须登记在 `architecture.config.mjs`；
 - 领域、应用、基础设施、展示、组合根、平台与共享代码遵循 ADR-0008 的方向；
 - 本地依赖图不能成环；
-- `\"use client\"` 依赖图不能触达 `server-only`、服务端入口、基础设施或非公开环境变量；
+- `"use client"` 依赖图不能触达 `server-only`、服务端入口、基础设施或非公开环境变量；
 - 领域、应用和模块公开入口不能依赖 `src/generated`，生成代码不能反向依赖手写应用代码。
 
 架构夹具中的 `alpha`、`beta` 仅是静态规则输入，不是业务模块或生产门面。
@@ -34,11 +34,11 @@
 - 重复注册、已知/未知邮箱登录失败及重发验证保持不可枚举的响应状态和错误码；
 - 跨请求恢复同一正式身份，公开结果不含 Session Token 或框架对象；
 - 当前退出、按 Token 撤销与数据库过期在下一次身份解析立即失效；
-- 一期允许列表之外的密码恢复、账户修改、删除和错误方法在进入 Better Auth 前返回空 `404`；
+- 仅导出的 `GET`、`POST` 会进入认证 Route Handler；`PUT`、`PATCH`、`DELETE` 等不支持的方法由 Next.js 返回 `405 Method Not Allowed`。已导出的 `GET`/`POST` 对允许列表之外的路径才返回空 `404`；
 - Resend HTTP 失败正文、API Key、验证 Token 与完整验证 URL 不进入响应或日志；
 - 身份客户端依赖图不能触达服务端入口、数据库或邮件适配器。
 
-邮件 HTTP 契约测试使用注入的 `fetch`，不会访问 Resend 外网；真实投递依赖人工提供已验证域名和真实密钥，不属于自动测试。
+邮件 HTTP 契约测试使用注入的 `fetch`，不会访问 Resend 外网；真实投递依赖人工提供已验证域名和真实配置，不属于自动测试。
 
 ## 精选学习地图测试
 
@@ -67,17 +67,102 @@ HTTP 契约测试验证节点题面、答案提交和关系进度路由的 DTO�
 
 `tests/contracts/learning-report-http.test.ts` 覆盖正式身份门禁、成功 DTO、私有缓存头，以及不存在关系与错误账户统一的安全 `404`。`tests/integration/learning-report.test.ts` 使用真实 PostgreSQL 验证关系所有权、固定地图/题目集版本在精选切换后不漂移，以及报告不返回答案、账户或尝试标识。
 
-## 最近一次完整验证
+## provider 与地图生成测试
 
-2026-09-02 对 C1、C2、C3、D1 和 D2 执行了完整质量门禁：
+provider 契约覆盖知乎搜索、直答结构化输出、错误映射、超时和四题型（单选、多选、匹配、观点辨析）生成适配。地图生成覆盖候选门禁、持久化状态机、同主题请求复用、缓存、PostgreSQL 生成限频、租约恢复、阶段 checkpoint、重试预算、总时限、参与者授权、原子发布和 SSE 恢复。
 
-- 单元测试 58 项、架构测试 10 项、契约测试 54 项、PostgreSQL 集成测试 25 项，共 147 项通过；
-- C3 覆盖知乎搜索与直答的成功样本、缺字段、未知枚举、鉴权、限流、暂时不可用、严格模型 JSON 和关系闭合；
-- D1 覆盖并发任务复用、六小时缓存、稳定地图身份、租约心跳与接管、持久重试预算、总时限、定向补料、候选门禁、发布回滚、账户隔离和 SSE 恢复；
-- Node.js `22.23.2` Docker 镜像构建成功，独立 Worker 在空队列场景完成启动与停止冒烟；
-- Playwright 入口当前仍无产品端到端用例，因此 `--pass-with-no-tests` 不计入覆盖。
+契约和集成测试不把文档样本或本地失败 fixture 解释为真实在线成功。真实知乎/直答成功调用仍需在受控部署环境用真实供应方配置完成；本次没有该项证据。
 
-本次自动验证不包含使用真实 Access Secret 的知乎搜索或直答成功调用；该项仍须在受控部署环境完成，不能用文档 fixture 代替。
+## Issue #14 定向验证记录
+
+以下命令和结果是已执行的定向记录，不是全量报告。命令按测试入口列出，最终统计按下表功能组汇总；测试数据库和运行环境按[本地开发](local-setup.md)准备；本文不记录任何真实配置值。
+
+### 定向测试命令与结果
+
+```bash
+# learning catalog and featured map contract entries
+pnpm exec vitest run \
+  src/modules/learning-catalog/domain/learning-map.test.ts \
+  src/modules/learning-catalog/application/learning-catalog.test.ts \
+  src/modules/learning-catalog/public/server.contract.test.ts \
+  tests/contracts/featured-learning-maps.test.ts \
+  tests/integration/learning-catalog.test.ts
+
+# provider, candidate, state-machine, and generation integration entries
+pnpm exec vitest run \
+  src/modules/external-providers/infrastructure/runtime.contract.test.ts \
+  src/modules/map-generation/domain/candidate.test.ts \
+  src/modules/map-generation/domain/state-machine.test.ts \
+  tests/integration/map-generation.test.ts
+
+# generation-rate-limit integration
+pnpm exec vitest run tests/integration/generation-rate-limit.test.ts
+
+# map-generation HTTP contract entry
+pnpm exec vitest run tests/contracts/map-generation-http.test.ts
+
+# assessment unit, public contract, HTTP, and integration entries
+pnpm exec vitest run \
+  src/modules/learning-assessment/domain/assessment.test.ts \
+  src/modules/learning-assessment/public/server.contract.test.ts \
+  tests/contracts/learning-assessment.test.ts \
+  tests/integration/learning-assessment.test.ts
+
+# learning report unit, HTTP, and integration entries
+pnpm exec vitest run \
+  src/modules/learning-report/domain/learning-report.test.ts \
+  tests/contracts/learning-report-http.test.ts \
+  tests/integration/learning-report.test.ts
+
+# user closure E2E
+pnpm test:e2e tests/e2e/user-closure.spec.ts
+```
+
+已实际结果：
+
+| 能力 | 通过结果 |
+| --- | --- |
+| Drizzle migrations | `0000`–`0006` fresh 与 repeat 均成功，重复执行幂等 |
+| catalog + assessment integration | `17` 项 |
+| generation-rate-limit integration | `5` 项 |
+| map-generation integration | `10/10`，覆盖 stale-cache 与 exact-terminal-cursor |
+| generation integration subtotal | `15` 项（`10` + `5`） |
+| HTTP contracts | `23` 项，其中 `tests/contracts/map-generation-http.test.ts` `7/7`；featured + assessment contracts 与其合计 `23` 项 |
+| provider | `17` 项 |
+| candidate + assessment unit | `16` 项 |
+| 指定生成文件 | `tests/integration/map-generation.test.ts` `10/10` 与 `tests/contracts/map-generation-http.test.ts` `7/7`，合计 `17/17` |
+| user closure E2E | `6/6`，耗时 `28.2s` |
+
+### 浏览器 smoke
+
+Next.js + Chromium 本地 smoke 实际覆盖：
+
+- 匿名业务页 `307 → /auth`、注册/测试库验证/登录；
+- 精选目录和学习关系列表 `200`、精选加入关系 `200`，以及重复加入后的关系恢复；
+- 五节点 DAG 缩放、平移和重置，来源、观点分类和分歧适用条件；
+- 四种题型的无答案题面（匹配选项展示服务端派生的 `left`/`right` 两侧），单选/多选/matching 提交，服务端进度刷新，报告 `2/5` 和固定版本；
+
+测试 fixture 的固定五节点地图、题目和来源均为合成数据，仅用于测试；没有用它们证明生产精选、真实在线生成或供应方成功。
+
+### 运维静态/解析验证
+
+```bash
+for script in ops/*.sh ops/lib/*.sh; do bash -n "$script"; done
+docker compose --env-file <受限校验文件> -f compose.production.yaml config --quiet
+```
+
+已实际结果：列出的 shell 脚本 `bash -n` 通过；production Compose 配置成功解析 `postgres`、`migrate`、`web`、`generation-worker` 四个服务。production/staging health preflight 均通过到容器查询前；环境、项目或卷名的故意错配均以 `exit 1` fail closed。这些结果只证明脚本语法、配置结构和容器查询前置校验，没有执行 preflight 后的容器健康查询、真实 VPS 部署、备份恢复、租约接管、回滚或公网 SSE 演练。
+
+### 本次未运行
+
+本次没有运行且不能写成已通过：
+
+- `pnpm check`、`pnpm test`、format、lint、typecheck、architecture、build；
+- 其他全量质量门禁和 GitHub workflows（workflows 保持 `disabled_manually`）；
+- 真实知乎搜索成功、知乎直答成功、真实生成成功和生产精选审核；
+- 真实 VPS 部署、健康门禁、备份恢复、Worker 租约接管、镜像回滚和公网 SSE。
+
+因此，定向测试与浏览器 smoke 只能证明已覆盖的本地路径；Issue #14 仍未完成。完整十项矩阵、逐项未完成条件和完成判定见[Issue #14 验收证据](issue-14-acceptance.md)。
 
 ## 编写要求
 
@@ -87,4 +172,4 @@ HTTP 契约测试验证节点题面、答案提交和关系进度路由的 DTO�
 - 集成测试使用真实基础设施边界，不用 mock 冒充集成；
 - 端到端测试首次运行前执行 `pnpm exec playwright install chromium`。
 
-本地与 CI 的完整入口均为 `pnpm check`。
+本地与 CI 的完整入口均为 `pnpm check`；它是入口定义，不代表本次已执行或通过。

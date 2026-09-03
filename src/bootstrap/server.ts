@@ -10,9 +10,13 @@ import { createLearningProgressRuntime } from "@/modules/learning-progress/publi
 import { createLearningReportRuntime } from "@/modules/learning-report/public/server";
 import { createPostgresDatabase } from "@/platform/database/postgres";
 import { EXTERNAL_PROVIDER_VERSIONS } from "@/modules/external-providers/public/contracts";
-import { createMapGenerationRuntime } from "@/modules/map-generation/public/server";
+import {
+  createMapGenerationRuntime,
+  readGenerationEnvironment,
+} from "@/modules/map-generation/public/server";
 
 const environment = readIdentityEnvironment();
+const generationEnvironment = readGenerationEnvironment();
 const { database } = createPostgresDatabase(environment.databaseUrl);
 const identityRuntime = createIdentityRuntime({ database, environment });
 const learningCatalogRuntime = createLearningCatalogRuntime({ database });
@@ -31,6 +35,7 @@ const learningReportRuntime = createLearningReportRuntime({
 const mapGenerationRuntime = createMapGenerationRuntime({
   database,
   providerVersions: EXTERNAL_PROVIDER_VERSIONS,
+  rateLimit: generationEnvironment.rateLimit,
 });
 
 export const generation = mapGenerationRuntime.generation;

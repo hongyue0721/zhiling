@@ -4,8 +4,11 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "知径",
-  description: "知径应用工程壳",
+  title: {
+    default: "知径 · 把讨论走成一条学会的路",
+    template: "%s · 知径",
+  },
+  description: "用真实知乎来源组织学习路径，在验证中留下属于你的进度。",
 };
 
 export default function RootLayout({

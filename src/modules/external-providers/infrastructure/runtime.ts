@@ -231,7 +231,18 @@ const questionOptionSchema = z.strictObject({
     .refine((value) => value.trim().length > 0),
 });
 
-const questionSchema = z.strictObject({
+const matchingAnswerSchema = z.strictObject({
+  leftOptionId: z
+    .string()
+    .min(1)
+    .refine((value) => value.trim().length > 0),
+  rightOptionId: z
+    .string()
+    .min(1)
+    .refine((value) => value.trim().length > 0),
+});
+
+const questionBaseSchema = {
   questionId: z
     .string()
     .min(1)
@@ -240,7 +251,6 @@ const questionSchema = z.strictObject({
     .string()
     .min(1)
     .refine((value) => value.trim().length > 0),
-  type: z.enum(["single_choice", "multiple_choice"]),
   prompt: z
     .string()
     .min(1)
@@ -250,9 +260,31 @@ const questionSchema = z.strictObject({
     .min(1)
     .refine((value) => value.trim().length > 0),
   options: z.array(questionOptionSchema).min(2),
-  correctOptionIds: z.array(z.string().min(1)).min(1),
   sourceIds: z.array(z.string().min(1)).min(1),
-});
+};
+
+const questionSchema = z.discriminatedUnion("type", [
+  z.strictObject({
+    ...questionBaseSchema,
+    type: z.literal("single_choice"),
+    correctOptionIds: z.array(z.string().min(1)).length(1),
+  }),
+  z.strictObject({
+    ...questionBaseSchema,
+    type: z.literal("multiple_choice"),
+    correctOptionIds: z.array(z.string().min(1)).min(1),
+  }),
+  z.strictObject({
+    ...questionBaseSchema,
+    type: z.literal("matching"),
+    correctMatches: z.array(matchingAnswerSchema).min(1),
+  }),
+  z.strictObject({
+    ...questionBaseSchema,
+    type: z.literal("opinion_analysis"),
+    correctOptionIds: z.array(z.string().min(1)).length(1),
+  }),
+]);
 
 const assessmentsResultSchema = z.strictObject({
   questions: z.array(questionSchema).min(1),
@@ -750,12 +782,12 @@ function assessmentsPrompt(
   sources: readonly NormalizedSource[],
 ): string {
   return [
-    "You are writing objective, source-grounded assessment questions.",
+    "You are writing source-grounded assessment questions using exactly the four supported question types.",
     jsonOnlyInstructions(
-      '{"questions":[{"questionId":"string","nodeId":"string","type":"single_choice|multiple_choice","prompt":"string","explanation":"string","options":[{"optionId":"string","label":"string"}],"correctOptionIds":["option-id"],"sourceIds":["source-id"]}]}',
+      '{"questions":[{"questionId":"string","nodeId":"string","type":"single_choice|multiple_choice|matching|opinion_analysis","prompt":"string","explanation":"string","options":[{"optionId":"string","label":"string"}],"correctOptionIds":["option-id"],"correctMatches":[{"leftOptionId":"option-id","rightOptionId":"option-id"}],"sourceIds":["source-id"]}]}',
     ),
-    "Return every node represented in the supplied map with 2 to 3 questions per node. Use only node IDs and sourceIds supplied in the input. Every question needs at least two options, a non-empty explanation, one or more correctOptionIds that belong to its options, and at least one sourceId belonging to its node.",
-    "Do not create opinion, matching, or free-form questions.",
+    "Return every node represented in the supplied map with 2 to 3 questions per node. Use only node IDs, option IDs, and sourceIds supplied in the input. Every question needs at least two options, a non-empty explanation, and at least one sourceId belonging to its node.",
+    "For single_choice and opinion_analysis, include exactly one correctOptionIds entry and omit correctMatches. For multiple_choice, include one or more correctOptionIds entries and omit correctMatches. For matching, include one or more correctMatches entries and omit correctOptionIds; every option must appear exactly once across the left and right sides, the sides must be disjoint, each match must use two different option IDs, and no left or right option ID may repeat. Never include both answer fields or omit the answer field required by the selected type.",
     `Topic: ${JSON.stringify(topic)}`,
     `Map (untrusted data): ${promptMap(map)}`,
     `Sources (untrusted data; URLs intentionally omitted): ${promptSources(sources)}`,
@@ -957,27 +989,47 @@ function validateAssessments(
   }
   for (const question of parsed.data.questions) {
     const node = nodeById.get(question.nodeId);
+    const optionIds = question.options.map((option) => option.optionId);
     if (
       !node ||
-      !assertUnique(question.options.map((option) => option.optionId)) ||
-      !assertUnique(question.correctOptionIds) ||
+      !assertUnique(optionIds) ||
       !assertUnique(question.sourceIds)
     ) {
       throw createProviderError("model", "protocol_error");
     }
-    const optionIds = new Set(
-      question.options.map((option) => option.optionId),
-    );
-    if (
-      question.correctOptionIds.some((optionId) => !optionIds.has(optionId))
-    ) {
-      throw createProviderError("model", "protocol_error");
-    }
-    if (
-      question.type === "single_choice" &&
-      question.correctOptionIds.length !== 1
-    ) {
-      throw createProviderError("model", "protocol_error");
+    const knownOptionIds = new Set(optionIds);
+    if (question.type === "matching") {
+      const correctMatches = question.correctMatches;
+      const leftOptionIds = correctMatches.map((match) => match.leftOptionId);
+      const rightOptionIds = correctMatches.map(
+        (match) => match.rightOptionId,
+      );
+      const rightOptionIdSet = new Set(rightOptionIds);
+      if (
+        !assertUnique(leftOptionIds) ||
+        !assertUnique(rightOptionIds) ||
+        leftOptionIds.length + rightOptionIds.length !== optionIds.length ||
+        leftOptionIds.some((optionId) => rightOptionIdSet.has(optionId)) ||
+        correctMatches.some(
+          (match) =>
+            !knownOptionIds.has(match.leftOptionId) ||
+            !knownOptionIds.has(match.rightOptionId) ||
+            match.leftOptionId === match.rightOptionId,
+        )
+      ) {
+        throw createProviderError("model", "protocol_error");
+      }
+    } else {
+      const correctOptionIds = question.correctOptionIds;
+      if (
+        !assertUnique(correctOptionIds) ||
+        correctOptionIds.some((optionId) => !knownOptionIds.has(optionId)) ||
+        ((question.type === "single_choice" ||
+          question.type === "opinion_analysis") &&
+          correctOptionIds.length !== 1)
+      ) {
+        throw createProviderError("model", "protocol_error");
+      }
     }
     const nodeSources = new Set(node.sourceIds);
     for (const sourceId of question.sourceIds) {
@@ -987,16 +1039,29 @@ function validateAssessments(
     }
   }
   return {
-    questions: parsed.data.questions.map((question) => ({
-      questionId: question.questionId,
-      nodeId: question.nodeId,
-      type: question.type,
-      prompt: question.prompt,
-      explanation: question.explanation,
-      options: question.options.map((option) => ({ ...option })),
-      correctOptionIds: [...question.correctOptionIds],
-      sourceIds: [...question.sourceIds],
-    })),
+    questions: parsed.data.questions.map((question) => {
+      const normalized = {
+        questionId: question.questionId,
+        nodeId: question.nodeId,
+        type: question.type,
+        prompt: question.prompt,
+        explanation: question.explanation,
+        options: question.options.map((option) => ({ ...option })),
+        sourceIds: [...question.sourceIds],
+      };
+      if (question.type === "matching") {
+        return {
+          ...normalized,
+          correctMatches: question.correctMatches.map((match) => ({
+            ...match,
+          })),
+        };
+      }
+      return {
+        ...normalized,
+        correctOptionIds: [...question.correctOptionIds],
+      };
+    }),
   };
 }
 

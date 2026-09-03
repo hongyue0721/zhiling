@@ -1,3 +1,16 @@
-export default function Page() {
-  return <main aria-label="应用工程壳" />;
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+import { HomePage } from "@/components/home-page";
+import { identity } from "@/bootstrap/server";
+
+export const dynamic = "force-dynamic";
+
+export default async function Page() {
+  const current = await identity.resolve(new Headers(await headers()));
+  if (!current) {
+    redirect("/auth?next=/");
+  }
+
+  return <HomePage email={current.email} />;
 }

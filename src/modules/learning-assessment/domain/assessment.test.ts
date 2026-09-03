@@ -82,23 +82,23 @@ describe("learning assessment scoring", () => {
     const matching = question({
       type: "matching",
       options: [
-        { optionId: "left-a", label: "Left A" },
-        { optionId: "left-b", label: "Left B" },
-        { optionId: "right-a", label: "Right A" },
-        { optionId: "right-b", label: "Right B" },
+        { optionId: "concept-a", label: "Concept A" },
+        { optionId: "concept-b", label: "Concept B" },
+        { optionId: "description-a", label: "Description A" },
+        { optionId: "description-b", label: "Description B" },
       ],
       correctOptionIds: [],
       correctMatches: [
-        { leftOptionId: "left-a", rightOptionId: "right-b" },
-        { leftOptionId: "left-b", rightOptionId: "right-a" },
+        { leftOptionId: "concept-a", rightOptionId: "description-b" },
+        { leftOptionId: "concept-b", rightOptionId: "description-a" },
       ],
     });
     expect(
       scoreLearningAssessmentQuestion(matching, {
         questionId: "question-1",
         matches: [
-          { leftOptionId: "left-b", rightOptionId: "right-a" },
-          { leftOptionId: "left-a", rightOptionId: "right-b" },
+          { leftOptionId: "concept-b", rightOptionId: "description-a" },
+          { leftOptionId: "concept-a", rightOptionId: "description-b" },
         ],
       }),
     ).toMatchObject({ scoreBasisPoints: 10_000, correct: true });
@@ -106,8 +106,8 @@ describe("learning assessment scoring", () => {
       scoreLearningAssessmentQuestion(matching, {
         questionId: "question-1",
         matches: [
-          { leftOptionId: "left-a", rightOptionId: "right-a" },
-          { leftOptionId: "left-b", rightOptionId: "right-b" },
+          { leftOptionId: "concept-a", rightOptionId: "description-a" },
+          { leftOptionId: "concept-b", rightOptionId: "description-b" },
         ],
       }),
     ).toMatchObject({ scoreBasisPoints: 0, correct: false });
@@ -195,5 +195,84 @@ describe("learning assessment publication validation", () => {
         },
       ],
     });
+  });
+  it("derives matching sides from complete answer pairs", () => {
+    const publication = validateLearningAssessmentQuestionSet({
+      questionSetId: "set-matching",
+      versionId: "version-1",
+      questions: [
+        {
+          questionId: "matching-question",
+          nodeId: "node-1",
+          type: "matching",
+          prompt: "Match concepts",
+          explanation: "Each concept has one description.",
+          options: [
+            { optionId: "concept-a", label: "Concept A" },
+            { optionId: "concept-b", label: "Concept B" },
+            { optionId: "description-a", label: "Description A" },
+            { optionId: "description-b", label: "Description B" },
+          ],
+          correctMatches: [
+            { leftOptionId: "concept-a", rightOptionId: "description-b" },
+            { leftOptionId: "concept-b", rightOptionId: "description-a" },
+          ],
+          sourceIds: ["source-1"],
+        },
+      ],
+    });
+
+    expect(publication.questions[0]?.options).toEqual([
+      { optionId: "concept-a", label: "Concept A", side: "left" },
+      { optionId: "concept-b", label: "Concept B", side: "left" },
+      { optionId: "description-a", label: "Description A", side: "right" },
+      { optionId: "description-b", label: "Description B", side: "right" },
+    ]);
+  });
+
+  it.each([
+    {
+      name: "leaves an option outside every pair",
+      options: [
+        { optionId: "concept-a", label: "Concept A" },
+        { optionId: "concept-b", label: "Concept B" },
+        { optionId: "description-a", label: "Description A" },
+      ],
+      correctMatches: [
+        { leftOptionId: "concept-a", rightOptionId: "description-a" },
+      ],
+    },
+    {
+      name: "places one option on both sides",
+      options: [
+        { optionId: "concept-a", label: "Concept A" },
+        { optionId: "concept-b", label: "Concept B" },
+        { optionId: "description-a", label: "Description A" },
+        { optionId: "description-b", label: "Description B" },
+      ],
+      correctMatches: [
+        { leftOptionId: "concept-a", rightOptionId: "description-a" },
+        { leftOptionId: "description-a", rightOptionId: "description-b" },
+      ],
+    },
+  ])("$name", ({ options, correctMatches }) => {
+    expect(() =>
+      validateLearningAssessmentQuestionSet({
+        questionSetId: "set-invalid-matching",
+        versionId: "version-1",
+        questions: [
+          {
+            questionId: "matching-question",
+            nodeId: "node-1",
+            type: "matching",
+            prompt: "Match concepts",
+            explanation: "Each concept has one description.",
+            options,
+            correctMatches,
+            sourceIds: ["source-1"],
+          },
+        ],
+      }),
+    ).toThrow("invalid_matching_answer");
   });
 });

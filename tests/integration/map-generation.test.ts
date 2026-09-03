@@ -12,6 +12,7 @@ import {
 } from "@/modules/map-generation/public/server";
 import { learningMapVersion } from "@/platform/database/catalog-schema";
 import {
+  generationCache,
   generationCheckpoint,
   generationTask,
 } from "@/platform/database/generation-schema";
@@ -31,6 +32,11 @@ const versions = {
   sourceAdapterVersion: "source-test-v1",
   modelAdapterVersion: "model-test-v1",
 };
+
+const testRateLimit = {
+  windowSeconds: 3600,
+  maxRequests: 100,
+} as const;
 
 const sources: readonly GenerationSource[] = Array.from(
   { length: 5 },
@@ -153,6 +159,7 @@ describe("map generation persistence", () => {
     const generation = createMapGenerationRuntime({
       database,
       providerVersions: versions,
+      rateLimit: testRateLimit,
       idGenerator,
     }).generation;
     const worker = createMapGenerationWorkerRuntime({
@@ -237,7 +244,45 @@ describe("map generation persistence", () => {
     const expiredCache = await generation.requestGeneration("user-a", "TOPIC");
     expect(expiredCache.reuse).toBe("created");
     expect(expiredCache.snapshot.taskId).not.toBe(first.snapshot.taskId);
+    const staleCacheRows = await database
+      .select({ createdAt: generationCache.createdAt })
+      .from(generationCache)
+      .where(eq(generationCache.taskId, first.snapshot.taskId));
+    expect(staleCacheRows).toHaveLength(1);
+    const staleCacheCreatedAt = staleCacheRows[0]!.createdAt;
+
+    await worker.runOnce("worker-2");
+    const replacedCacheRows = await database
+      .select({
+        taskId: generationCache.taskId,
+        mapId: generationCache.mapId,
+        versionId: generationCache.versionId,
+        questionSetId: generationCache.questionSetId,
+        createdAt: generationCache.createdAt,
+      })
+      .from(generationCache);
+    expect(replacedCacheRows).toHaveLength(1);
+    expect(replacedCacheRows[0]).toMatchObject({
+      taskId: expiredCache.snapshot.taskId,
+      mapId: completed?.result?.mapId,
+    });
+    expect(new Date(replacedCacheRows[0]!.createdAt).getTime()).toBeGreaterThan(
+      new Date(staleCacheCreatedAt).getTime(),
+    );
+
+    const refreshedCacheHit = await generation.requestGeneration(
+      "user-a",
+      "TOPIC",
+    );
+    expect(refreshedCacheHit.reuse).toBe("cache");
+    expect(refreshedCacheHit.snapshot.taskId).toBe(
+      expiredCache.snapshot.taskId,
+    );
+    expect(refreshedCacheHit.snapshot.result?.mapId).toBe(
+      completed?.result?.mapId,
+    );
   });
+
   it("honors provider Retry-After without crossing the generation deadline", async () => {
     const delays: number[] = [];
     let planAttempts = 0;
@@ -260,6 +305,7 @@ describe("map generation persistence", () => {
     const generation = createMapGenerationRuntime({
       database,
       providerVersions: versions,
+      rateLimit: testRateLimit,
       idGenerator: () => crypto.randomUUID(),
     }).generation;
     const worker = createMapGenerationWorkerRuntime({
@@ -305,6 +351,7 @@ describe("map generation persistence", () => {
     const generation = createMapGenerationRuntime({
       database,
       providerVersions: versions,
+      rateLimit: testRateLimit,
       now: () => baseTime,
       idGenerator: () => crypto.randomUUID(),
     }).generation;
@@ -365,6 +412,7 @@ describe("map generation persistence", () => {
     const generation = createMapGenerationRuntime({
       database,
       providerVersions: versions,
+      rateLimit: testRateLimit,
       idGenerator: () => crypto.randomUUID(),
     }).generation;
     const worker = createMapGenerationWorkerRuntime({
@@ -394,6 +442,7 @@ describe("map generation persistence", () => {
     const firstGeneration = createMapGenerationRuntime({
       database,
       providerVersions: versions,
+      rateLimit: testRateLimit,
       idGenerator: () => crypto.randomUUID(),
     }).generation;
     const firstWorker = createMapGenerationWorkerRuntime({
@@ -417,6 +466,7 @@ describe("map generation persistence", () => {
     const secondGeneration = createMapGenerationRuntime({
       database,
       providerVersions: secondVersions,
+      rateLimit: testRateLimit,
       idGenerator: () => crypto.randomUUID(),
     }).generation;
     const secondWorker = createMapGenerationWorkerRuntime({
@@ -470,6 +520,7 @@ describe("map generation persistence", () => {
     const generation = createMapGenerationRuntime({
       database,
       providerVersions: versions,
+      rateLimit: testRateLimit,
       idGenerator: () => crypto.randomUUID(),
     }).generation;
     const worker = createMapGenerationWorkerRuntime({
@@ -514,6 +565,7 @@ describe("map generation persistence", () => {
     const generation = createMapGenerationRuntime({
       database,
       providerVersions: versions,
+      rateLimit: testRateLimit,
       idGenerator: () => crypto.randomUUID(),
     }).generation;
     const worker = createMapGenerationWorkerRuntime({
@@ -541,10 +593,104 @@ describe("map generation persistence", () => {
     ).toBe("succeeded");
   });
 
+  it("returns a safe terminal snapshot at an exact succeeded cursor", async () => {
+    const generation = createMapGenerationRuntime({
+      database,
+      providerVersions: versions,
+      rateLimit: testRateLimit,
+      idGenerator: () => crypto.randomUUID(),
+    }).generation;
+    const worker = createMapGenerationWorkerRuntime({
+      database,
+      providerVersions: versions,
+      sourceSearch: sourceSearch(),
+      structuredModel: provider(),
+      idGenerator: () => crypto.randomUUID(),
+      sleep: async () => undefined,
+    }).worker;
+    const created = await generation.requestGeneration(
+      "user-a",
+      "succeeded terminal cursor topic",
+    );
+    await worker.runOnce("terminal-success-worker");
+
+    const snapshot = await generation.getGeneration(
+      "user-a",
+      created.snapshot.taskId,
+    );
+    expect(snapshot?.status).toBe("succeeded");
+    const events = await generation.readEvents(
+      "user-a",
+      created.snapshot.taskId,
+      snapshot!.sequence,
+    );
+    expect(events).toMatchObject({
+      kind: "snapshot",
+      events: [],
+      snapshot: {
+        status: "succeeded",
+        sequence: snapshot!.sequence,
+      },
+    });
+  });
+
+  it("returns a safe terminal snapshot at an exact failed cursor", async () => {
+    const generation = createMapGenerationRuntime({
+      database,
+      providerVersions: versions,
+      rateLimit: testRateLimit,
+      idGenerator: () => crypto.randomUUID(),
+    }).generation;
+    const failingModel: StructuredModelAccess = {
+      ...provider(),
+      async planDirections() {
+        throw {
+          provider: "model",
+          code: "protocol_error",
+          retryable: false,
+        };
+      },
+    };
+    const worker = createMapGenerationWorkerRuntime({
+      database,
+      providerVersions: versions,
+      sourceSearch: sourceSearch(),
+      structuredModel: failingModel,
+      idGenerator: () => crypto.randomUUID(),
+      sleep: async () => undefined,
+    }).worker;
+    const created = await generation.requestGeneration(
+      "user-a",
+      "failed terminal cursor topic",
+    );
+    await worker.runOnce("terminal-failure-worker");
+
+    const snapshot = await generation.getGeneration(
+      "user-a",
+      created.snapshot.taskId,
+    );
+    expect(snapshot?.status).toBe("failed");
+    const events = await generation.readEvents(
+      "user-a",
+      created.snapshot.taskId,
+      snapshot!.sequence,
+    );
+    expect(events).toMatchObject({
+      kind: "snapshot",
+      events: [],
+      snapshot: {
+        status: "failed",
+        sequence: snapshot!.sequence,
+        failure: { code: "candidate_invalid", retryable: false },
+      },
+    });
+  });
+
   it("falls back to a snapshot when the event cursor is outside retention", async () => {
     const generation = createMapGenerationRuntime({
       database,
       providerVersions: versions,
+      rateLimit: testRateLimit,
       idGenerator: () => crypto.randomUUID(),
     }).generation;
     const created = await generation.requestGeneration(

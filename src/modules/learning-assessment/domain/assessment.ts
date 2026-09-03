@@ -9,9 +9,14 @@ export type AssessmentQuestionType = (typeof assessmentQuestionTypes)[number];
 
 export const ASSESSMENT_COMPLETION_SCORE = 8_000;
 
+export const assessmentMatchingSides = ["left", "right"] as const;
+
+export type AssessmentMatchingSide = (typeof assessmentMatchingSides)[number];
+
 export type AssessmentQuestionOption = Readonly<{
   optionId: string;
   label: string;
+  side?: AssessmentMatchingSide;
 }>;
 
 export type AssessmentMatchingAnswer = Readonly<{
@@ -169,19 +174,28 @@ function normalizeQuestion(
     rightOptionId: match.rightOptionId,
   }));
   const knownOptionIds = new Set(optionIds);
+  const matchingSideByOptionId = new Map<
+    string,
+    AssessmentMatchingSide
+  >();
 
   if (question.type === "matching") {
     if (correctOptionIds.length > 0 || correctMatches.length === 0) {
       throw new LearningAssessmentInvariantError("invalid_matching_answer");
     }
-    assertUnique(
-      correctMatches.map(({ leftOptionId }) => leftOptionId),
-      "duplicate_matching_left_option",
+    const leftOptionIds = correctMatches.map(({ leftOptionId }) => leftOptionId);
+    const rightOptionIds = correctMatches.map(
+      ({ rightOptionId }) => rightOptionId,
     );
-    assertUnique(
-      correctMatches.map(({ rightOptionId }) => rightOptionId),
-      "duplicate_matching_right_option",
-    );
+    assertUnique(leftOptionIds, "duplicate_matching_left_option");
+    assertUnique(rightOptionIds, "duplicate_matching_right_option");
+    const rightOptionIdSet = new Set(rightOptionIds);
+    if (
+      leftOptionIds.length + rightOptionIds.length !== optionIds.length ||
+      leftOptionIds.some((optionId) => rightOptionIdSet.has(optionId))
+    ) {
+      throw new LearningAssessmentInvariantError("invalid_matching_answer");
+    }
     for (const match of correctMatches) {
       if (
         !knownOptionIds.has(match.leftOptionId) ||
@@ -190,6 +204,12 @@ function normalizeQuestion(
       ) {
         throw new LearningAssessmentInvariantError("invalid_matching_answer");
       }
+    }
+    for (const optionId of leftOptionIds) {
+      matchingSideByOptionId.set(optionId, "left");
+    }
+    for (const optionId of rightOptionIds) {
+      matchingSideByOptionId.set(optionId, "right");
     }
   } else {
     if (correctMatches.length > 0 || correctOptionIds.length === 0) {
@@ -210,13 +230,18 @@ function normalizeQuestion(
     }
   }
 
+  const options = question.options.map(({ optionId, label }) => {
+    const side = matchingSideByOptionId.get(optionId);
+    return side ? { optionId, label, side } : { optionId, label };
+  });
+
   return {
     questionId: question.questionId,
     nodeId: question.nodeId,
     type: question.type,
     prompt: question.prompt,
     explanation: question.explanation,
-    options: question.options.map((option) => ({ ...option })),
+    options,
     correctOptionIds,
     correctMatches,
     sourceIds,

@@ -17,20 +17,27 @@ import type {
   GenerationStructuredModelPort,
 } from "../application/ports";
 
+import {
+  createGenerationRateLimitReservation,
+  type GenerationRateLimitPolicy,
+} from "./rate-limit";
 export type MapGenerationRuntimeDependencies = Readonly<{
   database: MapGenerationDatabase;
   providerVersions: GenerationProviderVersionInput;
+  rateLimit: GenerationRateLimitPolicy;
   now?: GenerationClock;
   idGenerator?: GenerationIdGenerator;
 }>;
-export type MapGenerationWorkerRuntimeDependencies =
-  MapGenerationRuntimeDependencies &
-    Readonly<{
-      sourceSearch: GenerationSourceSearchPort;
-      structuredModel: GenerationStructuredModelPort;
-      sleep?: GenerationSleeper;
-      scheduleHeartbeat?: GenerationHeartbeatScheduler;
-    }>;
+export type MapGenerationWorkerRuntimeDependencies = Omit<
+  MapGenerationRuntimeDependencies,
+  "rateLimit"
+> &
+  Readonly<{
+    sourceSearch: GenerationSourceSearchPort;
+    structuredModel: GenerationStructuredModelPort;
+    sleep?: GenerationSleeper;
+    scheduleHeartbeat?: GenerationHeartbeatScheduler;
+  }>;
 
 function runtimeVersions(
   versions: GenerationProviderVersionInput,
@@ -64,6 +71,7 @@ function runtimeScheduleHeartbeat(
 export function createMapGenerationRuntime({
   database,
   providerVersions,
+  rateLimit,
   now = runtimeClock,
   idGenerator = runtimeId,
 }: MapGenerationRuntimeDependencies) {
@@ -72,6 +80,7 @@ export function createMapGenerationRuntime({
     runtimeVersions(providerVersions),
     now,
     idGenerator,
+    createGenerationRateLimitReservation(rateLimit),
   );
   return {
     generation: {
