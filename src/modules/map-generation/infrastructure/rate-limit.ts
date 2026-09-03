@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
 
 import { generationRateLimit } from "@/platform/database/generation-schema";
-import type { MapGenerationDatabase } from "./drizzle-map-generation";
+import type {
+  GenerationDatabaseExecutor,
+  GenerationDatabaseTransaction,
+} from "./generation-database";
 
 export type GenerationRateLimitPolicy = Readonly<{
   windowSeconds: number;
@@ -9,7 +12,7 @@ export type GenerationRateLimitPolicy = Readonly<{
 }>;
 
 export type GenerationRateLimitReservation = (
-  transaction: unknown,
+  transaction: GenerationDatabaseTransaction,
   userId: string,
   now: Date,
 ) => Promise<void>;
@@ -55,7 +58,7 @@ export function createGenerationRateLimitReservation(
   }
 
   return async (transaction, userId, now) => {
-    const db = transaction as unknown as MapGenerationDatabase;
+    const db = transaction as unknown as GenerationDatabaseExecutor;
     const windowStartedAt = new Date(
       Math.floor(now.getTime() / windowMs) * windowMs,
     );

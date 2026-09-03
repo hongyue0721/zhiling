@@ -15,7 +15,7 @@ import type {
   GenerationEventType,
   GenerationRequestResult,
   GenerationSnapshot,
-} from "@/modules/map-generation/public/contracts";
+} from "@/modules/map-generation/application/ports";
 
 export type {
   FeaturedLearningMapSummary,

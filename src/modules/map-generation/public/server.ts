@@ -6,21 +6,19 @@ import {
 } from "../infrastructure/runtime";
 import type {
   GenerationAccess,
-  GenerationRequestResult,
+  GenerationClock,
   GenerationEventsResult,
+  GenerationHeartbeatScheduler,
+  GenerationIdGenerator,
+  GenerationProviderVersionInput,
+  GenerationRequestResult,
+  GenerationSleeper,
   GenerationSnapshot,
   GenerationWorkerAccess,
   SourceSearchAccess,
   StructuredModelAccess,
-} from "./contracts";
-import type {
-  GenerationProviderVersionInput,
-  GenerationClock,
-  GenerationHeartbeatScheduler,
-  GenerationIdGenerator,
-  GenerationSleeper,
-  MapGenerationDatabase,
-} from "../infrastructure/drizzle-map-generation";
+} from "../application/ports";
+import type { MapGenerationDatabase } from "../infrastructure/generation-database";
 import type { GenerationRateLimitPolicy } from "../infrastructure/rate-limit";
 
 export type MapGenerationRuntimeDependencies = Readonly<{
@@ -30,6 +28,7 @@ export type MapGenerationRuntimeDependencies = Readonly<{
   now?: GenerationClock;
   idGenerator?: GenerationIdGenerator;
 }>;
+
 export type MapGenerationWorkerRuntimeDependencies = Omit<
   MapGenerationRuntimeDependencies,
   "rateLimit"
@@ -85,24 +84,38 @@ export function createMapGenerationWorkerRuntime(
   return { worker };
 }
 
+export {
+  generationFailureCategories,
+  generationStates,
+  generationStatuses,
+} from "../application/ports";
 export type {
   GenerationAccess,
   GenerationDirection,
   GenerationEvent,
+  GenerationEventType,
   GenerationEventsResult,
   GenerationFailure,
+  GenerationFailureCategory,
+  GenerationIdentity,
   GenerationRequestResult,
   GenerationResult,
   GenerationRuntimeVersions,
   GenerationSnapshot,
   GenerationSource,
+  GenerationStage,
+  GenerationState,
   GenerationStatus,
+  SourceAuthorityLevel,
+  SourceContentType,
   SourceSearchAccess,
   StructuredAssessmentQuestion,
   StructuredMap,
+  StructuredMapNode,
   StructuredModelAccess,
   StructuredViewpoint,
-} from "./contracts";
+  GenerationProviderVersionInput,
+} from "../application/ports";
 
 export {
   readGenerationEnvironment,

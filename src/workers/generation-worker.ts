@@ -56,24 +56,25 @@ export async function runGenerationWorker(): Promise<void> {
   const { database, pool } = createPostgresDatabase(
     workerEnvironment.databaseUrl,
   );
-  const providerRuntime = createExternalProviderRuntime({
-    environment: externalEnvironment,
-  });
-  const { worker } = createMapGenerationWorkerRuntime({
-    database,
-    providerVersions: providerRuntime.versions,
-    sourceSearch: providerRuntime.sourceSearch,
-    structuredModel: providerRuntime.structuredModel,
-  });
-
   let stopping = false;
   const stop = () => {
     stopping = true;
   };
-  process.once("SIGTERM", stop);
-  process.once("SIGINT", stop);
 
   try {
+    const providerRuntime = createExternalProviderRuntime({
+      environment: externalEnvironment,
+    });
+    const { worker } = createMapGenerationWorkerRuntime({
+      database,
+      providerVersions: providerRuntime.versions,
+      sourceSearch: providerRuntime.sourceSearch,
+      structuredModel: providerRuntime.structuredModel,
+    });
+
+    process.once("SIGTERM", stop);
+    process.once("SIGINT", stop);
+
     while (!stopping) {
       const didWork = await worker.runOnce(workerEnvironment.workerId);
       if (!didWork && !stopping) {

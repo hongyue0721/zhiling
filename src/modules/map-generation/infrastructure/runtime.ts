@@ -1,26 +1,25 @@
 import type {
-  GenerationProviderVersionInput,
-  MapGenerationDatabase,
   GenerationClock,
   GenerationHeartbeatScheduler,
   GenerationIdGenerator,
-  GenerationSleeper,
-} from "./drizzle-map-generation";
-import {
-  DEFAULT_PIPELINE_VERSION,
-  DrizzleMapGenerationRepository,
-  MapGenerationWorker,
-} from "./drizzle-map-generation";
-import type {
+  GenerationProviderVersionInput,
   GenerationProviderVersions,
+  GenerationSleeper,
+  GenerationProviderBundle,
   GenerationSourceSearchPort,
   GenerationStructuredModelPort,
 } from "../application/ports";
-
+import { MapGenerationWorker } from "../application/generation-worker";
+import { DrizzleGenerationTaskStore } from "./drizzle-generation-task-store";
+import { DrizzleGenerationPublication } from "./drizzle-generation-publication";
+import type { MapGenerationDatabase } from "./generation-database";
 import {
   createGenerationRateLimitReservation,
   type GenerationRateLimitPolicy,
 } from "./rate-limit";
+
+export const DEFAULT_PIPELINE_VERSION = "generation-pipeline-v1";
+
 export type MapGenerationRuntimeDependencies = Readonly<{
   database: MapGenerationDatabase;
   providerVersions: GenerationProviderVersionInput;
@@ -28,6 +27,7 @@ export type MapGenerationRuntimeDependencies = Readonly<{
   now?: GenerationClock;
   idGenerator?: GenerationIdGenerator;
 }>;
+
 export type MapGenerationWorkerRuntimeDependencies = Omit<
   MapGenerationRuntimeDependencies,
   "rateLimit"
@@ -60,6 +60,7 @@ function runtimeId(): string {
 function runtimeSleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
+
 function runtimeScheduleHeartbeat(
   callback: () => void,
   milliseconds: number,
@@ -75,9 +76,10 @@ export function createMapGenerationRuntime({
   now = runtimeClock,
   idGenerator = runtimeId,
 }: MapGenerationRuntimeDependencies) {
-  const repository = new DrizzleMapGenerationRepository(
+  const versions = runtimeVersions(providerVersions);
+  const store = new DrizzleGenerationTaskStore(
     database,
-    runtimeVersions(providerVersions),
+    versions,
     now,
     idGenerator,
     createGenerationRateLimitReservation(rateLimit),
@@ -85,11 +87,11 @@ export function createMapGenerationRuntime({
   return {
     generation: {
       requestGeneration: (userId: string, topic: string) =>
-        repository.requestGeneration(userId, topic),
+        store.requestGeneration(userId, topic),
       getGeneration: (userId: string, taskId: string) =>
-        repository.getGeneration(userId, taskId),
+        store.getGeneration(userId, taskId),
       readEvents: (userId: string, taskId: string, afterSequence: number) =>
-        repository.readEvents(userId, taskId, afterSequence),
+        store.readEvents(userId, taskId, afterSequence),
     },
   };
 }
@@ -104,16 +106,27 @@ export function createMapGenerationWorkerRuntime({
   sleep = runtimeSleep,
   scheduleHeartbeat = runtimeScheduleHeartbeat,
 }: MapGenerationWorkerRuntimeDependencies) {
-  const repository = new DrizzleMapGenerationRepository(
+  const versions = runtimeVersions(providerVersions);
+  const store = new DrizzleGenerationTaskStore(
     database,
-    runtimeVersions(providerVersions),
+    versions,
     now,
     idGenerator,
   );
-  const worker = new MapGenerationWorker(
-    repository,
+  const publication = new DrizzleGenerationPublication(
+    database,
+    now,
+    idGenerator,
+  );
+  const providers: GenerationProviderBundle = {
+    versions,
     sourceSearch,
     structuredModel,
+  };
+  const worker = new MapGenerationWorker(
+    store,
+    publication,
+    providers,
     now,
     sleep,
     scheduleHeartbeat,

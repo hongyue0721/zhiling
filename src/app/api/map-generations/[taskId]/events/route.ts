@@ -2,7 +2,7 @@ import { generation, identity } from "@/bootstrap/server";
 import type {
   GenerationEvent,
   GenerationEventsResult,
-} from "@/modules/map-generation/public/contracts";
+} from "@/modules/map-generation/public/server";
 
 import {
   encodeSseEvent,
