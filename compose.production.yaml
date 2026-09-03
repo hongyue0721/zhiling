@@ -1,0 +1,104 @@
+# The runtime environment, project name, and data volume are validated as a
+# single deployment identity by ops/lib/production.sh before this file is used.
+name: ${COMPOSE_PROJECT_NAME:?COMPOSE_PROJECT_NAME is required}
+
+# Production and staging both use this file, but never the same identity:
+# production_preflight pins the allowed environment/project/volume triples.
+# Do not combine this file with compose.yaml: the latter intentionally contains
+# local development defaults and published test ports.
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      ZHIJING_ENVIRONMENT: ${ZHIJING_ENVIRONMENT:?ZHIJING_ENVIRONMENT is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    # Deliberately no ports: PostgreSQL is reachable only on this Compose
+    # network. Nginx reaches web through its loopback-only published port.
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+    volumes:
+      - zhijing-postgres-production:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # This is a one-shot service. deploy-production.sh waits for its exit code
+  # before starting web or generation-worker; a non-zero migration leaves the
+  # existing application untouched and aborts the release.
+  migrate:
+    image: ${IMAGE_REPOSITORY:?IMAGE_REPOSITORY is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ZHIJING_ENVIRONMENT: ${ZHIJING_ENVIRONMENT:?ZHIJING_ENVIRONMENT is required}
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    command: ["pnpm", "db:migrate"]
+    restart: "no"
+
+  web:
+    image: ${IMAGE_REPOSITORY:?IMAGE_REPOSITORY is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      ZHIJING_ENVIRONMENT: ${ZHIJING_ENVIRONMENT:?ZHIJING_ENVIRONMENT is required}
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL is required}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:?BETTER_AUTH_TRUSTED_ORIGINS is required}
+      BETTER_AUTH_TRUSTED_PROXIES: ${BETTER_AUTH_TRUSTED_PROXIES:?BETTER_AUTH_TRUSTED_PROXIES is required}
+      RESEND_API_KEY: ${RESEND_API_KEY:?RESEND_API_KEY is required}
+      AUTH_EMAIL_FROM: ${AUTH_EMAIL_FROM:?AUTH_EMAIL_FROM is required}
+      GENERATION_RATE_LIMIT_WINDOW_SECONDS: ${GENERATION_RATE_LIMIT_WINDOW_SECONDS:?GENERATION_RATE_LIMIT_WINDOW_SECONDS is required}
+      GENERATION_RATE_LIMIT_MAX_REQUESTS: ${GENERATION_RATE_LIMIT_MAX_REQUESTS:?GENERATION_RATE_LIMIT_MAX_REQUESTS is required}
+    ports:
+      - "127.0.0.1:${WEB_BIND_PORT:?WEB_BIND_PORT is required}:3000"
+    command: ["pnpm", "start"]
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/featured-learning-maps').then((r) => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  generation-worker:
+    image: ${IMAGE_REPOSITORY:?IMAGE_REPOSITORY is required}:${IMAGE_TAG:?IMAGE_TAG is required}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      ZHIJING_ENVIRONMENT: ${ZHIJING_ENVIRONMENT:?ZHIJING_ENVIRONMENT is required}
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      GENERATION_WORKER_ID: ${GENERATION_WORKER_ID:?GENERATION_WORKER_ID is required}
+      # The provider secret is intentionally present only in this service.
+      ZHIHU_ACCESS_SECRET: ${ZHIHU_ACCESS_SECRET:?ZHIHU_ACCESS_SECRET is required}
+      ZHIHU_MODEL: ${ZHIHU_MODEL:?ZHIHU_MODEL is required}
+      ZHIHU_SOURCE_TIMEOUT_MS: ${ZHIHU_SOURCE_TIMEOUT_MS:?ZHIHU_SOURCE_TIMEOUT_MS is required}
+      ZHIHU_MODEL_TIMEOUT_MS: ${ZHIHU_MODEL_TIMEOUT_MS:?ZHIHU_MODEL_TIMEOUT_MS is required}
+    command: ["pnpm", "worker:generation"]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+
+volumes:
+  zhijing-postgres-production:
+    name: ${POSTGRES_VOLUME_NAME:?POSTGRES_VOLUME_NAME is required}
+    external: true

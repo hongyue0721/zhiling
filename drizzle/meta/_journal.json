@@ -36,6 +36,20 @@
       "when": 1788351840697,
       "tag": "0004_generation",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788353000000,
+      "tag": "0005_assessment_matching_idempotency",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788354000000,
+      "tag": "0006_generation_rate_limit",
+      "breakpoints": true
     }
   ]
 }

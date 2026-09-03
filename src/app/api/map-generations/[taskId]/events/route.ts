@@ -235,6 +235,18 @@ export async function GET(
     if (!result) {
       return notFoundError();
     }
+    if (
+      result.kind === "snapshot" &&
+      parsedLastEventId > result.snapshot.sequence
+    ) {
+      return validationError([
+        {
+          path: ["headers", "last-event-id"],
+          code: "out_of_range",
+          message: "Last-Event-ID 不能晚于任务当前序列",
+        },
+      ]);
+    }
 
     return new Response(
       createEventStream(

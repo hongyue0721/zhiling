@@ -255,6 +255,23 @@ export const generationCache = pgTable(
     index("generation_cache_version_idx").on(table.versionId),
   ],
 );
+ 
+export const generationRateLimit = pgTable(
+  "generation_rate_limit",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    windowStartedAt: timestamp("window_started_at").notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+  },
+  (table) => [
+    check(
+      "generation_rate_limit_request_count_check",
+      sql`${table.requestCount} >= 0`,
+    ),
+  ],
+);
 
 export const generationSchema = {
   generationTask,
@@ -262,4 +279,5 @@ export const generationSchema = {
   generationCheckpoint,
   generationEvent,
   generationCache,
+  generationRateLimit,
 };

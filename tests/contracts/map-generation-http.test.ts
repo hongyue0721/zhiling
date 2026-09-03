@@ -169,4 +169,80 @@ describe("map generation HTTP contract", () => {
     expect(body).not.toContain("https://private.example");
     expect(runtime.readEvents).toHaveBeenCalledWith("user-1", "task-1", 7);
   });
+
+  it("closes with a safe succeeded snapshot at the exact terminal cursor", async () => {
+    runtime.readEvents.mockResolvedValue({
+      kind: "snapshot",
+      snapshot: {
+        ...queuedSnapshot,
+        status: "succeeded",
+        stage: "publishing",
+        sequence: 8,
+        result: {
+          mapId: "map-1",
+          versionId: "version-1",
+          learningRelationshipId: "relationship-for-user-1",
+        },
+        completedAt: "2026-07-16T00:00:08.000Z",
+      },
+      events: [],
+    });
+
+    const response = await streamGenerationEvents(
+      new Request("https://example.test/events", {
+        headers: { "last-event-id": "8" },
+      }),
+      { params: Promise.resolve({ taskId: "task-1" }) },
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain("id: 8");
+    expect(body).toContain("event: snapshot");
+    expect(body).toContain('"status":"succeeded"');
+    expect(body).toContain(
+      '"learningRelationshipId":"relationship-for-user-1"',
+    );
+    expect(body).not.toContain("candidate");
+    expect(body).not.toContain("https://");
+    expect(runtime.readEvents).toHaveBeenCalledWith("user-1", "task-1", 8);
+    expect(runtime.readEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes with a safe failed snapshot at the exact terminal cursor", async () => {
+    runtime.readEvents.mockResolvedValue({
+      kind: "snapshot",
+      snapshot: {
+        ...queuedSnapshot,
+        status: "failed",
+        stage: "planning",
+        sequence: 8,
+        result: null,
+        failure: {
+          code: "candidate_invalid",
+          retryable: false,
+        },
+        completedAt: "2026-07-16T00:00:08.000Z",
+      },
+      events: [],
+    });
+
+    const response = await streamGenerationEvents(
+      new Request("https://example.test/events", {
+        headers: { "last-event-id": "8" },
+      }),
+      { params: Promise.resolve({ taskId: "task-1" }) },
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain("id: 8");
+    expect(body).toContain("event: snapshot");
+    expect(body).toContain('"status":"failed"');
+    expect(body).toContain('"code":"candidate_invalid"');
+    expect(body).not.toContain("candidate-data");
+    expect(body).not.toContain("https://");
+    expect(runtime.readEvents).toHaveBeenCalledWith("user-1", "task-1", 8);
+    expect(runtime.readEvents).toHaveBeenCalledTimes(1);
+  });
 });

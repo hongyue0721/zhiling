@@ -1,6 +1,6 @@
 export const EXTERNAL_PROVIDER_VERSIONS = Object.freeze({
   sourceAdapterVersion: "zhihu-http-2026-07-16-v1",
-  modelAdapterVersion: "zhida-thinking-1p5-json-2026-07-16-v1",
+  modelAdapterVersion: "zhida-thinking-1p5-json-2026-07-16-v2",
 } as const);
 
 export type ExternalProviderVersions = typeof EXTERNAL_PROVIDER_VERSIONS;
@@ -131,14 +131,18 @@ export type ExtractViewpointsResult = Readonly<{
 export type GeneratedAssessment = Readonly<{
   questionId: string;
   nodeId: string;
-  type: "single_choice" | "multiple_choice";
+  type: "single_choice" | "multiple_choice" | "matching" | "opinion_analysis";
   prompt: string;
   explanation: string;
   options: readonly Readonly<{
     optionId: string;
     label: string;
   }>[];
-  correctOptionIds: readonly string[];
+  correctOptionIds?: readonly string[];
+  correctMatches?: readonly Readonly<{
+    leftOptionId: string;
+    rightOptionId: string;
+  }>[];
   sourceIds: readonly string[];
 }>;
 

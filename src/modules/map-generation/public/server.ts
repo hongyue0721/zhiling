@@ -21,21 +21,25 @@ import type {
   GenerationSleeper,
   MapGenerationDatabase,
 } from "../infrastructure/drizzle-map-generation";
+import type { GenerationRateLimitPolicy } from "../infrastructure/rate-limit";
 
 export type MapGenerationRuntimeDependencies = Readonly<{
   database: MapGenerationDatabase;
   providerVersions: GenerationProviderVersionInput;
+  rateLimit: GenerationRateLimitPolicy;
   now?: GenerationClock;
   idGenerator?: GenerationIdGenerator;
 }>;
-export type MapGenerationWorkerRuntimeDependencies =
-  MapGenerationRuntimeDependencies &
-    Readonly<{
-      sourceSearch: SourceSearchAccess;
-      structuredModel: StructuredModelAccess;
-      sleep?: GenerationSleeper;
-      scheduleHeartbeat?: GenerationHeartbeatScheduler;
-    }>;
+export type MapGenerationWorkerRuntimeDependencies = Omit<
+  MapGenerationRuntimeDependencies,
+  "rateLimit"
+> &
+  Readonly<{
+    sourceSearch: SourceSearchAccess;
+    structuredModel: StructuredModelAccess;
+    sleep?: GenerationSleeper;
+    scheduleHeartbeat?: GenerationHeartbeatScheduler;
+  }>;
 
 export type MapGenerationRuntime = Readonly<{
   generation: GenerationAccess;
@@ -99,3 +103,8 @@ export type {
   StructuredModelAccess,
   StructuredViewpoint,
 } from "./contracts";
+
+export {
+  readGenerationEnvironment,
+  type GenerationEnvironment,
+} from "../infrastructure/config";

@@ -7,7 +7,7 @@ info:
     versioned separately and are not duplicated here.
 tags:
   - name: Featured learning maps
-    description: Authenticated read access to current published featured map versions.
+    description: Authenticated read access to current published featured map versions and account-owned joins.
   - name: Learning relationships
     description: Account-owned access to an immutable learning-map version.
   - name: Map generations
@@ -68,6 +68,63 @@ paths:
           $ref: "#/components/responses/ResourceNotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/featured-learning-maps/{mapId}/learning-relationship:
+    post:
+      operationId: establishFeaturedLearningRelationship
+      tags:
+        - Featured learning maps
+      summary: 建立或恢复精选地图学习关系
+      description: >-
+        Atomically resolves the current published version selected by the featured
+        pointer and binds the current account to its published question set. The
+        request has no body. Missing, non-featured, unpublished, or question-set
+        unavailable maps are all reported as resource_not_found.
+      security:
+        - betterAuthSession: []
+      parameters:
+        - $ref: "#/components/parameters/MapId"
+      responses:
+        "200":
+          description: 当前账户对当前精选版本的学习关系
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRelationship"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ResourceNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/learning-relationships:
+    get:
+      operationId: listLearningRelationships
+      tags:
+        - Learning relationships
+      summary: 读取当前账户学习关系列表
+      description: >-
+        Returns relationship summaries owned by the authenticated account, ordered
+        stably by relationship creation order. The response contains no user ID,
+        question-set ID, timestamps, or other internal persistence fields.
+      security:
+        - betterAuthSession: []
+      responses:
+        "200":
+          description: 当前账户的学习关系摘要列表
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningRelationshipList"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/learning-relationships/{learningRelationshipId}/map:
     get:
       operationId: getLearningRelationshipMap
@@ -76,8 +133,8 @@ paths:
       summary: 读取当前账户学习关系绑定的地图
       description: >-
         Returns the immutable published map version bound to this account-owned
-        learning relationship. The relationship is established by a successful
-        generation or cache hit; this endpoint never joins a map by ID.
+        learning relationship. The relationship may come from a featured-map join,
+        successful generation, or cache hit; this endpoint never joins a map by ID.
       security:
         - betterAuthSession: []
       parameters:
@@ -136,8 +193,10 @@ paths:
       summary: 提交节点验证答案
       description: >-
         Judges answers on the server, records one immutable attempt and updates the
-        relationship-scoped best score in one transaction. Reusing an
-        Idempotency-Key returns the original result without creating another attempt.
+        relationship-scoped best score in one transaction. The idempotency scope is
+        learningRelationshipId + questionSetId + nodeId + Idempotency-Key; reusing
+        an Idempotency-Key in that scope returns the original result without creating
+        another attempt. Empty or malformed JSON is a 400 invalid_request.
       security:
         - betterAuthSession: []
       parameters:
@@ -260,6 +319,8 @@ paths:
                 $ref: "#/components/schemas/MapGenerationRequestResult"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "401":
           $ref: "#/components/responses/AuthenticationRequired"
         "500":
@@ -296,17 +357,16 @@ paths:
           $ref: "#/components/responses/InternalError"
   /api/map-generations/{taskId}/events:
     get:
-      operationId: streamMapGenerationEvents
-      tags:
-        - Map generations
-      summary: 以 SSE 订阅可恢复的生成进度
       description: >-
         Revalidates the formal Session and task participation on every connection.
         Last-Event-ID is a persisted sequence cursor. If retained history cannot
-        satisfy the cursor, the first event is a complete snapshot event followed
-        by retained events. Only safe status, stage, result identifiers and stable
-        failure categories are emitted; candidate content and provider details are
-        never sent. A succeeded or failed terminal event closes the stream.
+        satisfy the cursor, the first event is a complete authorized snapshot event
+        followed by retained events. A cursor later than the current task sequence
+        is rejected with 400. Only safe status, stage, result identifiers and stable
+        failure categories are emitted; participant-specific relationship identifiers
+        are absent from task-wide terminal events. After a succeeded or failed
+        terminal event, clients fetch the authorized task snapshot before acting;
+        the stream then closes.
       security:
         - betterAuthSession: []
       parameters:
@@ -447,6 +507,64 @@ components:
           type: integer
           minimum: 5
           maximum: 7
+    LearningRelationshipList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearningRelationshipSummary"
+    LearningRelationshipSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - learningRelationshipId
+        - mapId
+        - versionId
+        - title
+        - summary
+      properties:
+        learningRelationshipId:
+          type: string
+          minLength: 1
+          description: Opaque relationship ID owned by the current account.
+        mapId:
+          type: string
+          minLength: 1
+          description: Stable learning-map identity.
+        versionId:
+          type: string
+          minLength: 1
+          description: Immutable map version pinned by this relationship.
+        title:
+          type: string
+          minLength: 1
+        summary:
+          type: string
+          minLength: 1
+    LearningRelationship:
+      type: object
+      additionalProperties: false
+      required:
+        - learningRelationshipId
+        - mapId
+        - versionId
+      properties:
+        learningRelationshipId:
+          type: string
+          minLength: 1
+          description: Opaque relationship ID owned by the current account.
+        mapId:
+          type: string
+          minLength: 1
+          description: Stable learning-map identity.
+        versionId:
+          type: string
+          minLength: 1
+          description: Immutable map version pinned by this relationship.
     LearningMapDetail:
       type: object
       additionalProperties: false
@@ -680,6 +798,12 @@ components:
         optionId:
           type: string
           minLength: 1
+        side:
+          type: string
+          enum:
+            - left
+            - right
+          description: Matching side derived from the published answer facts; absent for other question types.
         label:
           type: string
           minLength: 1
@@ -1225,45 +1349,42 @@ components:
         data:
           $ref: "#/components/schemas/GenerationSseEventData"
     GenerationSseEventData:
+      oneOf:
+        - $ref: "#/components/schemas/GenerationSseSnapshotData"
+        - $ref: "#/components/schemas/GenerationSseProgressData"
+        - $ref: "#/components/schemas/GenerationSseSucceededData"
+        - $ref: "#/components/schemas/GenerationSseFailedData"
+      description: >-
+        Safe state projection only. The event type determines which variant is
+        valid. Participant-specific relationship identifiers are never present in
+        succeeded or failed task-wide events; retrieve the authorized snapshot
+        after a terminal event.
+    GenerationSseSnapshotData:
+      oneOf:
+        - $ref: "#/components/schemas/GenerationSseSnapshotActiveData"
+        - $ref: "#/components/schemas/GenerationSseSnapshotSucceededData"
+        - $ref: "#/components/schemas/GenerationSseSnapshotFailedData"
+    GenerationSseSnapshotCommon:
       type: object
       additionalProperties: false
-      description: >-
-        Safe state projection only. Candidate nodes, question bodies, source URLs,
-        provider response bodies and participant identities are not representable.
+      required:
+        - taskId
+        - status
+        - stage
+        - sequence
+        - createdAt
+        - updatedAt
+        - deadlineAt
+        - result
+        - failure
       properties:
         taskId:
           type: string
           minLength: 1
         status:
           type: string
-          enum:
-            - queued
-            - normalizing
-            - cache_lookup
-            - planning
-            - searching
-            - structuring
-            - supplementing
-            - extracting
-            - assessing
-            - validating
-            - publishing
-            - succeeded
-            - failed
         stage:
           type: string
-          enum:
-            - queued
-            - normalizing
-            - cache_lookup
-            - planning
-            - searching
-            - structuring
-            - supplementing
-            - extracting
-            - assessing
-            - validating
-            - publishing
         sequence:
           type: integer
           minimum: 0
@@ -1284,6 +1405,190 @@ components:
           oneOf:
             - $ref: "#/components/schemas/GenerationFailure"
             - type: "null"
+    GenerationSseSnapshotActiveData:
+      allOf:
+        - $ref: "#/components/schemas/GenerationSseSnapshotCommon"
+        - type: object
+          required:
+            - status
+            - stage
+          properties:
+            status:
+              type: string
+              enum:
+                - queued
+                - normalizing
+                - cache_lookup
+                - planning
+                - searching
+                - structuring
+                - supplementing
+                - extracting
+                - assessing
+                - validating
+                - publishing
+            stage:
+              type: string
+              enum:
+                - queued
+                - normalizing
+                - cache_lookup
+                - planning
+                - searching
+                - structuring
+                - supplementing
+                - extracting
+                - assessing
+                - validating
+                - publishing
+            result:
+              type: "null"
+            failure:
+              type: "null"
+          description: Non-terminal snapshot; result and failure are null.
+    GenerationSseSnapshotSucceededData:
+      allOf:
+        - $ref: "#/components/schemas/GenerationSseSnapshotCommon"
+        - type: object
+          required:
+            - status
+            - stage
+            - result
+            - failure
+          properties:
+            status:
+              type: string
+              const: succeeded
+            stage:
+              type: string
+              const: publishing
+            result:
+              $ref: "#/components/schemas/GenerationResult"
+            failure:
+              type: "null"
+          description: Terminal snapshot with the authorized participant result.
+    GenerationSseSnapshotFailedData:
+      allOf:
+        - $ref: "#/components/schemas/GenerationSseSnapshotCommon"
+        - type: object
+          required:
+            - status
+            - failure
+          properties:
+            status:
+              type: string
+              const: failed
+            stage:
+              type: string
+              enum:
+                - queued
+                - normalizing
+                - cache_lookup
+                - planning
+                - searching
+                - structuring
+                - supplementing
+                - extracting
+                - assessing
+                - validating
+                - publishing
+            result:
+              type: "null"
+            failure:
+              $ref: "#/components/schemas/GenerationFailure"
+          description: Terminal snapshot with an explicit failure and retryability.
+    GenerationSseProgressData:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - stage
+      properties:
+        status:
+          type: string
+          enum:
+            - queued
+            - normalizing
+            - cache_lookup
+            - planning
+            - searching
+            - structuring
+            - supplementing
+            - extracting
+            - assessing
+            - validating
+            - publishing
+        stage:
+          type: string
+          enum:
+            - queued
+            - normalizing
+            - cache_lookup
+            - planning
+            - searching
+            - structuring
+            - supplementing
+            - extracting
+            - assessing
+            - validating
+            - publishing
+    GenerationSseSucceededData:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - mapId
+        - versionId
+      properties:
+        status:
+          type: string
+          const: succeeded
+        mapId:
+          type: string
+          minLength: 1
+        versionId:
+          type: string
+          minLength: 1
+      description: Task-wide terminal event; no participant relationship identifier is broadcast.
+    GenerationSseFailedData:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - stage
+        - code
+        - failure
+      properties:
+        status:
+          type: string
+          const: failed
+        stage:
+          type: string
+          enum:
+            - queued
+            - normalizing
+            - cache_lookup
+            - planning
+            - searching
+            - structuring
+            - supplementing
+            - extracting
+            - assessing
+            - validating
+            - publishing
+        code:
+          type: string
+          enum:
+            - invalid_topic
+            - source_unavailable
+            - source_insufficient
+            - model_unavailable
+            - candidate_invalid
+            - generation_timeout
+            - internal_failure
+        failure:
+          $ref: "#/components/schemas/GenerationFailure"
+      description: Task-wide terminal event; retrieve the authorized snapshot for participant state.
     GenerationSseStream:
       type: string
       description: >-
@@ -1337,7 +1642,7 @@ components:
       properties:
         path:
           type: string
-          pattern: "^/(?:[^~/]|~0|~1)*(?:/(?:[^~/]|~0|~1)*)*$"
+          pattern: "^(?:|/(?:[^~/]|~0|~1)*(?:/(?:[^~/]|~0|~1)*)*)$"
           examples:
             - /topic
         code:

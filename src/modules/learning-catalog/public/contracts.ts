@@ -46,3 +46,11 @@ export type LearningRelationship = Readonly<{
   mapId: string;
   versionId: string;
 }>;
+
+export type LearningRelationshipSummary = Readonly<{
+  learningRelationshipId: string;
+  mapId: string;
+  versionId: string;
+  title: string;
+  summary: string;
+}>;

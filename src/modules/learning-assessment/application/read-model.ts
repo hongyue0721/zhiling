@@ -1,5 +1,6 @@
 import type {
   AssessmentAnswerSubmission,
+  AssessmentQuestionOption,
   AssessmentQuestionType,
   LearningAssessmentQuestion,
   LearningAssessmentQuestionSetPublication,
@@ -10,10 +11,7 @@ export type AssessmentQuestionPrompt = Readonly<{
   nodeId: string;
   type: AssessmentQuestionType;
   prompt: string;
-  options: readonly Readonly<{
-    optionId: string;
-    label: string;
-  }>[];
+  options: readonly AssessmentQuestionOption[];
   sourceIds: readonly string[];
 }>;
 

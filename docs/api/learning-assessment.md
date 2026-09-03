@@ -11,11 +11,10 @@ D2 将题目、判题和节点进度绑定在 `learningRelationshipId` 上。地
 成功响应 `200` 的字段包括：
 
 - `learningRelationshipId`、`versionId`、`questionSetId` 和 `nodeId`；
-- 该节点 2–3 道题的 `questionId`、题型、题干、选项和来源 ID。
+- 该节点 2–3 道题的 `questionId`、题型、题干、选项和来源 ID；
+- `matching` 题的每个选项还包含服务端从发布时 `correctMatches` 推导并持久化的 `side`（`left` 或 `right`）。
 
-题面 DTO **不包含**正确选项、匹配标准答案、评分规则或解释。题目类型是 `single_choice`、`multiple_choice`、`matching`、`opinion_analysis`。
-
-关系不存在、不属于当前账户、版本未发布或没有已发布题目集时统一返回 `404 resource_not_found`，不暴露其他账户资源是否存在。
+题面 DTO **不包含**正确选项、匹配标准答案、评分规则或解释。题目类型是 `single_choice`、`multiple_choice`、`matching`、`opinion_analysis`。匹配题只接受发布时每个选项恰好归属一个互不相交的左右侧；不完整或交叉的配对不能发布。
 
 ## 提交答案
 
@@ -33,7 +32,7 @@ D2 将题目、判题和节点进度绑定在 `learningRelationshipId` 上。地
     { "questionId": "q_single", "selectedOptionIds": ["option_a"] },
     {
       "questionId": "q_matching",
-      "matches": [{ "leftOptionId": "left_a", "rightOptionId": "right_b" }]
+      "matches": [{ "leftOptionId": "concept_a", "rightOptionId": "description_b" }]
     }
   ]
 }
@@ -49,15 +48,14 @@ D2 将题目、判题和节点进度绑定在 `learningRelationshipId` 上。地
 - 多选为 `max(0, (选中正确项数 - 选中错误项数) / 正确项总数)`，转换为 0–10000 基点并向下取整；
 - 节点分数是题目基点算术平均并向下取整；最佳分数达到 `8000`（80%）时完成。
 
-同一 `learningRelationshipId`、题目集和 `Idempotency-Key` 再次提交返回首次提交的完全相同结果，不产生第二次尝试。不同键不限重试；最佳分数只取最大值，完成状态一旦成立不能回退。
+同一 `learningRelationshipId`、题目集、节点和 `Idempotency-Key` 再次提交返回首次提交的完全相同结果，不产生第二次尝试。相同关系、题目集和键在不同节点分别建立尝试，响应始终对应请求节点。不同键不限重试；最佳分数只取最大值，完成状态一旦成立不能回退。
 
 失败响应：
 
-- `400 invalid_request`：缺少幂等键或请求体不符合题型结构；
+- `400 invalid_request`：缺少幂等键、请求体为空或不是合法 JSON，或请求体不符合题型结构；
 - `401 authentication_required`：没有有效正式身份；
 - `404 resource_not_found`：关系、节点或固定题目集不可用；
 - `500 internal_error`：服务端无法完成事务。
-
 所有响应均为 `Cache-Control: private, no-store`。
 
 ## 读取进度和历史摘要

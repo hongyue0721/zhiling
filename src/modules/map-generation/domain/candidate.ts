@@ -357,11 +357,18 @@ export function validateGenerationCandidate(
       throw new GenerationCandidateValidationError("question_fields");
     }
     if (question.type === "matching") {
+      const leftOptionIds = correctMatches.map(({ leftOptionId }) => leftOptionId);
+      const rightOptionIds = correctMatches.map(
+        ({ rightOptionId }) => rightOptionId,
+      );
+      const rightOptionIdSet = new Set(rightOptionIds);
       if (
         correctOptionIds.length > 0 ||
         correctMatches.length === 0 ||
-        !unique(correctMatches.map(({ leftOptionId }) => leftOptionId)) ||
-        !unique(correctMatches.map(({ rightOptionId }) => rightOptionId)) ||
+        !unique(leftOptionIds) ||
+        !unique(rightOptionIds) ||
+        leftOptionIds.length + rightOptionIds.length !== options.length ||
+        leftOptionIds.some((optionId) => rightOptionIdSet.has(optionId)) ||
         correctMatches.some(
           ({ leftOptionId, rightOptionId }) =>
             !options.includes(leftOptionId) ||

@@ -84,6 +84,45 @@ describe("learning assessment HTTP contract", () => {
       "node-1",
     );
   });
+  it("returns matching option sides without exposing pairing answers", async () => {
+    const assessment = {
+      learningRelationshipId: "learning-1",
+      questionSetId: "questions-1",
+      versionId: "version-1",
+      nodeId: "node-1",
+      questions: [
+        {
+          questionId: "matching-1",
+          nodeId: "node-1",
+          type: "matching",
+          prompt: "Match concepts",
+          options: [
+            { optionId: "concept-a", label: "Concept A", side: "left" },
+            {
+              optionId: "description-a",
+              label: "Description A",
+              side: "right",
+            },
+          ],
+          sourceIds: ["source-1"],
+        },
+      ],
+    };
+    runtime.getNodeAssessment.mockResolvedValue(assessment);
+
+    const response = await getNodeAssessment(
+      new Request(
+        "http://localhost/api/learning-relationships/learning-1/nodes/node-1/assessment",
+      ),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toEqual(assessment);
+    expect(body.questions[0].options).toEqual(assessment.questions[0].options);
+    expect(body.questions[0]).not.toHaveProperty("correctMatches");
+  });
 
   it("submits answers with the idempotency key and returns server scoring", async () => {
     const result = {
@@ -133,6 +172,29 @@ describe("learning assessment HTTP contract", () => {
       "submission-1",
       answers,
     );
+  });
+  it("returns invalid_request for malformed and empty JSON bodies", async () => {
+    for (const body of ["{", ""]) {
+      const response = await submitNodeAssessment(
+        new Request(
+          "http://localhost/api/learning-relationships/learning-1/nodes/node-1/assessment",
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "Idempotency-Key": "submission-malformed",
+            },
+            body,
+          },
+        ),
+        context,
+      );
+      const payload = (await response.json()) as { error: { code: string } };
+
+      expect(response.status).toBe(400);
+      expect(payload.error.code).toBe("invalid_request");
+    }
+    expect(runtime.submit).not.toHaveBeenCalled();
   });
 
   it("rejects a submission without an idempotency key before judging", async () => {

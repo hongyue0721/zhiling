@@ -33,7 +33,7 @@ Route Handler 只允许下表中的方法与路径进入 Better Auth `1.7.2`；�
 | `GET /api/auth/list-sessions` | 列出当前账户 Session | 只供当前已登录账户查看自己的 Session |
 | `POST /api/auth/revoke-session` | 按不透明 Token 撤销自己的 Session | 撤销后下一次校验立即失效 |
 
-其他 Better Auth 路径或错误方法在进入框架前统一返回空 HTTP `404`。一期因此不暴露密码恢复、修改密码、修改邮箱、删除账户或未确认插件能力；产品界面不得调用这些路径。新增能力必须先更新决策和允许列表。
+只有 `GET`、`POST` 会从 Next.js Route Handler 导出；`PUT`、`PATCH`、`DELETE` 等不支持的 HTTP 方法由 Next.js 按 Route Handler 语义返回 `405 Method Not Allowed`，不由知径伪造空 `404`。对于已导出的 `GET`/`POST`，允许列表之外的 Better Auth 路径仍在进入框架前返回空 HTTP `404`。一期因此不暴露密码恢复、修改密码、修改邮箱、删除账户或未确认插件能力；产品界面不得调用这些路径。新增能力必须先更新决策和允许列表。
 
 ## 邮箱验证与投递语义
 

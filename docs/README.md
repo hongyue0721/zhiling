@@ -2,6 +2,8 @@
 
 文档与代码具有同等交付地位。产品事实、架构决策、接口契约和实现必须保持一致；发生冲突时，不应自行选择方便实现的一方，而应先修正文档或决策。
 
+当前用户闭环的实现与证据状态：认证、精选加入/关系恢复、正式学习 UI、四题型答题和生成任务界面已落地；Issue #14 仍缺真实供应方成功样本、生产精选审核、VPS 运维演练和全量质量门禁。详见 [Issue #14 验收证据](development/issue-14-acceptance.md)。本地 E2E fixture 仅用于测试，不是生产精选或在线生成证据。
+
 ## 事实层级
 
 1. [`PROJECT_GOAL.md`](../PROJECT_GOAL.md)：产品定位、一期范围、技术方向和成功标准；
@@ -33,6 +35,7 @@
 - 分工顺序：[工作包](development/work-packages.md)
 - 生成 Worker 部署：[Worker 与 VPS Docker 部署](development/generation-worker-deployment.md)
 - 任务队列：[协作任务队列](development/task-board.md)
+- Issue #14 验收：[用户闭环验收证据](development/issue-14-acceptance.md)
 - 就绪审计：[协作就绪清单](development/collaboration-readiness.md)
 - 并行交接：[并行工作与交接协议](development/parallel-work.md)
 - 文档维护：[文档治理规则](development/documentation-policy.md)

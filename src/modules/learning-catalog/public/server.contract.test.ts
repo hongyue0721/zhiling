@@ -2,18 +2,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const internal = vi.hoisted(() => ({
   listFeatured: vi.fn(),
+  listLearningRelationships: vi.fn(),
   findFeatured: vi.fn(),
   findByLearningRelationship: vi.fn(),
   establishLearningRelationship: vi.fn(),
+  establishFeaturedLearningRelationship: vi.fn(),
 }));
 
 vi.mock("../infrastructure/runtime", () => ({
   createLearningCatalogRuntime: () => ({
     catalog: {
       listFeatured: internal.listFeatured,
+      listLearningRelationships: internal.listLearningRelationships,
       findFeatured: internal.findFeatured,
       findByLearningRelationship: internal.findByLearningRelationship,
       establishLearningRelationship: internal.establishLearningRelationship,
+      establishFeaturedLearningRelationship:
+        internal.establishFeaturedLearningRelationship,
     },
   }),
 }));
@@ -22,9 +27,11 @@ import { createLearningCatalogRuntime } from "./server";
 
 beforeEach(() => {
   internal.listFeatured.mockReset();
+  internal.listLearningRelationships.mockReset();
   internal.findFeatured.mockReset();
   internal.findByLearningRelationship.mockReset();
   internal.establishLearningRelationship.mockReset();
+  internal.establishFeaturedLearningRelationship.mockReset();
 });
 
 describe("learning catalog public server boundary", () => {
@@ -78,6 +85,23 @@ describe("learning catalog public server boundary", () => {
       mapId: "map-1",
       versionId: "version-1",
     });
+
+    const internalRelationshipSummary = {
+      learningRelationshipId: "learning-1",
+      mapId: "map-1",
+      versionId: "version-1",
+      title: "Map",
+      summary: "Summary",
+    };
+    internal.listLearningRelationships.mockResolvedValue([
+      internalRelationshipSummary,
+    ]);
+    internal.establishFeaturedLearningRelationship.mockResolvedValue({
+      learningRelationshipId: "learning-1",
+      mapId: "map-1",
+      versionId: "version-1",
+      questionSetId: "question-set-1",
+    });
     const runtime = createLearningCatalogRuntime({
       database: undefined as never,
     });
@@ -93,6 +117,13 @@ describe("learning catalog public server boundary", () => {
       "version-1",
     );
 
+    const relationshipSummaries =
+      await runtime.catalog.listLearningRelationships("user-1");
+    const featuredRelationship =
+      await runtime.catalog.establishFeaturedLearningRelationship(
+        "user-1",
+        "map-1",
+      );
     expect(summaries[0]).toEqual(internalSummary);
     expect(summaries[0]).not.toBe(internalSummary);
     expect(detail).toEqual(internalDetail);
@@ -100,6 +131,13 @@ describe("learning catalog public server boundary", () => {
     expect(relationshipDetail).toEqual(internalDetail);
     expect(relationshipDetail).not.toBe(internalDetail);
     expect(relationship).toEqual({
+      learningRelationshipId: "learning-1",
+      mapId: "map-1",
+      versionId: "version-1",
+    });
+    expect(relationshipSummaries[0]).toEqual(internalRelationshipSummary);
+    expect(relationshipSummaries[0]).not.toBe(internalRelationshipSummary);
+    expect(featuredRelationship).toEqual({
       learningRelationshipId: "learning-1",
       mapId: "map-1",
       versionId: "version-1",
@@ -115,5 +153,22 @@ describe("learning catalog public server boundary", () => {
 
     (detail?.nodes[0]?.sourceIds as string[]).push("public-only");
     expect(internalDetail.nodes[0]?.sourceIds).toEqual(["source-1"]);
+  });
+
+  it("keeps an unavailable featured relationship as a public null result", async () => {
+    internal.establishFeaturedLearningRelationship.mockResolvedValue(null);
+    const runtime = createLearningCatalogRuntime({
+      database: undefined as never,
+    });
+
+    await expect(
+      runtime.catalog.establishFeaturedLearningRelationship(
+        "user-1",
+        "map-without-complete-assessment",
+      ),
+    ).resolves.toBeNull();
+    expect(
+      internal.establishFeaturedLearningRelationship,
+    ).toHaveBeenCalledWith("user-1", "map-without-complete-assessment");
   });
 });
