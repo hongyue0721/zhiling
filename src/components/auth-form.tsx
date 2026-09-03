@@ -13,6 +13,7 @@ type AuthMode = "sign-in" | "sign-up" | "verify";
 
 type AuthFormProps = Readonly<{
   initialMode?: AuthMode;
+  registrationEnabled: boolean;
   verified?: boolean;
   nextPath?: string;
 }>;
@@ -29,6 +30,9 @@ function authErrorMessage(error: unknown): string {
     return "网络连接失败，请稍后重试。";
   }
 
+  if (error.code === "REGISTRATION_DISABLED") {
+    return "本地演示只开放固定账号登录，不会注册账户或发送验证邮件。";
+  }
   if (error.code === "EMAIL_NOT_VERIFIED" || error.status === 403) {
     return "邮箱尚未验证。请先检查邮箱，或使用下方按钮重新发送验证邮件。";
   }
@@ -56,12 +60,14 @@ function safeEmail(value: string): string {
 
 export function AuthForm({
   initialMode = "sign-in",
+  registrationEnabled,
   verified = false,
   nextPath = "/",
 }: AuthFormProps) {
   const router = useRouter();
+  const allowedInitialMode = registrationEnabled ? initialMode : "sign-in";
   const [mode, setMode] = useState<AuthMode>(
-    verified ? "sign-in" : initialMode,
+    verified ? "sign-in" : allowedInitialMode,
   );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -73,6 +79,9 @@ export function AuthForm({
   const [isPending, setIsPending] = useState(false);
 
   function changeMode(nextMode: AuthMode) {
+    if (!registrationEnabled && nextMode !== "sign-in") {
+      return;
+    }
     setMode(nextMode);
     setError(null);
     setMessage(null);
@@ -91,6 +100,10 @@ export function AuthForm({
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!registrationEnabled && mode !== "sign-in") {
+      setError("本地演示只开放固定账号登录，不会注册账户或发送验证邮件。");
+      return;
+    }
     setError(null);
     setMessage(null);
 
@@ -190,8 +203,13 @@ export function AuthForm({
             : "真实来源、可验证的节点，以及只属于你的学习记录。"}
         </p>
       </div>
+      {!registrationEnabled ? (
+        <p className="form-message form-message-info" role="status">
+          本地演示只开放固定账号登录，不会注册账户或发送验证邮件。
+        </p>
+      ) : null}
 
-      {!isVerify ? (
+      {!isVerify && registrationEnabled ? (
         <div className="auth-tabs" role="tablist" aria-label="认证方式">
           <button
             type="button"
@@ -309,10 +327,7 @@ export function AuthForm({
   );
 }
 
-async function postAuth(
-  path: string,
-  body: AuthRequestBody,
-): Promise<void> {
+async function postAuth(path: string, body: AuthRequestBody): Promise<void> {
   let response: Response;
   try {
     response = await fetch(path, {

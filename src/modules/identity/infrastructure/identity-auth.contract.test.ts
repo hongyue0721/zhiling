@@ -8,7 +8,7 @@ import { RecordingVerificationEmailSender } from "./recording-verification-email
 const { database, pool } = createPostgresDatabase(
   "postgresql://unused:unused@127.0.0.1:1/unused",
 );
-const auth = createIdentityAuth({
+const identityAuthOptions = {
   database,
   emailSender: new RecordingVerificationEmailSender(),
   secret: "contract-secret-that-is-at-least-32-characters",
@@ -16,7 +16,8 @@ const auth = createIdentityAuth({
   trustedOrigins: ["http://localhost:3000"],
   trustedProxies: ["127.0.0.1", "10.0.0.0/24"],
   secureCookies: false,
-});
+} as const;
+const auth = createIdentityAuth(identityAuthOptions);
 
 afterAll(async () => {
   await pool.end();
@@ -72,5 +73,17 @@ describe("Better Auth identity policy", () => {
       "127.0.0.1",
       "10.0.0.0/24",
     ]);
+  });
+
+  it("disables rate limiting only when an internal caller explicitly requests it", () => {
+    const unthrottledAuth = createIdentityAuth({
+      ...identityAuthOptions,
+      rateLimitEnabled: false,
+    });
+
+    expect(unthrottledAuth.options.rateLimit).toMatchObject({
+      enabled: false,
+      storage: "database",
+    });
   });
 });

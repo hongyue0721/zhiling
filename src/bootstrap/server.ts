@@ -33,6 +33,7 @@ import { createPostgresDatabase } from "@/platform/database/postgres";
 export type ServerRuntime = Readonly<{
   generation: GenerationAccess;
   generationRequestsEnabled: boolean;
+  registrationEnabled: boolean;
   identity: IdentityAccess;
   authHandlers: AuthRouteHandlers;
   learningCatalog: LearningCatalogAccess;
@@ -46,6 +47,7 @@ let serverRuntime: ServerRuntime | undefined;
 function createServerRuntime(): ServerRuntime {
   const environment = readIdentityEnvironment();
   const generationEnvironment = readGenerationEnvironment();
+  const localDemoMode = process.env.ZHIJING_DEMO_MODE === "1";
   const { database } = createPostgresDatabase(environment.databaseUrl);
   const identityRuntime = createIdentityRuntime({ database, environment });
   const learningCatalogRuntime = createLearningCatalogRuntime({ database });
@@ -69,7 +71,8 @@ function createServerRuntime(): ServerRuntime {
 
   return {
     generation: mapGenerationRuntime.generation,
-    generationRequestsEnabled: process.env.ZHIJING_DEMO_MODE !== "1",
+    generationRequestsEnabled: !localDemoMode,
+    registrationEnabled: !localDemoMode,
     identity: identityRuntime.identity,
     authHandlers: identityRuntime.authHandlers,
     learningCatalog: learningCatalogRuntime.catalog,

@@ -22,18 +22,20 @@ Next.js Route Handler 挂载在 `/api/auth/[...all]`，只转交 `GET`、`POST` 
 
 Route Handler 只允许下表中的方法与路径进入 Better Auth `1.7.2`；字段和错误体仍是锁定框架版本的契约。调用方不得根据英文错误文案驱动业务状态。
 
-| 方法与路径 | 一期用途 | 已验证约束 |
-| --- | --- | --- |
-| `POST /api/auth/sign-up/email` | 创建邮箱账户 | `name`、`email`、`password`；密码 12–128；创建后不建立 Session；触发验证邮件 |
-| `POST /api/auth/sign-in/email` | 显式登录 | 正确密码但邮箱未验证时返回 `403 EMAIL_NOT_VERIFIED`；账户或密码无效时返回 `401 INVALID_EMAIL_OR_PASSWORD`；成功后设置不透明 Session Cookie |
-| `POST /api/auth/send-verification-email` | 显式重发验证邮件 | 允许未登录调用；受数据库限流保护 |
-| `GET /api/auth/verify-email` | 消费一次性验证链接 | Token 1 小时有效；成功后不自动登录 |
-| `GET /api/auth/get-session` | 读取当前框架 Session | 业务代码不得把返回对象直接作为跨模块身份 |
-| `POST /api/auth/sign-out` | 撤销当前 Session | 下一次身份解析立即失效 |
-| `GET /api/auth/list-sessions` | 列出当前账户 Session | 只供当前已登录账户查看自己的 Session |
-| `POST /api/auth/revoke-session` | 按不透明 Token 撤销自己的 Session | 撤销后下一次校验立即失效 |
+| 方法与路径                               | 一期用途                          | 已验证约束                                                                                                                                 |
+| ---------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /api/auth/sign-up/email`           | 创建邮箱账户                      | `name`、`email`、`password`；密码 12–128；创建后不建立 Session；触发验证邮件                                                               |
+| `POST /api/auth/sign-in/email`           | 显式登录                          | 正确密码但邮箱未验证时返回 `403 EMAIL_NOT_VERIFIED`；账户或密码无效时返回 `401 INVALID_EMAIL_OR_PASSWORD`；成功后设置不透明 Session Cookie |
+| `POST /api/auth/send-verification-email` | 显式重发验证邮件                  | 允许未登录调用；受数据库限流保护                                                                                                           |
+| `GET /api/auth/verify-email`             | 消费一次性验证链接                | Token 1 小时有效；成功后不自动登录                                                                                                         |
+| `GET /api/auth/get-session`              | 读取当前框架 Session              | 业务代码不得把返回对象直接作为跨模块身份                                                                                                   |
+| `POST /api/auth/sign-out`                | 撤销当前 Session                  | 下一次身份解析立即失效                                                                                                                     |
+| `GET /api/auth/list-sessions`            | 列出当前账户 Session              | 只供当前已登录账户查看自己的 Session                                                                                                       |
+| `POST /api/auth/revoke-session`          | 按不透明 Token 撤销自己的 Session | 撤销后下一次校验立即失效                                                                                                                   |
 
 只有 `GET`、`POST` 会从 Next.js Route Handler 导出；`PUT`、`PATCH`、`DELETE` 等不支持的 HTTP 方法由 Next.js 按 Route Handler 语义返回 `405 Method Not Allowed`，不由知径伪造空 `404`。对于已导出的 `GET`/`POST`，允许列表之外的 Better Auth 路径仍在进入框架前返回空 HTTP `404`。一期因此不暴露密码恢复、修改密码、修改邮箱、删除账户或未确认插件能力；产品界面不得调用这些路径。新增能力必须先更新决策和允许列表。
+
+本地 Demo 是托管端点的显式运行模式例外：页面只展示固定账号登录；Route Handler 在进入 Better Auth 前以 `403 REGISTRATION_DISABLED` 拒绝 `POST /api/auth/sign-up/email` 和 `POST /api/auth/send-verification-email`。因此 Demo 不会接收新账户注册，也不会把用户输入的邮箱发送给外部邮件服务；其他运行模式仍使用上表契约。
 
 ## 邮箱验证与投递语义
 
@@ -62,6 +64,7 @@ Route Handler 只允许下表中的方法与路径进入 Better Auth `1.7.2`；�
 - `/sign-in/email`：每 10 秒最多 3 次；
 - `/sign-up/email`：每 60 秒最多 3 次；
 - `/send-verification-email`：每 60 秒最多 3 次。
+- Demo 准备脚本使用不对外监听的进程内 Better Auth 实例，并显式关闭该实例的限流，避免账号存在性核验和验证后登录消耗 Web 登录额度；对外 Web 身份运行时始终保持数据库限流。
 
 服务端直接调用 `auth.api` 不经过受管 HTTP 端点的全部限流边界，不得封装成对外公共代理。
 

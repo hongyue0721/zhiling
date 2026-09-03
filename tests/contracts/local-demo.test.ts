@@ -36,6 +36,21 @@ describe("local Demo environment gate", () => {
     ).toMatchObject({ authBaseUrl: "http://127.0.0.1:3000" });
   });
 
+  it("accepts IPv6 loopback database and auth URLs", () => {
+    const environment = readDemoEnvironment({
+      ...validEnvironment,
+      DATABASE_URL:
+        "postgresql://zhijing_demo:local-only@[::1]:55432/another_demo",
+      BETTER_AUTH_URL: "http://[::1]:3000",
+    });
+
+    expect(environment).toMatchObject({
+      databaseUrl:
+        "postgresql://zhijing_demo:local-only@[::1]:55432/another_demo",
+      authBaseUrl: "http://[::1]:3000",
+    });
+  });
+
   it.each([
     ["production mode", { NODE_ENV: "production" }],
     ["implicit mode", { ZHIJING_DEMO_MODE: "0" }],
@@ -46,11 +61,17 @@ describe("local Demo environment gate", () => {
       { DATABASE_URL: "postgresql://user:pass@localhost/zhijing" },
     ],
     [
-      "remote database host",
-      { DATABASE_URL: "postgresql://user:pass@database.example/zhijing_demo" },
+      "remote database IPv6 host",
+      {
+        DATABASE_URL: "postgresql://user:pass@[2001:db8::1]/zhijing_demo",
+      },
     ],
     ["HTTPS auth origin", { BETTER_AUTH_URL: "https://localhost:3000" }],
     ["remote auth origin", { BETTER_AUTH_URL: "http://demo.example:3000" }],
+    [
+      "remote auth IPv6 origin",
+      { BETTER_AUTH_URL: "http://[2001:db8::1]:3000" },
+    ],
     ["auth URL path", { BETTER_AUTH_URL: "http://localhost:3000/auth" }],
     ["short auth secret", { BETTER_AUTH_SECRET: "demo" }],
   ])("rejects %s", (_label, override) => {

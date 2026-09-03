@@ -21,6 +21,7 @@ export type IdentityAuthOptions = Readonly<{
   trustedOrigins: readonly string[];
   trustedProxies: readonly string[];
   secureCookies: boolean;
+  rateLimitEnabled?: boolean;
 }>;
 
 export function createIdentityAuth(options: IdentityAuthOptions) {
@@ -62,7 +63,7 @@ export function createIdentityAuth(options: IdentityAuthOptions) {
       },
     },
     rateLimit: {
-      enabled: true,
+      enabled: options.rateLimitEnabled ?? true,
       window: 60,
       max: 100,
       storage: "database",

@@ -22,7 +22,7 @@ function safeNextPath(value: string | undefined): string {
 }
 
 export default async function AuthPage({ searchParams }: AuthPageProps) {
-  const { identity } = getServerRuntime();
+  const { identity, registrationEnabled } = getServerRuntime();
   const current = await identity.resolve(new Headers(await headers()));
   if (current) {
     redirect("/");
@@ -30,7 +30,8 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
 
   const query = await searchParams;
   const nextPath = safeNextPath(query.next);
-  const initialMode = query.mode === "sign-up" ? "sign-up" : "sign-in";
+  const initialMode =
+    registrationEnabled && query.mode === "sign-up" ? "sign-up" : "sign-in";
   return (
     <main className="auth-page">
       <div className="auth-page-aside">
@@ -46,6 +47,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
         </div>
       </div>
       <AuthForm
+        registrationEnabled={registrationEnabled}
         initialMode={initialMode}
         verified={query.verified === "1"}
         nextPath={nextPath}

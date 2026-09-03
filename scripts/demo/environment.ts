@@ -1,13 +1,13 @@
 const LOOPBACK_DATABASE_HOSTS: Readonly<Record<string, true>> = {
   localhost: true,
   "127.0.0.1": true,
-  "::1": true,
+  "[::1]": true,
   "demo-postgres": true,
 };
 const LOOPBACK_AUTH_HOSTS: Readonly<Record<string, true>> = {
   localhost: true,
   "127.0.0.1": true,
-  "::1": true,
+  "[::1]": true,
 };
 
 export type DemoEnvironment = Readonly<{

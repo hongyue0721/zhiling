@@ -62,13 +62,7 @@ services:
     init: true
     stop_grace_period: 30s
     healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://127.0.0.1:3000/api/featured-learning-maps').then((r) => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))",
-        ]
+      test: ["CMD", "node", "scripts/demo/healthcheck.mjs"]
       interval: 5s
       timeout: 5s
       retries: 12

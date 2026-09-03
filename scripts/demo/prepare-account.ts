@@ -106,6 +106,7 @@ export async function prepareDemoAccount(
     trustedOrigins: [environment.authBaseUrl],
     trustedProxies: ["127.0.0.1", "::1"],
     secureCookies: false,
+    rateLimitEnabled: false,
   });
 
   const firstSignIn = await signInAndCloseSession(
