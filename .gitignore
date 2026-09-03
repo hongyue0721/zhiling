@@ -5,6 +5,7 @@
 .env
 .env.*
 !.env.example
+!.env.real.example
 
 # Build and dependency outputs
 node_modules/

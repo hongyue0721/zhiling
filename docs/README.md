@@ -31,6 +31,7 @@
 - 学习关系地图与私人报告前端接入：[学习关系地图接口](api/learning-relationships.md)、[私人结课报告接口](api/learning-report.md)
 - 知乎供应方协议：[知乎开放平台外部契约](api/zhihu-open-platform.md)
 - 自定义地图生成 API：[生成任务与 SSE 契约](api/map-generation.md)
+- 功能追踪：[功能 API 对照图](development/functional-api-map.md)：从前端页面、Route Handler 一路追到内部服务、数据库/Worker 与外部供应方。
 - 开发与部署：[开发文档索引](development/README.md)
 - 分工顺序：[工作包](development/work-packages.md)
 - 生成 Worker 部署：[Worker 与 VPS Docker 部署](development/generation-worker-deployment.md)

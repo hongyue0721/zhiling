@@ -141,6 +141,26 @@ ZHIHU_MODEL_TIMEOUT_MS=30000
 
 `ZHIHU_MODEL` 不是可任意切换的供应商参数；当前只接受冻结值 `zhida-thinking-1p5`。超时是知径项目策略（上限 600000ms），必须同时受生成任务剩余时间约束。环境缺失、空白、未知模型或无效超时显式失败，不提供生产默认密钥。
 
+### 项目内在线验收入口
+
+复制 `.env.real.example` 为 Git 忽略的 `.env.real.local`，填写真实
+`ZHIHU_ACCESS_SECRET` 后执行：
+
+```bash
+pnpm real:verify:zhihu
+```
+
+该命令在 `compose.real.yaml` 的 Worker 镜像内复用生产
+`createExternalProviderRuntime`，顺序调用一次知乎搜索和一次
+`planDirections` 直答。成功输出只包含来源数量、方向数量和适配器版本；
+失败输出只包含稳定错误码、是否可重试及可选重试等待，不打印密钥、查询主题、响应正文
+或模型内容。每次执行都会实际消耗两个供应方端点的对应额度。
+
+完整业务链路使用 `pnpm real` 启动 Web、PostgreSQL 和
+`generation-worker`。`ZHIHU_ACCESS_SECRET` 只注入 Worker；浏览器和 Web
+容器都不持有该凭据。验收命令成功只能证明两个供应方端点及项目适配器可用，完整生成
+仍必须从 Web 提交任务并观察 Worker 发布地图。
+
 ## Fixtures 与在线采样事实
 
 `src/modules/external-providers/infrastructure/fixtures.ts` 中的搜索成功/空结果响应 envelope、缺字段和未知枚举数据来自官方 Skill 0.2.1/2026-07-16 文档样本并明确不是本项目在线采样；直答 fixture 仅复用官方非流式响应 envelope，content 是供 schema 测试使用的合成 JSON，同样不是在线采样。`REAL_AUTH_FAILURE_FIXTURE` 记录了 2026-09-02 的脱敏无密钥探针事实：

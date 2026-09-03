@@ -36,6 +36,8 @@
 - 完成四题型生成适配：单选、多选、匹配和观点辨析的结构化输出、候选校验、持久化和题面展示。
 - 增加用户闭环 Playwright E2E 与本地浏览器 smoke 覆盖，并增加 production Compose 发布、回滚、备份恢复、Worker 租约和 Nginx SSE 运维脚本。
 - 增加隔离的一键本地 Demo：通过正式认证流程准备固定账户、五节点学习地图和题目集，可重复启动并持久化学习进度；Demo 不启动真实供应方或生成 Worker，并在 UI 与 API 明确拒绝现场生成入队。
+- 增加隔离的真实 API 本地运行配置：Web 通过 Resend 发送验证邮件，生成 Worker 通过知乎搜索与知乎直答完成现场生成，并提供不输出查询和响应正文的知乎在线验收命令。
+- 增加按业务功能追踪前端、Route Handler、应用端口、数据库、Worker 与外部供应方的 API 分配文档，明确 Demo 与真实 API 两种运行模式的证据边界。
 
 ### Changed
 
@@ -48,6 +50,7 @@
 - 学习验证确认为等权计分、80% 完成、无限重试、幂等并发提交和不可变题目版本。
 - 本地 Demo 禁用注册与重发验证邮件，准备阶段使用不对外监听且无请求限流的认证实例，避免外部邮件请求和固定账号登录额度竞争；容器健康检查同时验证 Web 与 PostgreSQL。
 - 自定义生成确认为任务参与者授权与私有地图读取；缓存内容可以复用，但资源 ID 不授予跨账户访问。
+- 独立生成 Worker 与知乎验收脚本显式启用 React Server 条件解析，确保 `server-only` 边界在 `tsx` 进程中保持可导入且不会落入客户端默认导出。
 
 ### Verification notes
 
@@ -55,3 +58,4 @@
 - Drizzle 迁移 `0000`–`0006` 的 fresh 与 repeat 执行均成功且保持幂等。
 - 本地浏览器 smoke、运维脚本语法检查、production Compose 配置解析及 production/staging health preflight（至容器查询前）已有证据；故意错配配置以 `exit 1` fail closed。真实供应方成功样本、生产精选内容、容器健康查询、VPS 运维演练及全量质量门禁仍未完成。详见 [Issue #14 验收证据](docs/development/issue-14-acceptance.md)。
 - 本地 Demo 已在 Docker Node.js `22.23.2` 环境完成构建、迁移、重复准备和浏览器闭环验证：固定账户登录、加入地图、完成 `5/5` 节点及查看 `100%` 私人报告均成功；现场生成入口禁用，直接请求返回 `503 generation_unavailable`。该结果不是生产精选或真实供应方成功证据。
+- 真实 API Compose 已使用非生产占位配置完成拓扑 smoke：迁移成功，PostgreSQL 与 Web 健康，独立 Worker 稳定运行，浏览器 `http://127.0.0.1:3001/auth?mode=sign-up` 显示真实注册入口；期间没有提交注册或生成请求，未调用 Resend/知乎，不能替代在线验收。供应方与身份定向契约测试 `39/39` 通过。

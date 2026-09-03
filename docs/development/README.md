@@ -1,5 +1,6 @@
 # 开发与部署文档
 
+- [功能 API 对照图](functional-api-map.md)：按产品功能追踪前端、Route Handler、内部服务、数据库/Worker 和外部 API。
 - [本地开发](local-setup.md)：环境、依赖、数据库和开发命令。
 - [测试策略](testing.md)：分层测试边界与执行入口。
 - [工作包](work-packages.md)：交付顺序和任务边界。

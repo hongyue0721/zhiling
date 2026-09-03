@@ -62,7 +62,7 @@ services:
     init: true
     stop_grace_period: 30s
     healthcheck:
-      test: ["CMD", "node", "scripts/demo/healthcheck.mjs"]
+      test: ["CMD", "node", "scripts/healthcheck.mjs"]
       interval: 5s
       timeout: 5s
       retries: 12

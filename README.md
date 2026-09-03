@@ -34,11 +34,15 @@
 - [ ] 补齐真实知乎/直答成功样本、生产精选审核内容、VPS 运维演练和全量质量门禁；当前不能据此宣称上线
 
 验收证据边界：本地 E2E 的固定五节点地图和题目集只是测试 fixture，不是生产精选或在线生成成功证据。
-完整阅读入口见 [项目文档索引](docs/README.md)。范围索引见 [产品需求](docs/product/requirements.md)，架构入口见 [架构总览](docs/architecture/overview.md)，API 契约入口见 [API 文档](docs/api/README.md)。
+完整阅读入口见 [项目文档索引](docs/README.md)。范围索引见 [产品需求](docs/product/requirements.md)，架构入口见 [架构总览](docs/architecture/overview.md)，API 契约入口见 [API 文档](docs/api/README.md)，按功能追踪实现见[功能 API 对照图](docs/development/functional-api-map.md)。
 
 ## 开始开发
 
-无需配置 `.env.local`、真实邮件或知乎供应方，也可以先体验固定本地 Demo。在已安装 Docker Compose 的环境中，从仓库根目录执行以下最短路径：
+本仓库提供两种相互隔离的本地入口。Demo 的固定内容只用于体验；真实 API 模式才会连接 Resend 和知乎，但需要用户自己的服务端凭据，任何一个入口都不能替代在线成功证据。
+
+### Demo（无外部调用）
+
+无需配置 `.env.local`、真实邮件或知乎供应方，也可以先体验固定本地 Demo。在已安装 Docker Compose 的环境中，从仓库根目录执行：
 
 ```bash
 corepack enable
@@ -47,7 +51,19 @@ pnpm install --frozen-lockfile
 pnpm demo
 ```
 
-在 `http://localhost:3000/auth` 使用固定账号 `demo@zhijing.local` 和密码 `Zhijing-demo-only-2026` 登录。`pnpm demo` 会以前台方式运行；停止时在另一个终端执行 `pnpm demo:down`。完整的 Demo 数据边界、功能边界和清理方式见[本地开发文档](docs/development/local-setup.md)。
+在 `http://localhost:3000/auth` 使用固定账号 `demo@zhijing.local` 和密码 `Zhijing-demo-only-2026` 登录。`pnpm demo` 会以前台方式运行；停止时在另一个终端执行 `pnpm demo:down`。Demo 使用独立 PostgreSQL、固定合成地图和本地验证链接，不注册新账户、不发送真实邮件、不启动 generation Worker；因此 Demo 不是 Resend/知乎真实接入、真实生成或生产精选内容证据。完整边界和清理方式见[本地开发](docs/development/local-setup.md)。
+
+### 真实 API 本地运行（需用户凭据）
+
+复制模板到 Git 忽略的 `.env.real.local`，填写自己的 Resend 验证域名发件人、Resend 服务端 Key、知乎 Open Platform Access Secret 和随机 `BETTER_AUTH_SECRET`，再启动独立的真实 API Compose：
+
+```bash
+cp .env.real.example .env.real.local
+# 编辑 .env.real.local；不要把真实值写入仓库或浏览器
+pnpm real
+```
+
+真实 Web 入口为 `http://localhost:3001`，另开终端可执行 `pnpm real:verify:zhihu` 做一次脱敏知乎搜索/直答探针。随后必须从 Web UI 完成真实邮箱注册验证、登录、现场生成、地图答题和私人报告；每次在线知乎调用会消耗额度，注册或重发会发送邮件。停止使用 `pnpm real:down`。该模式仍缺少本项目用户凭据时的在线成功记录，不能把命令可启动、Demo 结果或脱敏探针误称为完整真实验收；逐步操作见[真实 API 本地运行](docs/development/local-setup.md#真实-api-本地运行)。
 
 常规开发环境的要求、安装和完整命令见[本地开发](docs/development/local-setup.md)，测试层级见[测试策略](docs/development/testing.md)。
 
