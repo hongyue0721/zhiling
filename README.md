@@ -38,12 +38,20 @@
 
 ## 开始开发
 
-环境要求、安装和完整命令见 [本地开发](docs/development/local-setup.md)，测试层级见 [测试策略](docs/development/testing.md)。
+无需配置 `.env.local`、真实邮件或知乎供应方，也可以先体验固定本地 Demo。在已安装 Docker Compose 的环境中，从仓库根目录执行以下最短路径：
 
 ```bash
 corepack enable
 corepack prepare pnpm@11.25.0 --activate
 pnpm install --frozen-lockfile
+pnpm demo
+```
+
+在 `http://localhost:3000/auth` 使用固定账号 `demo@zhijing.local` 和密码 `Zhijing-demo-only-2026` 登录。`pnpm demo` 会以前台方式运行；停止时在另一个终端执行 `pnpm demo:down`。完整的 Demo 数据边界、功能边界和清理方式见[本地开发文档](docs/development/local-setup.md)。
+
+常规开发环境的要求、安装和完整命令见[本地开发](docs/development/local-setup.md)，测试层级见[测试策略](docs/development/testing.md)。
+
+```bash
 cp .env.example .env.local
 docker compose up -d postgres postgres-test
 ```

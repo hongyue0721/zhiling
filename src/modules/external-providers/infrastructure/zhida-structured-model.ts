@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import {
-  ProviderRequestError as ExternalProviderError,
   type ProviderEnvironment as ExternalProviderEnvironment,
   type ProviderErrorCode as ExternalProviderErrorCode,
   type ProviderExtractViewpointsResult as ExtractViewpointsResult,

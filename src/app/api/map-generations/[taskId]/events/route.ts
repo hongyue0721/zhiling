@@ -1,5 +1,6 @@
-import { generation, identity } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 import type {
+  GenerationAccess,
   GenerationEvent,
   GenerationEventsResult,
 } from "@/modules/map-generation/public/server";
@@ -113,6 +114,7 @@ function streamHeaders(): Headers {
 
 function createEventStream(
   request: Request,
+  generation: GenerationAccess,
   userId: string,
   taskId: string,
   afterSequence: number,
@@ -219,6 +221,7 @@ export async function GET(
   request: Request,
   context: RouteContext,
 ): Promise<Response> {
+  const { generation, identity } = getServerRuntime();
   try {
     const formalIdentity = await identity.require(request.headers);
     const parsedLastEventId = parseLastEventId(request);
@@ -251,6 +254,7 @@ export async function GET(
     return new Response(
       createEventStream(
         request,
+        generation,
         formalIdentity.userId,
         taskId,
         parsedLastEventId,

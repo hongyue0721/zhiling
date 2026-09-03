@@ -1,4 +1,4 @@
-import { identity, learningCatalog } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 
 import {
   businessError,
@@ -16,6 +16,7 @@ export async function POST(
   request: Request,
   context: RouteContext,
 ): Promise<Response> {
+  const { identity, learningCatalog } = getServerRuntime();
   try {
     const formalIdentity = await identity.require(request.headers);
     const { mapId } = await context.params;

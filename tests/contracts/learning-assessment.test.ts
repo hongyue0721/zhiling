@@ -8,14 +8,16 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock("@/bootstrap/server", () => ({
-  identity: { require: runtime.requireIdentity },
-  learningAssessment: {
-    getNodeAssessment: runtime.getNodeAssessment,
-    submit: runtime.submit,
-  },
-  learningProgress: {
-    get: runtime.getProgress,
-  },
+  getServerRuntime: () => ({
+    identity: { require: runtime.requireIdentity },
+    learningAssessment: {
+      getNodeAssessment: runtime.getNodeAssessment,
+      submit: runtime.submit,
+    },
+    learningProgress: {
+      get: runtime.getProgress,
+    },
+  }),
 }));
 
 import {

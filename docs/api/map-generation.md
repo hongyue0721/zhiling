@@ -58,7 +58,7 @@ Web 进程只读写任务的持久化状态，不读取知乎 Access Secret。�
 }
 ```
 
-请求级错误只覆盖同步入口：`400 invalid_request`/`invalid_topic`、`401 authentication_required`、`429 rate_limited` 和未预期的 `500 internal_error`。限流按当前账户计数，只有成功持久化新生成任务的请求消耗配额；加入活动任务或命中缓存的幂等重试不重复计数。`Retry-After` 以秒返回窗口剩余时间。来源、模型、材料、候选与总时限失败由异步任务的 `failure` 和 SSE 终态报告。
+请求级错误只覆盖同步入口：`400 invalid_request`/`invalid_topic`、`401 authentication_required`、`429 rate_limited`、运行模式明确关闭生成受理时的 `503 generation_unavailable`，以及未预期的 `500 internal_error`。`generation_unavailable` 在正式 Session 校验后返回，不创建或加入任务；本地 Demo 用它阻止无 Worker 的任务进入队列。限流按当前账户计数，只有成功持久化新生成任务的请求消耗配额；加入活动任务或命中缓存的幂等重试不重复计数。`Retry-After` 以秒返回窗口剩余时间。来源、模型、材料、候选与总时限失败由异步任务的 `failure` 和 SSE 终态报告。
 
 ## 查询快照
 

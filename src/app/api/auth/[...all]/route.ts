@@ -1,3 +1,11 @@
-import { authHandlers } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 
-export const { GET, POST } = authHandlers;
+export function GET(request: Request): Promise<Response> {
+  const { authHandlers } = getServerRuntime();
+  return authHandlers.GET(request);
+}
+
+export function POST(request: Request): Promise<Response> {
+  const { authHandlers } = getServerRuntime();
+  return authHandlers.POST(request);
+}

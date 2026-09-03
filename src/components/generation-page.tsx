@@ -19,6 +19,7 @@ import type {
 
 type GenerationPageProps = Readonly<{
   email: string;
+  generationRequestsEnabled: boolean;
   initialTopic?: string;
 }>;
 
@@ -222,7 +223,7 @@ async function streamGeneration(
           signal,
         },
       );
-    } catch (error) {
+    } catch {
       if (signal.aborted) {
         return;
       }
@@ -344,7 +345,6 @@ async function waitBeforeReconnect(
   const delay = Math.min(8_000, 500 * 2 ** Math.max(0, attempt - 1));
   await new Promise<void>((resolve) => {
     let settled = false;
-    let timer: number | undefined;
     const finish = () => {
       if (settled) {
         return;
@@ -356,13 +356,14 @@ async function waitBeforeReconnect(
       signal.removeEventListener("abort", finish);
       resolve();
     };
-    timer = window.setTimeout(finish, delay);
+    const timer = window.setTimeout(finish, delay);
     signal.addEventListener("abort", finish, { once: true });
   });
 }
 
 export function GenerationPage({
   email,
+  generationRequestsEnabled,
   initialTopic = "",
 }: GenerationPageProps) {
   const router = useRouter();
@@ -470,6 +471,9 @@ export function GenerationPage({
 
   async function submitGeneration(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!generationRequestsEnabled) {
+      return;
+    }
     const normalizedTopic = topic.trim();
     setError(null);
     setFailure(null);
@@ -608,6 +612,7 @@ export function GenerationPage({
     : null;
   const isBusy =
     state === "submitting" || state === "streaming" || state === "reconnecting";
+  const isGenerationDisabled = isBusy || !generationRequestsEnabled;
 
   return (
     <div className="app-frame">
@@ -651,12 +656,18 @@ export function GenerationPage({
                   maxLength={200}
                   rows={4}
                   placeholder="例如：如何为高流量网站设计可靠的缓存系统"
-                  disabled={isBusy}
+                  disabled={isGenerationDisabled}
                 />
               </label>
               <div className="field-counter" aria-live="polite">
                 {topic.length}/200
               </div>
+              {!generationRequestsEnabled ? (
+                <p className="form-message form-message-info" role="status">
+                  本地演示未启动真实供应方和 generation
+                  Worker；请使用首页固定学习地图体验完整学习流程。
+                </p>
+              ) : null}
               {error ? (
                 <p className="form-message form-message-error" role="alert">
                   {error}
@@ -665,14 +676,19 @@ export function GenerationPage({
               <button
                 className="button button-primary button-block"
                 type="submit"
-                disabled={isBusy}
+                disabled={isGenerationDisabled}
               >
-                {isBusy ? "任务进行中…" : "开始现场生成"}
+                {!generationRequestsEnabled
+                  ? "本地演示未启用"
+                  : isBusy
+                    ? "任务进行中…"
+                    : "开始现场生成"}
               </button>
             </form>
             <p className="privacy-note">
-              你的主题会随当前正式 Session 提交；前端不会发送用户
-              ID，也不会接收候选正文或供应方错误详情。
+              {generationRequestsEnabled
+                ? "你的主题会随当前正式 Session 提交；前端不会发送用户 ID，也不会接收候选正文或供应方错误详情。"
+                : "当前运行模式不会提交主题，也不会创建生成任务。"}
             </p>
           </div>
 
@@ -685,9 +701,17 @@ export function GenerationPage({
               {taskId ? <span className="status-live">可恢复</span> : null}
             </div>
             <h2 id="generation-status-title">
-              {state === "idle" ? "准备开始" : statusLabel}
+              {!generationRequestsEnabled
+                ? "本地演示未启用"
+                : state === "idle"
+                  ? "准备开始"
+                  : statusLabel}
             </h2>
-            {state === "idle" ? (
+            {!generationRequestsEnabled ? (
+              <p className="status-card-description">
+                现场生成不会接收任务，也不会留下无法处理的排队任务。
+              </p>
+            ) : state === "idle" ? (
               <p className="status-card-description">
                 提交后，这里会按服务端事件显示规范化、检索、结构化和校验进度。
               </p>

@@ -65,6 +65,18 @@ export function validationError(
 export function notFoundError(): Response {
   return businessError(404, "resource_not_found", "生成任务不存在");
 }
+export function generationUnavailableError(): Response {
+  return privateJson(
+    {
+      error: {
+        code: "generation_unavailable",
+        message: "本地演示未启动现场生成服务",
+        requestId: createRequestId(),
+      },
+    },
+    503,
+  );
+}
 
 function asGenerationErrorCode(error: unknown): GenerationErrorCode | null {
   if (typeof error !== "object" || error === null) {

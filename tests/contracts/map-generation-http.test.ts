@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const runtime = vi.hoisted(() => ({
+  generationRequestsEnabled: true,
   requireIdentity: vi.fn(),
   requestGeneration: vi.fn(),
   getGeneration: vi.fn(),
@@ -8,12 +9,15 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock("@/bootstrap/server", () => ({
-  identity: { require: runtime.requireIdentity },
-  generation: {
-    requestGeneration: runtime.requestGeneration,
-    getGeneration: runtime.getGeneration,
-    readEvents: runtime.readEvents,
-  },
+  getServerRuntime: () => ({
+    generationRequestsEnabled: runtime.generationRequestsEnabled,
+    identity: { require: runtime.requireIdentity },
+    generation: {
+      requestGeneration: runtime.requestGeneration,
+      getGeneration: runtime.getGeneration,
+      readEvents: runtime.readEvents,
+    },
+  }),
 }));
 
 import { POST as requestGeneration } from "@/app/api/map-generations/route";
@@ -33,6 +37,7 @@ const queuedSnapshot = {
 };
 
 beforeEach(() => {
+  runtime.generationRequestsEnabled = true;
   runtime.requireIdentity.mockReset().mockResolvedValue({
     userId: "user-1",
     email: "user@example.com",
@@ -60,6 +65,26 @@ describe("map generation HTTP contract", () => {
     expect(response.headers.get("cache-control")).toContain("private");
     expect(await response.json()).toEqual(result);
     expect(runtime.requestGeneration).toHaveBeenCalledWith("user-1", "概率论");
+  });
+  it("rejects requests when generation admission is disabled", async () => {
+    runtime.generationRequestsEnabled = false;
+
+    const response = await requestGeneration(
+      new Request("https://example.test/api/map-generations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ topic: "概率论" }),
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: "generation_unavailable",
+        message: "本地演示未启动现场生成服务",
+      },
+    });
+    expect(runtime.requestGeneration).not.toHaveBeenCalled();
   });
 
   it("rejects malformed topics before calling the generation service", async () => {

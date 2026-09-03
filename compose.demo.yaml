@@ -1,0 +1,79 @@
+name: zhijing-local-demo
+
+services:
+  demo-postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: zhijing_demo
+      POSTGRES_USER: zhijing_demo
+      POSTGRES_PASSWORD: zhijing-demo-local-only
+    ports:
+      - "127.0.0.1:${ZHIJING_DEMO_DATABASE_PORT:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zhijing_demo -d zhijing_demo"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - zhijing-demo-postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  demo-prepare:
+    image: zhijing-demo:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      demo-postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      ZHIJING_DEMO_MODE: "1"
+      DATABASE_URL: postgresql://zhijing_demo:zhijing-demo-local-only@demo-postgres:5432/zhijing_demo
+      BETTER_AUTH_SECRET: zhijing-local-demo-secret-never-use-outside-this-compose
+      BETTER_AUTH_URL: http://localhost:3000
+    command: ["pnpm", "demo:prepare"]
+    restart: "no"
+
+  demo-web:
+    image: zhijing-demo:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      demo-prepare:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      ZHIJING_DEMO_MODE: "1"
+      DATABASE_URL: postgresql://zhijing_demo:zhijing-demo-local-only@demo-postgres:5432/zhijing_demo
+      BETTER_AUTH_SECRET: zhijing-local-demo-secret-never-use-outside-this-compose
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      BETTER_AUTH_TRUSTED_PROXIES: 127.0.0.1/32
+      RESEND_API_KEY: re_local_demo_no_external_delivery
+      AUTH_EMAIL_FROM: Zhijing Local Demo <demo@zhijing.local>
+      GENERATION_RATE_LIMIT_WINDOW_SECONDS: "3600"
+      GENERATION_RATE_LIMIT_MAX_REQUESTS: "5"
+    ports:
+      - "127.0.0.1:3000:3000"
+    command: ["pnpm", "start"]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/featured-learning-maps').then((r) => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+volumes:
+  zhijing-demo-postgres:
+    name: zhijing-local-demo-postgres

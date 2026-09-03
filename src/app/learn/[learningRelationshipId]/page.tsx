@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { LearningWorkspace } from "@/components/learning-workspace";
-import { identity } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,7 @@ export default async function LearningWorkspaceRoute({
   params,
   searchParams,
 }: LearningWorkspaceRouteProps) {
+  const { identity } = getServerRuntime();
   const current = await identity.resolve(new Headers(await headers()));
   const { learningRelationshipId } = await params;
   if (!current) {

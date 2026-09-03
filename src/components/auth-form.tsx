@@ -17,6 +17,13 @@ type AuthFormProps = Readonly<{
   nextPath?: string;
 }>;
 
+type AuthRequestBody = Readonly<{
+  email: string;
+  callbackURL: string;
+  name?: string;
+  password?: string;
+}>;
+
 function authErrorMessage(error: unknown): string {
   if (!isApiRequestError(error)) {
     return "网络连接失败，请稍后重试。";
@@ -304,7 +311,7 @@ export function AuthForm({
 
 async function postAuth(
   path: string,
-  body: Record<string, string>,
+  body: AuthRequestBody,
 ): Promise<void> {
   let response: Response;
   try {

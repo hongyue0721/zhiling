@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { LearningReportPage } from "@/components/learning-report-page";
-import { identity } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,7 @@ type LearningReportRouteProps = Readonly<{
 export default async function LearningReportRoute({
   params,
 }: LearningReportRouteProps) {
+  const { identity } = getServerRuntime();
   const current = await identity.resolve(new Headers(await headers()));
   const { learningRelationshipId } = await params;
   if (!current) {

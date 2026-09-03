@@ -1,4 +1,4 @@
-import { generation, identity } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 
 import { notFoundError, mapGenerationError } from "../_shared";
 import { privateJson } from "../../_shared/business-response";
@@ -13,6 +13,7 @@ export async function GET(
   request: Request,
   context: RouteContext,
 ): Promise<Response> {
+  const { generation, identity } = getServerRuntime();
   try {
     const formalIdentity = await identity.require(request.headers);
     const { taskId } = await context.params;

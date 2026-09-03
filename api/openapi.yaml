@@ -323,6 +323,8 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "401":
           $ref: "#/components/responses/AuthenticationRequired"
+        "503":
+          $ref: "#/components/responses/GenerationUnavailable"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/map-generations/{taskId}:
@@ -1675,6 +1677,16 @@ components:
               properties:
                 code:
                   const: resource_not_found
+    GenerationUnavailableError:
+      allOf:
+        - $ref: "#/components/schemas/ApiError"
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  const: generation_unavailable
     InternalServerError:
       allOf:
         - $ref: "#/components/schemas/ApiError"
@@ -1744,6 +1756,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ApiError"
+    GenerationUnavailable:
+      description: 当前运行模式明确关闭生成任务受理，未创建或加入任务
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/PrivateNoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GenerationUnavailableError"
     InternalError:
       description: 未预期的内部错误
       headers:

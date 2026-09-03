@@ -16,6 +16,7 @@ import type {
 
 type HomePageProps = Readonly<{
   email: string;
+  generationRequestsEnabled: boolean;
 }>;
 
 function pageErrorMessage(error: unknown): string {
@@ -31,7 +32,7 @@ function pageErrorMessage(error: unknown): string {
   return "学习内容暂时不可用，请稍后重试。";
 }
 
-export function HomePage({ email }: HomePageProps) {
+export function HomePage({ email, generationRequestsEnabled }: HomePageProps) {
   const router = useRouter();
   const [featured, setFeatured] = useState<
     readonly FeaturedLearningMapSummary[]
@@ -128,6 +129,12 @@ export function HomePage({ email }: HomePageProps) {
 
   function openGenerator(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!generationRequestsEnabled) {
+      setTopicError(
+        "本地演示未启动真实供应方和生成 Worker，现场生成不会接收任务。",
+      );
+      return;
+    }
     const normalizedTopic = topic.trim();
     if (!normalizedTopic) {
       setTopicError("请输入你想系统学习的主题。");
@@ -157,7 +164,9 @@ export function HomePage({ email }: HomePageProps) {
             <span className="section-kicker">你的学习工作台</span>
             <h1 id="home-title">把零散讨论，走成一条学会的路。</h1>
             <p>
-              从经过检查的精选地图开始，或输入主题现场生成。每个节点都连接到真实知乎来源，并用服务端验证留下你的学习进度。
+              {generationRequestsEnabled
+                ? "从经过检查的精选地图开始，或输入主题现场生成。每个节点都连接到真实知乎来源，并用服务端验证留下你的学习进度。"
+                : "本地演示使用固定学习地图体验加入、学习、验证与报告；不会伪造真实供应方或现场生成结果。"}
             </p>
           </div>
           <div className="home-hero-note" aria-label="知径学习方式">
@@ -285,7 +294,9 @@ export function HomePage({ email }: HomePageProps) {
             <div className="empty-panel empty-panel-compact">
               <h3>还没有学习关系</h3>
               <p>
-                加入精选地图或提交一个现场生成主题后，学习进度会在这里持续可见。
+                {generationRequestsEnabled
+                  ? "加入精选地图或提交一个现场生成主题后，学习进度会在这里持续可见。"
+                  : "加入上方固定演示地图后，学习进度会在这里持续可见。"}
               </p>
             </div>
           )}
@@ -299,7 +310,9 @@ export function HomePage({ email }: HomePageProps) {
             <span className="section-kicker">现场生成</span>
             <h2 id="generator-title">你现在想弄懂什么？</h2>
             <p>
-              任务会在服务端检索真实来源并逐阶段校验。生成期间可以安全恢复，材料不足或外部服务不可用时会明确告诉你。
+              {generationRequestsEnabled
+                ? "任务会在服务端检索真实来源并逐阶段校验。生成期间可以安全恢复，材料不足或外部服务不可用时会明确告诉你。"
+                : "本地演示未启动真实供应方和生成 Worker；请使用上方固定学习地图体验完整学习流程。"}
             </p>
           </div>
           <form className="topic-form" onSubmit={openGenerator} noValidate>
@@ -317,14 +330,24 @@ export function HomePage({ email }: HomePageProps) {
                 }}
                 placeholder="例如：如何设计可靠的缓存系统"
                 maxLength={200}
+                disabled={!generationRequestsEnabled}
               />
-              <button type="submit" className="button button-primary">
-                进入生成
+              <button
+                type="submit"
+                className="button button-primary"
+                disabled={!generationRequestsEnabled}
+              >
+                {generationRequestsEnabled ? "进入生成" : "本地演示未启用"}
               </button>
             </div>
             {topicError ? (
               <p className="form-message form-message-error" role="alert">
                 {topicError}
+              </p>
+            ) : null}
+            {!generationRequestsEnabled ? (
+              <p className="form-message form-message-info" role="status">
+                现场生成不会接收任务，也不会留下无法处理的排队任务。
               </p>
             ) : null}
           </form>

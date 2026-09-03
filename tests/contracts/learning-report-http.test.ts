@@ -8,8 +8,10 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock("@/bootstrap/server", () => ({
-  identity: { require: runtime.requireIdentity },
-  learningReport: { get: runtime.getReport },
+  getServerRuntime: () => ({
+    identity: { require: runtime.requireIdentity },
+    learningReport: { get: runtime.getReport },
+  }),
 }));
 
 import { GET as getLearningReport } from "@/app/api/learning-relationships/[learningRelationshipId]/report/route";

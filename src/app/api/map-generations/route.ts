@@ -1,8 +1,12 @@
 import { z } from "zod";
 
-import { generation, identity } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 
-import { mapGenerationError, validationError } from "./_shared";
+import {
+  generationUnavailableError,
+  mapGenerationError,
+  validationError,
+} from "./_shared";
 import { privateJson } from "../_shared/business-response";
 
 export const dynamic = "force-dynamic";
@@ -31,8 +35,13 @@ function requestValidationError(error: z.ZodError): Response {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const { generation, generationRequestsEnabled, identity } =
+    getServerRuntime();
   try {
     const formalIdentity = await identity.require(request.headers);
+    if (!generationRequestsEnabled) {
+      return generationUnavailableError();
+    }
 
     let input: unknown;
     try {

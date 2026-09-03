@@ -12,15 +12,17 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock("@/bootstrap/server", () => ({
-  identity: { require: runtime.requireIdentity },
-  learningCatalog: {
-    listFeatured: runtime.listFeatured,
-    listLearningRelationships: runtime.listLearningRelationships,
-    findFeatured: runtime.findFeatured,
-    findByLearningRelationship: runtime.findByLearningRelationship,
-    establishFeaturedLearningRelationship:
-      runtime.establishFeaturedLearningRelationship,
-  },
+  getServerRuntime: () => ({
+    identity: { require: runtime.requireIdentity },
+    learningCatalog: {
+      listFeatured: runtime.listFeatured,
+      listLearningRelationships: runtime.listLearningRelationships,
+      findFeatured: runtime.findFeatured,
+      findByLearningRelationship: runtime.findByLearningRelationship,
+      establishFeaturedLearningRelationship:
+        runtime.establishFeaturedLearningRelationship,
+    },
+  }),
 }));
 
 import { POST as establishFeaturedLearningRelationship } from "@/app/api/featured-learning-maps/[mapId]/learning-relationship/route";

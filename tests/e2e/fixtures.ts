@@ -8,7 +8,6 @@ import {
   test as base,
   type APIRequestContext,
   type Page,
-  type StorageState,
 } from "@playwright/test";
 export { expect };
 
@@ -282,7 +281,7 @@ type TestAccount = Readonly<{
   email: string;
   password: string;
   userId: string;
-  storageState: StorageState;
+  storageState: Awaited<ReturnType<APIRequestContext["storageState"]>>;
 }>;
 
 async function createVerifiedAccount(
@@ -596,6 +595,7 @@ type E2EScenario = Readonly<{
     taskId: string,
     learningRelationshipId: string,
   ): Promise<void>;
+  close(): Promise<void>;
 }>;
 
 type E2EWorkerState = Readonly<{

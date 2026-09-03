@@ -35,6 +35,7 @@
 - 完成用户闭环正式 UI：邮箱注册/登录、精选加入与关系恢复、学习地图交互、来源/观点面板、四题型答题和私人结课报告。
 - 完成四题型生成适配：单选、多选、匹配和观点辨析的结构化输出、候选校验、持久化和题面展示。
 - 增加用户闭环 Playwright E2E 与本地浏览器 smoke 覆盖，并增加 production Compose 发布、回滚、备份恢复、Worker 租约和 Nginx SSE 运维脚本。
+- 增加隔离的一键本地 Demo：通过正式认证流程准备固定账户、五节点学习地图和题目集，可重复启动并持久化学习进度；Demo 不启动真实供应方或生成 Worker，并在 UI 与 API 明确拒绝现场生成入队。
 
 ### Changed
 
@@ -52,3 +53,4 @@
 - Issue #14 的最终定向结果已更新：catalog + assessment integration `17` 项、generation-rate-limit integration `5` 项、map-generation integration `10` 项（生成集成合计 `15` 项）、HTTP contracts `23` 项（其中 map-generation HTTP `7` 项）、provider `17` 项、candidate + assessment unit `16` 项；用户闭环 E2E `6/6`（`28.2s`）。
 - Drizzle 迁移 `0000`–`0006` 的 fresh 与 repeat 执行均成功且保持幂等。
 - 本地浏览器 smoke、运维脚本语法检查、production Compose 配置解析及 production/staging health preflight（至容器查询前）已有证据；故意错配配置以 `exit 1` fail closed。真实供应方成功样本、生产精选内容、容器健康查询、VPS 运维演练及全量质量门禁仍未完成。详见 [Issue #14 验收证据](docs/development/issue-14-acceptance.md)。
+- 本地 Demo 已在 Docker Node.js `22.23.2` 环境完成构建、迁移、重复准备和浏览器闭环验证：固定账户登录、加入地图、完成 `5/5` 节点及查看 `100%` 私人报告均成功；现场生成入口禁用，直接请求返回 `503 generation_unavailable`。该结果不是生产精选或真实供应方成功证据。

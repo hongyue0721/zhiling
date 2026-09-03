@@ -1,4 +1,4 @@
-import { identity, learningProgress } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 
 import {
   businessError,
@@ -16,6 +16,7 @@ export async function GET(
   request: Request,
   context: RouteContext,
 ): Promise<Response> {
+  const { identity, learningProgress } = getServerRuntime();
   try {
     const formalIdentity = await identity.require(request.headers);
     const { learningRelationshipId } = await context.params;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { identity, learningAssessment } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 import { LearningAssessmentRequestError } from "@/modules/learning-assessment/public/server";
 
 import {
@@ -41,6 +41,7 @@ export async function GET(
   request: Request,
   context: RouteContext,
 ): Promise<Response> {
+  const { identity, learningAssessment } = getServerRuntime();
   try {
     const formalIdentity = await identity.require(request.headers);
     const { learningRelationshipId, nodeId } = await context.params;
@@ -62,6 +63,7 @@ export async function POST(
   request: Request,
   context: RouteContext,
 ): Promise<Response> {
+  const { identity, learningAssessment } = getServerRuntime();
   try {
     const formalIdentity = await identity.require(request.headers);
     const idempotencyKey = request.headers.get("Idempotency-Key") ?? "";

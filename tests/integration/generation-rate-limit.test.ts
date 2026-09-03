@@ -152,6 +152,7 @@ describe("generation rate-limit environment", () => {
   it("parses explicit positive integer settings", () => {
     expect(
       readGenerationEnvironment({
+        NODE_ENV: "test",
         GENERATION_RATE_LIMIT_WINDOW_SECONDS: "3600",
         GENERATION_RATE_LIMIT_MAX_REQUESTS: "5",
       }),
@@ -161,6 +162,7 @@ describe("generation rate-limit environment", () => {
   it("rejects unsafe integer settings instead of rounding them", () => {
     expect(() =>
       readGenerationEnvironment({
+        NODE_ENV: "test",
         GENERATION_RATE_LIMIT_WINDOW_SECONDS: "9007199254740992",
         GENERATION_RATE_LIMIT_MAX_REQUESTS: "5",
       }),

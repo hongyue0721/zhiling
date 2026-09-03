@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/components/auth-form";
-import { identity } from "@/bootstrap/server";
+import { getServerRuntime } from "@/bootstrap/server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ function safeNextPath(value: string | undefined): string {
 }
 
 export default async function AuthPage({ searchParams }: AuthPageProps) {
+  const { identity } = getServerRuntime();
   const current = await identity.resolve(new Headers(await headers()));
   if (current) {
     redirect("/");

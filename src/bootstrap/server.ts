@@ -3,46 +3,85 @@ import "server-only";
 import {
   createIdentityRuntime,
   readIdentityEnvironment,
+  type AuthRouteHandlers,
+  type IdentityAccess,
 } from "@/modules/identity/public/server";
-import { createLearningAssessmentRuntime } from "@/modules/learning-assessment/public/server";
-import { createLearningCatalogRuntime } from "@/modules/learning-catalog/public/server";
-import { createLearningProgressRuntime } from "@/modules/learning-progress/public/server";
-import { createLearningReportRuntime } from "@/modules/learning-report/public/server";
-import { createPostgresDatabase } from "@/platform/database/postgres";
+import {
+  createLearningAssessmentRuntime,
+  type LearningAssessmentAccess,
+} from "@/modules/learning-assessment/public/server";
+import {
+  createLearningCatalogRuntime,
+  type LearningCatalogAccess,
+} from "@/modules/learning-catalog/public/server";
+import {
+  createLearningProgressRuntime,
+  type LearningProgressAccess,
+} from "@/modules/learning-progress/public/server";
+import {
+  createLearningReportRuntime,
+  type LearningReportAccess,
+} from "@/modules/learning-report/public/server";
 import { EXTERNAL_PROVIDER_VERSIONS } from "@/modules/external-providers/public/contracts";
 import {
   createMapGenerationRuntime,
   readGenerationEnvironment,
+  type GenerationAccess,
 } from "@/modules/map-generation/public/server";
+import { createPostgresDatabase } from "@/platform/database/postgres";
 
-const environment = readIdentityEnvironment();
-const generationEnvironment = readGenerationEnvironment();
-const { database } = createPostgresDatabase(environment.databaseUrl);
-const identityRuntime = createIdentityRuntime({ database, environment });
-const learningCatalogRuntime = createLearningCatalogRuntime({ database });
-const learningAssessmentRuntime = createLearningAssessmentRuntime({
-  database,
-  mapReader: learningCatalogRuntime.catalog,
-});
-const learningProgressRuntime = createLearningProgressRuntime({
-  database,
-  mapReader: learningCatalogRuntime.catalog,
-});
-const learningReportRuntime = createLearningReportRuntime({
-  mapReader: learningCatalogRuntime.catalog,
-  progressReader: learningProgressRuntime.progress,
-});
-const mapGenerationRuntime = createMapGenerationRuntime({
-  database,
-  providerVersions: EXTERNAL_PROVIDER_VERSIONS,
-  rateLimit: generationEnvironment.rateLimit,
-});
+export type ServerRuntime = Readonly<{
+  generation: GenerationAccess;
+  generationRequestsEnabled: boolean;
+  identity: IdentityAccess;
+  authHandlers: AuthRouteHandlers;
+  learningCatalog: LearningCatalogAccess;
+  learningAssessment: LearningAssessmentAccess;
+  learningProgress: LearningProgressAccess;
+  learningReport: LearningReportAccess;
+}>;
 
-export const generation = mapGenerationRuntime.generation;
+let serverRuntime: ServerRuntime | undefined;
 
-export const identity = identityRuntime.identity;
-export const authHandlers = identityRuntime.authHandlers;
-export const learningCatalog = learningCatalogRuntime.catalog;
-export const learningAssessment = learningAssessmentRuntime.assessment;
-export const learningProgress = learningProgressRuntime.progress;
-export const learningReport = learningReportRuntime.report;
+function createServerRuntime(): ServerRuntime {
+  const environment = readIdentityEnvironment();
+  const generationEnvironment = readGenerationEnvironment();
+  const { database } = createPostgresDatabase(environment.databaseUrl);
+  const identityRuntime = createIdentityRuntime({ database, environment });
+  const learningCatalogRuntime = createLearningCatalogRuntime({ database });
+  const learningAssessmentRuntime = createLearningAssessmentRuntime({
+    database,
+    mapReader: learningCatalogRuntime.catalog,
+  });
+  const learningProgressRuntime = createLearningProgressRuntime({
+    database,
+    mapReader: learningCatalogRuntime.catalog,
+  });
+  const learningReportRuntime = createLearningReportRuntime({
+    mapReader: learningCatalogRuntime.catalog,
+    progressReader: learningProgressRuntime.progress,
+  });
+  const mapGenerationRuntime = createMapGenerationRuntime({
+    database,
+    providerVersions: EXTERNAL_PROVIDER_VERSIONS,
+    rateLimit: generationEnvironment.rateLimit,
+  });
+
+  return {
+    generation: mapGenerationRuntime.generation,
+    generationRequestsEnabled: process.env.ZHIJING_DEMO_MODE !== "1",
+    identity: identityRuntime.identity,
+    authHandlers: identityRuntime.authHandlers,
+    learningCatalog: learningCatalogRuntime.catalog,
+    learningAssessment: learningAssessmentRuntime.assessment,
+    learningProgress: learningProgressRuntime.progress,
+    learningReport: learningReportRuntime.report,
+  };
+}
+
+export function getServerRuntime(): ServerRuntime {
+  if (!serverRuntime) {
+    serverRuntime = createServerRuntime();
+  }
+  return serverRuntime;
+}
