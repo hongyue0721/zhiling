@@ -47,8 +47,19 @@ export type LearningRelationship = Readonly<{
   questionSetId?: string | null;
 }>;
 
+export type LearningRelationshipSummary = Readonly<{
+  learningRelationshipId: string;
+  mapId: string;
+  versionId: string;
+  title: string;
+  summary: string;
+}>;
+
 export interface LearningCatalogReader {
   listFeatured(): Promise<readonly FeaturedLearningMapSummary[]>;
+  listLearningRelationships(
+    userId: string,
+  ): Promise<readonly LearningRelationshipSummary[]>;
   findFeatured(mapId: string): Promise<LearningMapDetail | null>;
   findByLearningRelationship(
     userId: string,
@@ -60,5 +71,9 @@ export interface LearningRelationshipWriter {
   establish(
     userId: string,
     versionId: string,
+  ): Promise<LearningRelationship | null>;
+  establishFeatured(
+    userId: string,
+    mapId: string,
   ): Promise<LearningRelationship | null>;
 }

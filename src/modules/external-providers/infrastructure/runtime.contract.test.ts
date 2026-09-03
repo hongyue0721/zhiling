@@ -23,6 +23,32 @@ const environment: ExternalProviderEnvironment = {
   modelTimeoutMs: 1_000,
 };
 
+const assessmentSource = {
+  sourceId: "source-1",
+  title: "Source",
+  excerpt: "Evidence",
+  url: "https://www.zhihu.com/question/1",
+  authorName: "Author",
+  contentType: "answer" as const,
+  updatedAt: 1_700_000_000,
+  authorityLevel: "high" as const,
+  rankingScore: 1,
+};
+
+const assessmentMap = {
+  title: "Map",
+  summary: "Summary",
+  nodes: [
+    {
+      nodeId: "node-1",
+      title: "Node",
+      learningObjective: "Objective",
+      sourceIds: [assessmentSource.sourceId],
+    },
+  ],
+  prerequisites: [],
+} as const;
+
 function runtimeWith(fetcher: typeof fetch) {
   return createExternalProviderRuntime({
     environment,
@@ -324,6 +350,12 @@ describe("Zhihu source search adapter", () => {
 });
 
 describe("Zhihu structured model adapter", () => {
+  it("advertises the v2 model adapter contract for four question types", () => {
+    expect(
+      runtimeWith(vi.fn<typeof fetch>()).versions.modelAdapterVersion,
+    ).toBe("zhida-thinking-1p5-json-2026-07-16-v2");
+  });
+
   it("sends only the documented model fields and ignores reasoning_content", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
@@ -463,6 +495,210 @@ describe("Zhihu structured model adapter", () => {
     expect(body.messages[0]?.content).toContain(
       "every node represented in the supplied map with 2 to 3 questions per node",
     );
+    expect(body.messages[0]?.content).toContain(
+      "single_choice|multiple_choice|matching|opinion_analysis",
+    );
+    expect(body.messages[0]?.content).toContain(
+      "For single_choice and opinion_analysis, include exactly one correctOptionIds entry and omit correctMatches.",
+    );
+    expect(body.messages[0]?.content).toContain(
+      "For matching, include one or more correctMatches entries and omit correctOptionIds",
+    );
+    expect(body.messages[0]?.content).toContain(
+      "every option must appear exactly once across the left and right sides",
+    );
+  });
+
+  it("accepts all four assessment types without losing their answer fields", async () => {
+    const questions = {
+      questions: [
+        {
+          questionId: "question-single",
+          nodeId: "node-1",
+          type: "single_choice",
+          prompt: "Which statement is supported?",
+          explanation: "The source supports the first statement.",
+          options: [
+            { optionId: "single-a", label: "Supported" },
+            { optionId: "single-b", label: "Unsupported" },
+          ],
+          correctOptionIds: ["single-a"],
+          sourceIds: [assessmentSource.sourceId],
+        },
+        {
+          questionId: "question-multiple",
+          nodeId: "node-1",
+          type: "multiple_choice",
+          prompt: "Which statements are supported?",
+          explanation: "The source supports both selected statements.",
+          options: [
+            { optionId: "multiple-a", label: "First" },
+            { optionId: "multiple-b", label: "Second" },
+            { optionId: "multiple-c", label: "Third" },
+          ],
+          correctOptionIds: ["multiple-a", "multiple-c"],
+          sourceIds: [assessmentSource.sourceId],
+        },
+        {
+          questionId: "question-matching",
+          nodeId: "node-1",
+          type: "matching",
+          prompt: "Match each concept to its description.",
+          explanation:
+            "Each concept is paired with the corresponding description.",
+          options: [
+            { optionId: "concept-a", label: "Concept A" },
+            { optionId: "concept-b", label: "Concept B" },
+            { optionId: "description-a", label: "Description A" },
+            { optionId: "description-b", label: "Description B" },
+          ],
+          correctMatches: [
+            { leftOptionId: "concept-a", rightOptionId: "description-a" },
+            { leftOptionId: "concept-b", rightOptionId: "description-b" },
+          ],
+          sourceIds: [assessmentSource.sourceId],
+        },
+        {
+          questionId: "question-opinion",
+          nodeId: "node-1",
+          type: "opinion_analysis",
+          prompt: "Which interpretation best fits the evidence?",
+          explanation: "The first interpretation is supported by the source.",
+          options: [
+            {
+              optionId: "opinion-a",
+              label: "Evidence-grounded interpretation",
+            },
+            { optionId: "opinion-b", label: "Unsupported interpretation" },
+          ],
+          correctOptionIds: ["opinion-a"],
+          sourceIds: [assessmentSource.sourceId],
+        },
+      ],
+    };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(modelFixture(JSON.stringify(questions)))),
+      );
+
+    const result = await runtimeWith(
+      fetcher,
+    ).structuredModel.generateAssessments({
+      topic: "RAG",
+      map: assessmentMap,
+      sources: [assessmentSource],
+      requestId: "request-assessment-four-types",
+      timeoutMs: 500,
+    });
+
+    expect(result.questions.map(({ type }) => type)).toEqual([
+      "single_choice",
+      "multiple_choice",
+      "matching",
+      "opinion_analysis",
+    ]);
+    expect(result.questions[0]).toMatchObject({
+      correctOptionIds: ["single-a"],
+    });
+    expect(result.questions[1]).toMatchObject({
+      correctOptionIds: ["multiple-a", "multiple-c"],
+    });
+    expect(result.questions[2]).toMatchObject({
+      correctMatches: [
+        { leftOptionId: "concept-a", rightOptionId: "description-a" },
+        { leftOptionId: "concept-b", rightOptionId: "description-b" },
+      ],
+    });
+    expect(result.questions[2]).not.toHaveProperty("correctOptionIds");
+    expect(result.questions[3]).toMatchObject({
+      correctOptionIds: ["opinion-a"],
+    });
+    expect(result.questions[0]).not.toHaveProperty("correctMatches");
+    expect(result.questions[1]).not.toHaveProperty("correctMatches");
+    expect(result.questions[3]).not.toHaveProperty("correctMatches");
+  });
+
+  it("rejects invalid answer combinations for every assessment type", async () => {
+    const commonQuestion = {
+      questionId: "question-invalid",
+      nodeId: "node-1",
+      prompt: "Prompt",
+      explanation: "Explanation",
+      options: [
+        { optionId: "left-a", label: "Left A" },
+        { optionId: "right-a", label: "Right A" },
+      ],
+      sourceIds: [assessmentSource.sourceId],
+    };
+    const invalidQuestions: readonly Record<string, unknown>[] = [
+      {
+        ...commonQuestion,
+        type: "single_choice",
+        correctOptionIds: ["left-a", "right-a"],
+      },
+      {
+        ...commonQuestion,
+        type: "multiple_choice",
+        correctOptionIds: ["left-a"],
+        correctMatches: [{ leftOptionId: "left-a", rightOptionId: "right-a" }],
+      },
+      {
+        ...commonQuestion,
+        type: "matching",
+        correctOptionIds: [],
+        correctMatches: [{ leftOptionId: "left-a", rightOptionId: "right-a" }],
+      },
+      {
+        ...commonQuestion,
+        type: "opinion_analysis",
+        correctOptionIds: ["left-a", "right-a"],
+      },
+      {
+        ...commonQuestion,
+        type: "matching",
+        correctMatches: [{ leftOptionId: "left-a", rightOptionId: "left-a" }],
+      },
+      {
+        ...commonQuestion,
+        type: "matching",
+        options: [
+          { optionId: "concept-a", label: "Concept A" },
+          { optionId: "concept-b", label: "Concept B" },
+          { optionId: "description-a", label: "Description A" },
+          { optionId: "description-b", label: "Description B" },
+        ],
+        correctMatches: [
+          { leftOptionId: "concept-a", rightOptionId: "description-a" },
+        ],
+      },
+    ];
+
+    for (const [index, question] of invalidQuestions.entries()) {
+      const fetcher = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify(
+              modelFixture(JSON.stringify({ questions: [question] })),
+            ),
+          ),
+        );
+      const error = await providerError(
+        runtimeWith(fetcher).structuredModel.generateAssessments({
+          topic: "RAG",
+          map: assessmentMap,
+          sources: [assessmentSource],
+          requestId: `request-assessment-invalid-${index}`,
+          timeoutMs: 500,
+        }),
+      );
+      expect(error).toMatchObject({
+        provider: "model",
+        code: "protocol_error",
+        retryable: false,
+      });
+    }
   });
 
   it("rejects non-JSON and schema-invalid model content", async () => {

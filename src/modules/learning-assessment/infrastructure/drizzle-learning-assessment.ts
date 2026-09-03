@@ -68,6 +68,7 @@ type OptionRow = {
   optionId: string;
   label: string;
   position: number;
+  side: string | null;
 };
 
 type CorrectOptionRow = { questionId: string; optionId: string };
@@ -109,7 +110,6 @@ function reconstructQuestions(
     values.push(source.sourceId);
     sourcesByQuestion.set(source.questionId, values);
   }
-
   return questions.map((question) => ({
     questionId: question.questionId,
     nodeId: question.nodeId,
@@ -117,7 +117,10 @@ function reconstructQuestions(
     prompt: question.prompt,
     explanation: question.explanation,
     options: (optionsByQuestion.get(question.questionId) ?? []).map(
-      ({ optionId, label }) => ({ optionId, label }),
+      ({ optionId, label, side }) =>
+        side === "left" || side === "right"
+          ? { optionId, label, side }
+          : { optionId, label },
     ),
     correctOptionIds: [...(correctByQuestion.get(question.questionId) ?? [])],
     correctMatches: (matchesByQuestion.get(question.questionId) ?? []).map(
@@ -293,6 +296,7 @@ export class DrizzleLearningAssessmentRepository implements LearningAssessmentRe
             optionId: option.optionId,
             label: option.label,
             position,
+            side: option.side ?? null,
           })),
         ),
       );
@@ -416,6 +420,7 @@ export class DrizzleLearningAssessmentRepository implements LearningAssessmentRe
           optionId: learningAssessmentQuestionOption.optionId,
           label: learningAssessmentQuestionOption.label,
           position: learningAssessmentQuestionOption.position,
+          side: learningAssessmentQuestionOption.side,
         })
         .from(learningAssessmentQuestionOption)
         .innerJoin(
@@ -493,7 +498,11 @@ export class DrizzleLearningAssessmentRepository implements LearningAssessmentRe
         prompt: question.prompt,
         options: optionRows
           .filter(({ questionId }) => questionId === question.questionId)
-          .map(({ optionId, label }) => ({ optionId, label })),
+          .map(({ optionId, label, side }) =>
+            side === "left" || side === "right"
+              ? { optionId, label, side }
+              : { optionId, label },
+          ),
         sourceIds: sourceRows
           .filter(({ questionId }) => questionId === question.questionId)
           .map(({ sourceId }) => sourceId),
@@ -539,6 +548,7 @@ export class DrizzleLearningAssessmentRepository implements LearningAssessmentRe
               learningAssessmentAttempt.questionSetId,
               relationship.questionSetId,
             ),
+            eq(learningAssessmentAttempt.nodeId, input.nodeId),
             eq(learningAssessmentAttempt.idempotencyKey, input.idempotencyKey),
           ),
         )
@@ -591,6 +601,7 @@ export class DrizzleLearningAssessmentRepository implements LearningAssessmentRe
           optionId: learningAssessmentQuestionOption.optionId,
           label: learningAssessmentQuestionOption.label,
           position: learningAssessmentQuestionOption.position,
+          side: learningAssessmentQuestionOption.side,
         })
         .from(learningAssessmentQuestionOption)
         .where(
@@ -750,6 +761,7 @@ export class DrizzleLearningAssessmentRepository implements LearningAssessmentRe
           target: [
             learningAssessmentAttempt.learningRelationshipId,
             learningAssessmentAttempt.questionSetId,
+            learningAssessmentAttempt.nodeId,
             learningAssessmentAttempt.idempotencyKey,
           ],
         })

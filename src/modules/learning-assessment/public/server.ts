@@ -119,6 +119,7 @@ export function createLearningAssessmentRuntime(
 
 export type {
   AssessmentAnswerSubmission,
+  AssessmentMatchingSide,
   AssessmentQuestionOption,
   AssessmentQuestionPrompt,
   AssessmentQuestionResult,

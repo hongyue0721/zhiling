@@ -1,6 +1,6 @@
 # 工程目录与依赖方向
 
-> 状态：已由 [ADR-0008](decisions/0008-project-structure-and-dependency-direction.md) 接受。工程基础与 `identity` 后端纵向切片已落地；后续业务模块仍只由对应工作包按需创建。
+> 状态：已由 [ADR-0008](decisions/0008-project-structure-and-dependency-direction.md) 接受。工程基础、`identity` 后端纵向切片和正式用户闭环 UI 已落地；本结构继续约束新增模块与跨层依赖。
 
 ## 目录骨架
 
@@ -136,7 +136,7 @@ SSE 路由同样遵循上述边界。连接保活、事件编码和恢复游标�
 - Drizzle 迁移是经过审查的历史变更记录，位于根目录 `drizzle/` 并纳入版本控制，不按可随时删除的生成代码处理；
 - `identity` 已贯通认证 Route Handler、组合根、公开服务端入口、应用/领域、Better Auth/Resend 基础设施与 PostgreSQL 平台能力；
 - `learning-catalog` 已贯通精选地图 Route Handler、正式身份门禁、公开查询、地图与证据领域校验、发布/读取仓储及 PostgreSQL 持久化；两个模块在生产组合根共享同一数据库连接池；
-- 产品前端仍未实现，因此不创建没有真实消费方的模块 `presentation/` 或 `public/client.ts`。
+- 正式用户 UI 已落地于 `src/app` 与 `src/components`，覆盖认证、精选加入/关系列表、学习工作区、答题、报告和生成状态；页面通过模块公开入口消费能力，不因此为没有真实消费者的模块创建 `presentation/` 或 `public/client.ts`。
 
 ## 工程骨架验收
 

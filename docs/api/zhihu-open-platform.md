@@ -15,7 +15,7 @@
 - 开放平台文档当前记载邀测免费额度为知乎搜索 5,000 次/日、知乎直答 100 次/日；同一账号的 Access Secret 与页面/API 请求共享对应额度池，规则可能变化，最终以个人中心用量统计为准。这些是供应方事实而非知径 SLA；适配器不硬编码本地额度、不伪造额度剩余或本地兜底；
 - 版本常量由 `EXTERNAL_PROVIDER_VERSIONS` 提供：
   - `sourceAdapterVersion = zhihu-http-2026-07-16-v1`；
-  - `modelAdapterVersion = zhida-thinking-1p5-json-2026-07-16-v1`。
+  - `modelAdapterVersion = zhida-thinking-1p5-json-2026-07-16-v2`。
 
 ## 生产 HTTP 请求
 
@@ -92,14 +92,21 @@ type NormalizedSource = {
 - `planDirections`：3–4 个 `{ directionId, title, objective, searchQuery }`；
 - `structureMap`：5–7 个节点及 `nodeId`/`prerequisiteNodeId` 先修边；
 - `extractViewpoints`：带 `nodeId`、封闭观点类型和 `sourceIds` 的观点；
-- `generateAssessments`：仅 `single_choice`/`multiple_choice` 客观题，带选项、答案、解释和 `sourceIds`。
+- `generateAssessments`：四种题型（`single_choice`、`multiple_choice`、`matching`、`opinion_analysis`），均带选项、解释和 `sourceIds`，并按题型带严格互斥的答案字段。
+
+`generateAssessments` 的题目对象严格按 `type` 选择答案字段：
+
+- `single_choice`：`correctOptionIds` 必须恰有一个选项 ID，不能有 `correctMatches`；
+- `multiple_choice`：`correctOptionIds` 必须至少有一个选项 ID，不能有 `correctMatches`；
+- `matching`：`correctMatches` 必须至少有一对 `{ leftOptionId, rightOptionId }`，不能有 `correctOptionIds`；两端 ID 都必须来自 `options`，左右两侧各自不能重复，且一对不能指向同一选项；
+- `opinion_analysis`：`correctOptionIds` 必须恰有一个选项 ID，不能有 `correctMatches`。
 
 模型返回必须包含非空 `choices[0].message.content`，`finish_reason` 必须是 `stop`，且响应模型 ID 必须仍为 `zhida-thinking-1p5`。先严格解析响应，再解析 content 中的 JSON，最后执行用途专属 schema 和业务关系门禁：
 
 - 只能引用输入中的节点 ID、来源 ID 和选项 ID；
 - 观点来源必须属于对应节点；题目来源必须属于对应节点；
 - 先修边端点必须存在、不能自环、不能重复且整体无环；
-- 单选题必须恰有一个正确选项；
+- 四种题型的答案字段必须与上述 `type` 规则完全匹配；未知字段、缺失字段、错误数量或两种答案字段同时出现均失败；
 - `reasoning_content` 永远不作为结果；
 - URL 字段不是任何模型输出 schema 的成员，出现即失败。
 
@@ -109,15 +116,15 @@ type NormalizedSource = {
 
 应用只接收 `ExternalProviderError`：`provider` 为 `source` 或 `model`，`code` 为以下稳定值，且不携带响应正文：
 
-| 供应方事实 | 内部 code | retryable |
-| --- | --- | --- |
-| 参数错误、缺参数或明确 invalid request | `invalid_request` | 否 |
-| HTTP 401/403、`20001`、`invalid_api_key` | `authentication_failed` | 否 |
-| HTTP 429、`30001` 或 rate limit | `rate_limited` | 是 |
-| HTTP 402、`30002` 或 quota | `quota_exhausted` | 否 |
-| HTTP 5xx、`90001`、server/internal unavailable | `temporarily_unavailable` | 是 |
-| 请求 Abort/超时或明确 timeout | `timeout` | 是 |
-| 成功状态但响应结构、必要字段、枚举或模型关系不符 | `protocol_error` | 否 |
+| 供应方事实                                       | 内部 code                 | retryable |
+| ------------------------------------------------ | ------------------------- | --------- |
+| 参数错误、缺参数或明确 invalid request           | `invalid_request`         | 否        |
+| HTTP 401/403、`20001`、`invalid_api_key`         | `authentication_failed`   | 否        |
+| HTTP 429、`30001` 或 rate limit                  | `rate_limited`            | 是        |
+| HTTP 402、`30002` 或 quota                       | `quota_exhausted`         | 否        |
+| HTTP 5xx、`90001`、server/internal unavailable   | `temporarily_unavailable` | 是        |
+| 请求 Abort/超时或明确 timeout                    | `timeout`                 | 是        |
+| 成功状态但响应结构、必要字段、枚举或模型关系不符 | `protocol_error`          | 否        |
 
 HTTP 状态和供应方业务码都参与映射；状态码优先识别明确的鉴权、限流、配额、超时和 5xx 语义，其余再按业务码解析。可解析的 `Retry-After` 会作为 `retryAfterMs` 返回；不保存响应正文。上层按 ADR-0004 对瞬时外部失败每个阶段最多重试两次，适配器自身不重试。
 
@@ -146,9 +153,9 @@ ZHIHU_MODEL_TIMEOUT_MS=30000
 
 ## 兼容登记
 
-| 编号 | 边界 | 当前支持 | 失败方式 | 移除/复核条件 |
-| --- | --- | --- | --- | --- |
-| ZH-001 | 知乎站内搜索 HTTP → `SourceSearchAccess` | 官方 Skill 0.2.1/2026-07-16 字段与上述封闭枚举 | 必要字段、URL、枚举或 HTTP/业务错误不符时显式失败 | 官方字段或端点变化并完成版本迁移 |
-| ZH-002 | 知乎直答 HTTP → `StructuredModelAccess` | `zhida-thinking-1p5`、`model/messages/stream=false`、JSON-only 提示和用途 schema | 非 JSON、未知 ID/URL、关系不闭合或错误映射失败 | 模型版本冻结解除并完成新适配器契约 |
+| 编号   | 边界                                     | 当前支持                                                                                               | 失败方式                                          | 移除/复核条件                      |
+| ------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------- | ---------------------------------- |
+| ZH-001 | 知乎站内搜索 HTTP → `SourceSearchAccess` | 官方 Skill 0.2.1/2026-07-16 字段与上述封闭枚举                                                         | 必要字段、URL、枚举或 HTTP/业务错误不符时显式失败 | 官方字段或端点变化并完成版本迁移   |
+| ZH-002 | 知乎直答 HTTP → `StructuredModelAccess`  | `zhida-thinking-1p5`、`model/messages/stream=false`、JSON-only 提示、四种题型严格答案变体和用途 schema | 非 JSON、未知 ID/URL、关系不闭合或错误映射失败    | 模型版本冻结解除并完成新适配器契约 |
 
 该适配器不实现知乎 OAuth 登录、不读取用户数据接口、不使用 MCP 文本替代结构化 HTTP 来源。

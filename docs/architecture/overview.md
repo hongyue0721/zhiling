@@ -18,7 +18,7 @@
 - Better Auth 与 Email & Password；
 - 知乎 API 和模型 API 均置于独立适配器之后。
 
-上述技术方向中，Next.js 15 工程边界、PostgreSQL/Drizzle、Better Auth、业务 SSE、知乎/模型适配器和同镜像 Web/Worker 运行方式已经落地；前端图交互与状态库仍须由对应工作包锁定版本和契约。
+上述技术方向中，Next.js 15 工程边界、PostgreSQL/Drizzle、Better Auth、业务 SSE、知乎/模型适配器、同镜像 Web/Worker 运行方式及正式用户 UI（图交互、状态投影、答题和报告）已经落地；真实供应方成功样本、生产精选内容和 VPS 运维证据仍按 Issue #14 补齐。
 
 ## 逻辑分层
 

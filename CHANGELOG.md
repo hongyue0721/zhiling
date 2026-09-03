@@ -16,7 +16,7 @@
 - 建立固定 Node.js/pnpm、Next.js 15、TypeScript、Tailwind、ESLint、Prettier 与分层测试工程基础。
 - 建立环境配置显式验证、服务端/客户端隔离，以及具有正反例夹具的架构边界检查。
 - 建立本地与 CI 共用质量入口和最小非业务页面壳。
-- 引入项目级官方知乎 Skill `0.2.1`，登记公共 HTTP、用户数据、OAuth、MCP、额度和已知协议缺口。
+- 建立知乎开放平台与知乎直答协议文档、适配边界和脱敏契约样本；不把知乎 Skill 的安装或认证状态记为已完成。
 - 建立 Better Auth `1.7.2` 邮箱身份后端、PostgreSQL/Drizzle 迁移、Resend HTTP 适配器与统一服务端正式身份门禁。
 - 建立真实 PostgreSQL 认证集成测试、本地应用/测试数据库编排和 CI 数据库服务。
 - 建立稳定地图主题、不可变发布版本、精选指针、节点先修图及来源观点证据持久化。
@@ -32,6 +32,9 @@
 - 建立地图生成持久化状态机、任务参与关系、版本化缓存身份、PostgreSQL 租约恢复、阶段 checkpoint、重试与十分钟硬时限。
 - 发布生成请求、参与者状态与可重连 SSE 接口，并在单事务中完成地图、证据、题目集、学习关系、缓存和成功事件的原子发布。
 - 增加同镜像 Web/Worker 的 Docker 构建与 VPS 部署说明，精选读取不依赖现场供应商服务。
+- 完成用户闭环正式 UI：邮箱注册/登录、精选加入与关系恢复、学习地图交互、来源/观点面板、四题型答题和私人结课报告。
+- 完成四题型生成适配：单选、多选、匹配和观点辨析的结构化输出、候选校验、持久化和题面展示。
+- 增加用户闭环 Playwright E2E 与本地浏览器 smoke 覆盖，并增加 production Compose 发布、回滚、备份恢复、Worker 租约和 Nginx SSE 运维脚本。
 
 ### Changed
 
@@ -43,3 +46,9 @@
 - 地图生成运行基线确认为自管 VPS Docker、PostgreSQL 租约 Worker、可恢复 SSE、十分钟任务时限和原子发布。
 - 学习验证确认为等权计分、80% 完成、无限重试、幂等并发提交和不可变题目版本。
 - 自定义生成确认为任务参与者授权与私有地图读取；缓存内容可以复用，但资源 ID 不授予跨账户访问。
+
+### Verification notes
+
+- Issue #14 的最终定向结果已更新：catalog + assessment integration `17` 项、generation-rate-limit integration `5` 项、map-generation integration `10` 项（生成集成合计 `15` 项）、HTTP contracts `23` 项（其中 map-generation HTTP `7` 项）、provider `17` 项、candidate + assessment unit `16` 项；用户闭环 E2E `6/6`（`28.2s`）。
+- Drizzle 迁移 `0000`–`0006` 的 fresh 与 repeat 执行均成功且保持幂等。
+- 本地浏览器 smoke、运维脚本语法检查、production Compose 配置解析及 production/staging health preflight（至容器查询前）已有证据；故意错配配置以 `exit 1` fail closed。真实供应方成功样本、生产精选内容、容器健康查询、VPS 运维演练及全量质量门禁仍未完成。详见 [Issue #14 验收证据](docs/development/issue-14-acceptance.md)。

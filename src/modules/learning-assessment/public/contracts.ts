@@ -6,9 +6,12 @@ export type AssessmentMatchingAnswer = Readonly<{
   rightOptionId: string;
 }>;
 
+export type AssessmentMatchingSide = "left" | "right";
+
 export type AssessmentQuestionOption = Readonly<{
   optionId: string;
   label: string;
+  side?: AssessmentMatchingSide;
 }>;
 
 export type AssessmentQuestionPrompt = Readonly<{

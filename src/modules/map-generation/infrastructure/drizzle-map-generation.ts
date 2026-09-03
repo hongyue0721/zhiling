@@ -54,6 +54,7 @@ import {
   createGenerationIdentity,
   normalizeGenerationTopic,
 } from "../domain/identity";
+import type { GenerationRateLimitReservation } from "./rate-limit";
 import {
   assertNoModelUrl,
   type GenerationCandidate,
@@ -345,6 +346,7 @@ export class DrizzleMapGenerationRepository {
     private readonly providerVersions: GenerationProviderVersions,
     private readonly now: GenerationClock,
     readonly idGenerator: GenerationIdGenerator,
+    private readonly reserveRateLimit?: GenerationRateLimitReservation,
   ) {}
 
   async requestGeneration(userId: string, topic: string) {
@@ -404,6 +406,9 @@ export class DrizzleMapGenerationRepository {
         throw new GenerationTaskFailure("internal_failure", false);
       }
       const wasCreated = inserted.length > 0;
+      if (wasCreated && this.reserveRateLimit) {
+        await this.reserveRateLimit(transaction, userId, requestedAt);
+      }
       await this.addParticipant(db, task.id, userId);
       if (wasCreated) {
         await transaction.insert(generationCheckpoint).values({
@@ -461,9 +466,20 @@ export class DrizzleMapGenerationRepository {
       .limit(1);
     const firstSequence = first[0] ? Number(first[0].sequence) : null;
     const historyUnavailable =
+      cursor > Number(task.sequence) ||
       (firstSequence !== null && cursor < firstSequence - 1) ||
       (firstSequence === null && Number(task.sequence) > cursor);
     const mappedEvents = events.map((event) => toEvent(taskId, event));
+    const terminalCursor =
+      (task.status === "succeeded" || task.status === "failed") &&
+      cursor === Number(task.sequence);
+    if (terminalCursor) {
+      return {
+        kind: "snapshot" as const,
+        snapshot: await this.snapshotForUser(this.database, task, userId),
+        events: mappedEvents,
+      };
+    }
     if (historyUnavailable) {
       return {
         kind: "snapshot" as const,
@@ -601,6 +617,10 @@ export class DrizzleMapGenerationRepository {
           status: "failed",
           stage: current.stage,
           code: failure.category,
+          failure: {
+            code: failure.category,
+            retryable: failure.retryable,
+          },
         },
         occurredAt: failureNow,
       });
@@ -900,6 +920,17 @@ export class DrizzleMapGenerationRepository {
           explanation: question.explanation,
         })),
       );
+      const matchingSidesByQuestion = new Map(
+        validated.questions.map((question) => [
+          question.questionId,
+          new Map(
+            (question.correctMatches ?? []).flatMap((match) => [
+              [match.leftOptionId, "left" as const],
+              [match.rightOptionId, "right" as const],
+            ]),
+          ),
+        ]),
+      );
       await transaction.insert(learningAssessmentQuestionOption).values(
         validated.questions.flatMap((question) =>
           question.options.map((option, position) => ({
@@ -908,6 +939,10 @@ export class DrizzleMapGenerationRepository {
             optionId: option.optionId,
             label: option.label,
             position,
+            side:
+              matchingSidesByQuestion
+                .get(question.questionId)
+                ?.get(option.optionId) ?? null,
           })),
         ),
       );
@@ -1024,17 +1059,34 @@ export class DrizzleMapGenerationRepository {
       if (completed.length === 0) {
         throw new GenerationLeaseLostError();
       }
-      await transaction.insert(generationCache).values({
-        normalizedTopic: task.normalizedTopic,
-        pipelineVersion: task.pipelineVersion,
-        sourceAdapterVersion: task.sourceAdapterVersion,
-        modelAdapterVersion: task.modelAdapterVersion,
-        taskId: task.id,
-        mapId,
-        versionId,
-        questionSetId,
-        createdAt: completionNow,
-      });
+      await transaction
+        .insert(generationCache)
+        .values({
+          normalizedTopic: task.normalizedTopic,
+          pipelineVersion: task.pipelineVersion,
+          sourceAdapterVersion: task.sourceAdapterVersion,
+          modelAdapterVersion: task.modelAdapterVersion,
+          taskId: task.id,
+          mapId,
+          versionId,
+          questionSetId,
+          createdAt: completionNow,
+        })
+        .onConflictDoUpdate({
+          target: [
+            generationCache.normalizedTopic,
+            generationCache.pipelineVersion,
+            generationCache.sourceAdapterVersion,
+            generationCache.modelAdapterVersion,
+          ],
+          set: {
+            taskId: task.id,
+            mapId,
+            versionId,
+            questionSetId,
+            createdAt: completionNow,
+          },
+        });
       await transaction.insert(generationEvent).values({
         taskId: task.id,
         sequence,

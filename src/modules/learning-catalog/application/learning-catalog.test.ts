@@ -1,10 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { LearningMapPublication } from "../domain/learning-map";
 import {
+  LearningCatalogService,
   PublishFeaturedLearningMap,
   type LearningMapPublisher,
 } from "./learning-catalog";
+import type {
+  LearningCatalogReader,
+  LearningRelationshipWriter,
+} from "./read-model";
 
 function publication(): LearningMapPublication {
   const sources = Array.from({ length: 5 }, (_, index) => ({
@@ -64,5 +69,35 @@ describe("featured publication use case", () => {
     expect(persisted?.nodes[0]?.title).toBe("Node 0");
     expect(persisted?.nodes[0]?.sourceIds).toEqual(["source-0"]);
     expect(persisted?.sources[0]?.title).toBe("Source 0");
+  });
+});
+
+describe("learning relationship use case", () => {
+  it("delegates featured establishment with the account and stable map identity", async () => {
+    const reader: LearningCatalogReader = {
+      listFeatured: async () => [],
+      listLearningRelationships: async () => [],
+      findFeatured: async () => null,
+      findByLearningRelationship: async () => null,
+    };
+    const relationship = {
+      learningRelationshipId: "learning-1",
+      mapId: "map-1",
+      versionId: "version-1",
+      questionSetId: "question-set-1",
+    };
+    const relationshipWriter: LearningRelationshipWriter = {
+      establish: async () => null,
+      establishFeatured: vi.fn().mockResolvedValue(relationship),
+    };
+    const service = new LearningCatalogService(reader, relationshipWriter);
+
+    await expect(
+      service.establishFeaturedLearningRelationship("user-1", "map-1"),
+    ).resolves.toEqual(relationship);
+    expect(relationshipWriter.establishFeatured).toHaveBeenCalledWith(
+      "user-1",
+      "map-1",
+    );
   });
 });

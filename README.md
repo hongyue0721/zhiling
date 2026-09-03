@@ -4,7 +4,7 @@
 
 > 把知乎上的真实讨论，走成一条学会的路。
 
-完整产品事实以 [PROJECT_GOAL.md](PROJECT_GOAL.md) 为准。仓库已建立 Next.js 15 工程基础、PostgreSQL/Drizzle 迁移、Better Auth 邮箱身份后端、精选与账户学习关系读取、私人结课报告、知乎开放平台与知乎直答适配，以及可恢复地图生成 Worker/API；当前页面仍是非业务工程壳，产品登录/注册和学习地图界面由前端工作继续实现。
+完整产品事实以 [PROJECT_GOAL.md](PROJECT_GOAL.md) 为准。仓库已落地 Next.js 15 工程基础、PostgreSQL/Drizzle 迁移、Better Auth 邮箱身份后端、精选与账户学习关系、私人结课报告、知乎开放平台与知乎直答适配、可恢复地图生成 API 与独立进程 Worker，以及登录、精选加入/关系恢复、学习地图、答题和报告的正式 UI。生成与运维实现已具备本地验收入口，最终定向记录中的用户闭环 E2E 为 `6/6`（`28.2s`）；但真实供应方成功样本、生产精选内容、VPS 演练和全量质量门禁仍缺证据，详见 [Issue #14 验收证据](docs/development/issue-14-acceptance.md)。
 
 ## 当前阶段
 
@@ -23,10 +23,17 @@
   - 前端接入见[学习验证与进度接口](docs/api/learning-assessment.md)
 - [x] 提供按学习关系读取的私人结课报告，固定地图版本与题目集并投影完成度、薄弱节点、观点接触和下一步建议
   - 前端接入见[私人结课报告接口](docs/api/learning-report.md)
-- [x] 接入真实知乎搜索与知乎直答模型协议，封闭鉴权、超时、错误和结构化输出边界
+- [x] 接入知乎搜索与知乎直答模型协议适配，封闭鉴权、超时、错误和结构化输出边界
 - [x] 建立持久化地图生成状态机、数据库租约 Worker、缓存去重、参与者授权、SSE 恢复与原子发布
   - 前端与运维接入见[地图生成接口](docs/api/map-generation.md)和[生成 Worker 部署](docs/development/generation-worker-deployment.md)
 
+- [x] 完成用户闭环正式 UI：注册/登录、精选加入与关系恢复、地图交互、来源/观点面板、四题型答题和私人报告
+- [x] 完成四题型生成适配：单选、多选、匹配和观点辨析的模型结构化输出、校验、持久化与题面展示
+- [x] 建立用户闭环 E2E 与本地浏览器 smoke 入口，覆盖匿名门禁、精选学习、答题、报告、资源隔离和生成安全失败
+- [x] 建立 production Compose 发布/回滚、备份恢复、Worker 租约健康与接管脚本，以及 Nginx SSE 配置
+- [ ] 补齐真实知乎/直答成功样本、生产精选审核内容、VPS 运维演练和全量质量门禁；当前不能据此宣称上线
+
+验收证据边界：本地 E2E 的固定五节点地图和题目集只是测试 fixture，不是生产精选或在线生成成功证据。
 完整阅读入口见 [项目文档索引](docs/README.md)。范围索引见 [产品需求](docs/product/requirements.md)，架构入口见 [架构总览](docs/architecture/overview.md)，API 契约入口见 [API 文档](docs/api/README.md)。
 
 ## 开始开发
@@ -41,7 +48,7 @@ cp .env.example .env.local
 docker compose up -d postgres postgres-test
 ```
 
-随后按[本地开发](docs/development/local-setup.md)替换密钥、导出环境并执行迁移。`pnpm check` 是本地与 CI 共用入口，需要专用测试数据库。认证端点与安全语义见[认证框架契约](docs/api/authentication.md)。
+随后按[本地开发](docs/development/local-setup.md)配置本地环境变量、导出环境并执行迁移。`pnpm check` 是本地与 CI 共用入口，需要专用测试数据库。认证端点与安全语义见[认证框架契约](docs/api/authentication.md)。
 
 ## 协作原则
 

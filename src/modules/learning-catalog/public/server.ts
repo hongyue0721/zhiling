@@ -3,6 +3,7 @@ import "server-only";
 import type {
   LearningMapDetail as InternalDetail,
   LearningRelationship as InternalRelationship,
+  LearningRelationshipSummary as InternalRelationshipSummary,
   FeaturedLearningMapSummary as InternalSummary,
 } from "../application/read-model";
 import {
@@ -13,10 +14,14 @@ import type {
   FeaturedLearningMapSummary,
   LearningMapDetail,
   LearningRelationship,
+  LearningRelationshipSummary,
 } from "./contracts";
 
 export type LearningCatalogAccess = Readonly<{
   listFeatured(): Promise<readonly FeaturedLearningMapSummary[]>;
+  listLearningRelationships(
+    userId: string,
+  ): Promise<readonly LearningRelationshipSummary[]>;
   findFeatured(mapId: string): Promise<LearningMapDetail | null>;
   findByLearningRelationship(
     userId: string,
@@ -25,6 +30,10 @@ export type LearningCatalogAccess = Readonly<{
   establishLearningRelationship(
     userId: string,
     versionId: string,
+  ): Promise<LearningRelationship | null>;
+  establishFeaturedLearningRelationship(
+    userId: string,
+    mapId: string,
   ): Promise<LearningRelationship | null>;
 }>;
 
@@ -86,6 +95,18 @@ function toPublicRelationship(
   };
 }
 
+function toPublicRelationshipSummary(
+  relationship: InternalRelationshipSummary,
+): LearningRelationshipSummary {
+  return {
+    learningRelationshipId: relationship.learningRelationshipId,
+    mapId: relationship.mapId,
+    versionId: relationship.versionId,
+    title: relationship.title,
+    summary: relationship.summary,
+  };
+}
+
 export function createLearningCatalogRuntime(
   dependencies: LearningCatalogRuntimeDependencies,
 ): LearningCatalogRuntime {
@@ -95,6 +116,10 @@ export function createLearningCatalogRuntime(
       async listFeatured() {
         const items = await runtime.catalog.listFeatured();
         return items.map(toPublicSummary);
+      },
+      async listLearningRelationships(userId) {
+        const items = await runtime.catalog.listLearningRelationships(userId);
+        return items.map(toPublicRelationshipSummary);
       },
       async findFeatured(mapId) {
         const detail = await runtime.catalog.findFeatured(mapId);
@@ -115,6 +140,14 @@ export function createLearningCatalogRuntime(
           );
         return relationship ? toPublicRelationship(relationship) : null;
       },
+      async establishFeaturedLearningRelationship(userId, mapId) {
+        const relationship =
+          await runtime.catalog.establishFeaturedLearningRelationship(
+            userId,
+            mapId,
+          );
+        return relationship ? toPublicRelationship(relationship) : null;
+      },
     },
   };
 }
@@ -123,5 +156,6 @@ export type {
   FeaturedLearningMapSummary,
   LearningMapDetail,
   LearningRelationship,
+  LearningRelationshipSummary,
   ViewpointKind,
 } from "./contracts";

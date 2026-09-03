@@ -65,3 +65,22 @@ Web 端点会返回 `Cache-Control: private, no-cache, no-transform` 和 `X-Acce
 Worker 每轮调用公开的 `runOnce(workerId)`。没有可领取任务时执行有界等待，避免忙等；租约有效期、心跳和任务十分钟硬时限由地图生成模块实现。容器编排重启 Worker 不会转移进程内状态，新的 Worker 会通过 PostgreSQL 失效租约接管任务。
 
 排障时只查看任务 ID、阶段、耗时、重试次数和稳定失败分类。不要记录 Access Secret、第三方响应正文、候选节点或其他账户身份。在线知乎/模型采样依赖真实部署密钥；仓库脱敏 fixture 仅用于适配器契约，不代表在线采样已经完成。
+
+## VPS 生产与 staging 入口
+
+生产和 staging 都使用仓库根目录的 `compose.production.yaml`；不要把本页
+前面的本地 `compose.yaml` 叠加。入口通过三元组严格选择隔离集群：
+
+| 环境 | `ZHIJING_ENVIRONMENT` | `COMPOSE_PROJECT_NAME` | `POSTGRES_VOLUME_NAME` |
+| --- | --- | --- | --- |
+| production | `production` | `zhijing-production` | `zhijing-postgres-production` |
+| staging（仅租约演练） | `staging` | `zhijing-staging` | `zhijing-postgres-staging` |
+
+两套卷都必须预先创建为 external volume；项目名、卷名、环境名和
+`DATABASE_URL`（必须指向 `postgres:5432` 与对应 `POSTGRES_DB`）任一错配
+都会 fail closed。Web 端口固定为 `WEB_BIND_PORT=3000`，并与
+[`ops/nginx/zhijing.conf`](../../ops/nginx/zhijing.conf) 的 loopback upstream
+保持单一事实源。生产 env 还必须提供
+`GENERATION_RATE_LIMIT_WINDOW_SECONDS` 和
+`GENERATION_RATE_LIMIT_MAX_REQUESTS` 两个正整数。
+

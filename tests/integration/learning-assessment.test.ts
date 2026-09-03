@@ -6,7 +6,10 @@ import { PublishFeaturedLearningMap } from "@/modules/learning-catalog/applicati
 import type { LearningMapPublication } from "@/modules/learning-catalog/domain/learning-map";
 import { DrizzleLearningCatalogRepository } from "@/modules/learning-catalog/infrastructure/drizzle-learning-catalog";
 import { DrizzleLearningAssessmentRepository } from "@/modules/learning-assessment/infrastructure/drizzle-learning-assessment";
-import type { LearningAssessmentQuestionSetPublication } from "@/modules/learning-assessment/domain/assessment";
+import type {
+  AssessmentQuestionPublication,
+  LearningAssessmentQuestionSetPublication,
+} from "@/modules/learning-assessment/domain/assessment";
 import { DrizzleLearningProgressRepository } from "@/modules/learning-progress/infrastructure/drizzle-learning-progress";
 import {
   learningAssessmentAttempt,
@@ -58,7 +61,6 @@ function publication(
     prerequisites: [],
   };
 }
-
 function questionSet(
   versionId: string,
   sourceVersionId = versionId,
@@ -68,11 +70,11 @@ function questionSet(
     versionId,
     questions: Array.from({ length: 5 }, (_, nodeIndex) => {
       const sourceId = `source-${sourceVersionId}-${nodeIndex}`;
-      return [
+      const questions: AssessmentQuestionPublication[] = [
         {
           questionId: `question-${nodeIndex}-single`,
           nodeId: `node-${nodeIndex}`,
-          type: "single_choice" as const,
+          type: "single_choice",
           prompt: "Choose the supported statement",
           explanation: "The source supports option A.",
           options: [
@@ -85,7 +87,7 @@ function questionSet(
         {
           questionId: `question-${nodeIndex}-multiple`,
           nodeId: `node-${nodeIndex}`,
-          type: "multiple_choice" as const,
+          type: "multiple_choice",
           prompt: "Choose all supported statements",
           explanation: "Three statements are supported by the source.",
           options: [
@@ -99,6 +101,27 @@ function questionSet(
           sourceIds: [sourceId],
         },
       ];
+      if (nodeIndex === 2) {
+        questions.push({
+          questionId: `question-${nodeIndex}-matching`,
+          nodeId: `node-${nodeIndex}`,
+          type: "matching",
+          prompt: "Match each concept to its description",
+          explanation: "Each concept has one description.",
+          options: [
+            { optionId: "concept-a", label: "Concept A" },
+            { optionId: "concept-b", label: "Concept B" },
+            { optionId: "description-a", label: "Description A" },
+            { optionId: "description-b", label: "Description B" },
+          ],
+          correctMatches: [
+            { leftOptionId: "concept-a", rightOptionId: "description-b" },
+            { leftOptionId: "concept-b", rightOptionId: "description-a" },
+          ],
+          sourceIds: [sourceId],
+        });
+      }
+      return questions;
     }).flat(),
   };
 }
@@ -146,6 +169,22 @@ describe("learning assessment persistence", () => {
     expect(nodeAssessment?.questions[0]).not.toHaveProperty("correctOptionIds");
     expect(nodeAssessment?.questions[0]).not.toHaveProperty("explanation");
 
+    const matchingAssessment = await assessment.findNodeAssessment(
+      "user-1",
+      relationship.learningRelationshipId,
+      "version-1",
+      "node-2",
+    );
+    expect(matchingAssessment?.questions[2]?.options).toEqual([
+      { optionId: "concept-a", label: "Concept A", side: "left" },
+      { optionId: "concept-b", label: "Concept B", side: "left" },
+      { optionId: "description-a", label: "Description A", side: "right" },
+      { optionId: "description-b", label: "Description B", side: "right" },
+    ]);
+    expect(matchingAssessment?.questions[2]).not.toHaveProperty(
+      "correctMatches",
+    );
+
     const answers = [
       { questionId: "question-0-single", selectedOptionIds: ["a"] },
       {
@@ -176,6 +215,73 @@ describe("learning assessment persistence", () => {
         .select({ id: learningAssessmentAttempt.id })
         .from(learningAssessmentAttempt),
     ).resolves.toHaveLength(1);
+  });
+
+  it("scopes idempotency by node", async () => {
+    const relationship = await createRelationship();
+    const nodeZeroAnswers = [
+      { questionId: "question-0-single", selectedOptionIds: ["a"] },
+      {
+        questionId: "question-0-multiple",
+        selectedOptionIds: ["a", "b", "c"],
+      },
+    ];
+    const nodeOneAnswers = [
+      { questionId: "question-1-single", selectedOptionIds: ["a"] },
+      {
+        questionId: "question-1-multiple",
+        selectedOptionIds: ["a", "b", "c"],
+      },
+    ];
+    const [nodeZero, nodeOne] = await Promise.all([
+      assessment.submit({
+        userId: "user-1",
+        learningRelationshipId: relationship.learningRelationshipId,
+        versionId: "version-1",
+        nodeId: "node-0",
+        idempotencyKey: "same-key",
+        answers: nodeZeroAnswers,
+      }),
+      assessment.submit({
+        userId: "user-1",
+        learningRelationshipId: relationship.learningRelationshipId,
+        versionId: "version-1",
+        nodeId: "node-1",
+        idempotencyKey: "same-key",
+        answers: nodeOneAnswers,
+      }),
+    ]);
+
+    expect(nodeZero?.nodeId).toBe("node-0");
+    expect(nodeOne?.nodeId).toBe("node-1");
+    expect(nodeZero?.questions).toHaveLength(2);
+    expect(nodeOne?.questions).toHaveLength(2);
+    await expect(
+      database
+        .select({ id: learningAssessmentAttempt.id })
+        .from(learningAssessmentAttempt),
+    ).resolves.toHaveLength(2);
+
+    await expect(
+      assessment.submit({
+        userId: "user-1",
+        learningRelationshipId: relationship.learningRelationshipId,
+        versionId: "version-1",
+        nodeId: "node-0",
+        idempotencyKey: "same-key",
+        answers: nodeZeroAnswers,
+      }),
+    ).resolves.toEqual(nodeZero);
+    await expect(
+      assessment.submit({
+        userId: "user-1",
+        learningRelationshipId: relationship.learningRelationshipId,
+        versionId: "version-1",
+        nodeId: "node-1",
+        idempotencyKey: "same-key",
+        answers: nodeOneAnswers,
+      }),
+    ).resolves.toEqual(nodeOne);
   });
 
   it("takes the maximum score and never regresses completion", async () => {

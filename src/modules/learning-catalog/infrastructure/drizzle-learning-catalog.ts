@@ -15,7 +15,10 @@ import {
   learningViewpoint,
   learningViewpointSource,
 } from "@/platform/database/catalog-schema";
-import { learningAssessmentQuestionSet } from "@/platform/database/assessment-schema";
+import {
+  learningAssessmentQuestion,
+  learningAssessmentQuestionSet,
+} from "@/platform/database/assessment-schema";
 import { databaseSchema } from "@/platform/database/schema";
 
 import type { LearningMapPublisher } from "../application/learning-catalog";
@@ -24,6 +27,7 @@ import type {
   LearningCatalogReader,
   LearningMapDetail,
   LearningRelationship,
+  LearningRelationshipSummary,
   LearningRelationshipWriter,
 } from "../application/read-model";
 import {
@@ -199,6 +203,34 @@ export class DrizzleLearningCatalogRepository
       );
   }
 
+  async listLearningRelationships(
+    userId: string,
+  ): Promise<readonly LearningRelationshipSummary[]> {
+    return this.database
+      .select({
+        learningRelationshipId: learningRelationship.id,
+        mapId: learningMapVersion.mapId,
+        versionId: learningMapVersion.id,
+        title: learningMapVersion.title,
+        summary: learningMapVersion.summary,
+      })
+      .from(learningRelationship)
+      .innerJoin(
+        learningMapVersion,
+        eq(learningMapVersion.id, learningRelationship.versionId),
+      )
+      .where(
+        and(
+          eq(learningRelationship.userId, userId),
+          eq(learningMapVersion.status, "published"),
+        ),
+      )
+      .orderBy(
+        asc(learningRelationship.createdAt),
+        asc(learningRelationship.id),
+      );
+  }
+
   async findFeatured(mapId: string): Promise<LearningMapDetail | null> {
     const versions = await this.database
       .select({
@@ -314,6 +346,111 @@ export class DrizzleLearningCatalogRepository
         mapId: version.mapId,
         versionId: version.versionId,
         questionSetId: relationships[0]!.questionSetId,
+      };
+    });
+  }
+
+  async establishFeatured(
+    userId: string,
+    mapId: string,
+  ): Promise<LearningRelationship | null> {
+    return this.database.transaction(async (transaction) => {
+      const versions = await transaction
+        .select({
+          mapId: learningMapVersion.mapId,
+          versionId: learningMapVersion.id,
+        })
+        .from(featuredLearningMap)
+        .innerJoin(
+          learningMapVersion,
+          and(
+            eq(learningMapVersion.id, featuredLearningMap.versionId),
+            eq(learningMapVersion.mapId, featuredLearningMap.mapId),
+          ),
+        )
+        .where(
+          and(
+            eq(featuredLearningMap.mapId, mapId),
+            eq(learningMapVersion.status, "published"),
+          ),
+        )
+        .limit(1);
+      const version = versions[0];
+      if (!version) {
+        return null;
+      }
+
+      const questionSets = await transaction
+        .select({ questionSetId: learningAssessmentQuestionSet.id })
+        .from(learningAssessmentQuestionSet)
+        .where(
+          and(
+            eq(learningAssessmentQuestionSet.versionId, version.versionId),
+            eq(learningAssessmentQuestionSet.status, "published"),
+          ),
+        )
+        .limit(1);
+      const questionSetId = questionSets[0]?.questionSetId;
+      if (!questionSetId) {
+        return null;
+      }
+      const nodeQuestionCounts = await transaction
+        .select({
+          nodeId: learningMapNode.nodeId,
+          questionCount: sql<number>`count(${learningAssessmentQuestion.questionId})::int`,
+        })
+        .from(learningMapNode)
+        .leftJoin(
+          learningAssessmentQuestion,
+          and(
+            eq(
+              learningAssessmentQuestion.questionSetId,
+              questionSetId,
+            ),
+            eq(learningAssessmentQuestion.versionId, version.versionId),
+            eq(learningAssessmentQuestion.nodeId, learningMapNode.nodeId),
+          ),
+        )
+        .where(eq(learningMapNode.versionId, version.versionId))
+        .groupBy(learningMapNode.nodeId);
+      if (
+        nodeQuestionCounts.length === 0 ||
+        nodeQuestionCounts.some(
+          ({ questionCount }) => questionCount < 2 || questionCount > 3,
+        )
+      ) {
+        return null;
+      }
+
+      const relationships = await transaction
+        .insert(learningRelationship)
+        .values({
+          id: `learning_${crypto.randomUUID()}`,
+          userId,
+          versionId: version.versionId,
+          questionSetId,
+        })
+        .onConflictDoUpdate({
+          target: [learningRelationship.userId, learningRelationship.versionId],
+          set: {
+            userId,
+            questionSetId: sql`COALESCE(${learningRelationship.questionSetId}, ${questionSetId})`,
+          },
+        })
+        .returning({
+          learningRelationshipId: learningRelationship.id,
+          questionSetId: learningRelationship.questionSetId,
+        });
+
+      const relationship = relationships[0];
+      if (!relationship) {
+        return null;
+      }
+      return {
+        learningRelationshipId: relationship.learningRelationshipId,
+        mapId: version.mapId,
+        versionId: version.versionId,
+        questionSetId: relationship.questionSetId,
       };
     });
   }
