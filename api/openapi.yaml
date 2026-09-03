@@ -197,6 +197,38 @@ paths:
           $ref: "#/components/responses/ResourceNotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/learning-relationships/{learningRelationshipId}/report:
+    get:
+      operationId: getPrivateLearningReport
+      tags:
+        - Learning relationships
+      summary: 读取所属账户的私人结课报告
+      description: >-
+        Derives a private projection from the relationship's persisted immutable
+        map version, question set, node scores, completion state and immutable
+        attempt summaries. It never exposes users, sessions, answers, attempt IDs
+        or a share/read path for another account. Missing and foreign relationships
+        are intentionally indistinguishable as resource_not_found.
+      security:
+        - betterAuthSession: []
+      parameters:
+        - $ref: "#/components/parameters/LearningRelationshipId"
+      responses:
+        "200":
+          description: 基于固定版本学习事实生成的私人结课报告
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateLearningReport"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ResourceNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/map-generations:
     post:
       operationId: requestMapGeneration
@@ -862,6 +894,168 @@ components:
         submittedAt:
           type: string
           format: date-time
+    PrivateLearningReport:
+      type: object
+      additionalProperties: false
+      required:
+        - learningRelationshipId
+        - map
+        - questionSetId
+        - completion
+        - weakNodes
+        - encounteredViewpoints
+        - nextSteps
+        - sources
+      properties:
+        learningRelationshipId:
+          type: string
+          minLength: 1
+        map:
+          $ref: "#/components/schemas/LearningReportMapIdentity"
+        questionSetId:
+          type: string
+          minLength: 1
+          description: Immutable question-set version bound to the learning relationship.
+        completion:
+          $ref: "#/components/schemas/LearningReportCompletion"
+        weakNodes:
+          type: array
+          description: Attempted nodes that have not reached persisted completion.
+          items:
+            $ref: "#/components/schemas/LearningReportWeakNode"
+        encounteredViewpoints:
+          type: array
+          description: Viewpoints attached to nodes with at least one immutable attempt.
+          items:
+            $ref: "#/components/schemas/SourcedViewpoint"
+        nextSteps:
+          type: array
+          description: >-
+            Incomplete nodes whose prerequisites are complete. Attempted nodes are
+            returned before unattempted nodes; map order is stable within each group.
+          items:
+            $ref: "#/components/schemas/LearningReportNextStep"
+        sources:
+          type: array
+          description: Source metadata referenced by report conclusions.
+          items:
+            $ref: "#/components/schemas/LearningReportSource"
+    LearningReportMapIdentity:
+      type: object
+      additionalProperties: false
+      required:
+        - mapId
+        - versionId
+        - title
+      properties:
+        mapId:
+          type: string
+          minLength: 1
+        versionId:
+          type: string
+          minLength: 1
+          description: Immutable map version bound to the learning relationship.
+        title:
+          type: string
+          minLength: 1
+    LearningReportCompletion:
+      type: object
+      additionalProperties: false
+      required:
+        - completedNodeCount
+        - totalNodeCount
+        - completionBasisPoints
+      properties:
+        completedNodeCount:
+          type: integer
+          minimum: 0
+        totalNodeCount:
+          type: integer
+          minimum: 1
+        completionBasisPoints:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: Completed-node ratio in integer basis points.
+    LearningReportWeakNode:
+      type: object
+      additionalProperties: false
+      required:
+        - nodeId
+        - title
+        - bestScore
+        - sourceIds
+      properties:
+        nodeId:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        bestScore:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        sourceIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+    LearningReportNextStep:
+      type: object
+      additionalProperties: false
+      required:
+        - nodeId
+        - title
+        - learningObjective
+        - reason
+        - sourceIds
+      properties:
+        nodeId:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        learningObjective:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          enum:
+            - improve_score
+            - start_node
+        sourceIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+    LearningReportSource:
+      type: object
+      additionalProperties: false
+      required:
+        - sourceId
+        - title
+        - url
+        - authorName
+      properties:
+        sourceId:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        url:
+          type: string
+          format: uri
+          pattern: '^https://(?:[A-Za-z0-9-]+\.)*zhihu\.com(?:[/?#].*)?$'
+        authorName:
+          type: string
+          minLength: 1
     MapGenerationRequest:
       type: object
       additionalProperties: false

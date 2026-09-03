@@ -1,6 +1,6 @@
 # 架构总览
 
-> 状态：模块化单体、工程边界、身份后端、学习目录、外部适配、地图生成、学习验证与学习进度已实现；其余领域和上线决策继续按 ADR 推进。产品边界以 `PROJECT_GOAL.md` 为准。
+> 状态：模块化单体、工程边界、身份后端、学习目录、外部适配、地图生成、学习验证、学习进度与私人结课报告已实现；其余领域和上线决策继续按 ADR 推进。产品边界以 `PROJECT_GOAL.md` 为准。
 
 ## 设计目标
 
@@ -40,7 +40,7 @@
 - ADR-0012 将分享能力移出一期，结课报告仅所属账户可读；
 - ADR-0013 固定学习验证计分、完成、重试、并发和版本规则；
 - ADR-0014 固定任务参与关系、跨账户缓存复用与私有自定义地图授权；
-- `identity` 模块只公开服务端最小正式身份，认证托管端点见[认证框架契约](../api/authentication.md)；`external-providers` 隔离知乎搜索与知乎直答协议；`map-generation` 持久化状态、参与关系、事件、租约与候选门禁；`learning-assessment` 与 `learning-progress` 通过公开契约和学习目录关系读取能力完成 D2 闭环。
+- `identity` 模块只公开服务端最小正式身份，认证托管端点见[认证框架契约](../api/authentication.md)；`external-providers` 隔离知乎搜索与知乎直答协议；`map-generation` 持久化状态、参与关系、事件、租约与候选门禁；`learning-assessment` 与 `learning-progress` 通过公开契约和学习目录关系读取能力完成 D2 闭环；`learning-report` 通过 `learning-catalog` 与 `learning-progress` 的公开服务端契约投影所属账户报告，不持有报告副本或分享授权。
 
 ## 仍待确认事项
 

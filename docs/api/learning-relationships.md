@@ -6,6 +6,8 @@
 
 接口读取当前正式账户的一条学习关系，并返回该关系固定绑定的不可变已发布地图版本。学习关系由后续生成成功或缓存命中流程建立；本接口只读，不提供凭地图 ID 加入、自助领取或分享入口。
 
+完成答题后读取结课汇总见[私人结课报告 API](learning-report.md)；该接口继续使用同一 `learningRelationshipId`，不会创建分享或跨账户读取入口。
+
 ## 请求
 
 - 使用 Better Auth Session Cookie，浏览器请求设置 `credentials: "include"`；
