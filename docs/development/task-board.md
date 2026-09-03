@@ -37,23 +37,23 @@
 
 ## 外部契约准备
 
-| Issue                                                 | 任务                              | 状态                                      | 下游   |
-| ----------------------------------------------------- | --------------------------------- | ----------------------------------------- | ------ |
-| [#6](https://github.com/hongyue0721/zhiling/issues/6) | 获取并冻结知乎与模型 API 真实契约 | 评审中；成功在线样本待部署环境验收        | C3、D1 |
+| Issue                                                 | 任务                              | 状态                               | 下游   |
+| ----------------------------------------------------- | --------------------------------- | ---------------------------------- | ------ |
+| [#6](https://github.com/hongyue0721/zhiling/issues/6) | 获取并冻结知乎与模型 API 真实契约 | 评审中；成功在线样本待部署环境验收 | C3、D1 |
 
 ## 工作包队列
 
-| 工作包            | Issue                                                   | 当前状态                | 主要前置                                         |
-| ----------------- | ------------------------------------------------------- | ----------------------- | ------------------------------------------------ |
-| B 工程基础        | [#7](https://github.com/hongyue0721/zhiling/issues/7)   | 已提交 `main`           | ADR-0008、ADR-0009 已接受                        |
-| C1 身份与会话     | [#8](https://github.com/hongyue0721/zhiling/issues/8)   | 已提交 `main`           | B、ADR-0010 已完成                               |
-| C2 学习目录与来源 | [#10](https://github.com/hongyue0721/zhiling/issues/10) | 已提交 `main`           | B、ADR-0002、ADR-0011、ADR-0014                  |
-| C3 外部适配器     | [#9](https://github.com/hongyue0721/zhiling/issues/9)   | 实现完成，进入评审      | #6 契约已冻结                                    |
-| D1 地图生成       | [#12](https://github.com/hongyue0721/zhiling/issues/12) | 实现完成，进入评审      | C3 公开适配契约                                  |
-| D2 验证与进度     | [#11](https://github.com/hongyue0721/zhiling/issues/11) | 已提交 `main`           | #10 已完成；ADR-0013                             |
-| E1 匿名数据合并   | 无                                                      | 已取消                  | ADR-0005 Rejected、ADR-0007 Accepted；编号不复用 |
-| E2 结课报告       | [#13](https://github.com/hongyue0721/zhiling/issues/13) | 可领取                  | #11 已完成；分享已由 ADR-0012 移出一期           |
-| F 用户闭环        | [#14](https://github.com/hongyue0721/zhiling/issues/14) | 阻塞                    | 等待 #13，并等待 C3/D1 合入                      |
+| 工作包            | Issue                                                   | 当前状态           | 主要前置                                         |
+| ----------------- | ------------------------------------------------------- | ------------------ | ------------------------------------------------ |
+| B 工程基础        | [#7](https://github.com/hongyue0721/zhiling/issues/7)   | 已提交 `main`      | ADR-0008、ADR-0009 已接受                        |
+| C1 身份与会话     | [#8](https://github.com/hongyue0721/zhiling/issues/8)   | 已提交 `main`      | B、ADR-0010 已完成                               |
+| C2 学习目录与来源 | [#10](https://github.com/hongyue0721/zhiling/issues/10) | 已提交 `main`      | B、ADR-0002、ADR-0011、ADR-0014                  |
+| C3 外部适配器     | [#9](https://github.com/hongyue0721/zhiling/issues/9)   | 实现完成，进入评审 | #6 契约已冻结                                    |
+| D1 地图生成       | [#12](https://github.com/hongyue0721/zhiling/issues/12) | 实现完成，进入评审 | C3 公开适配契约                                  |
+| D2 验证与进度     | [#11](https://github.com/hongyue0721/zhiling/issues/11) | 已提交 `main`      | #10 已完成；ADR-0013                             |
+| E1 匿名数据合并   | 无                                                      | 已取消             | ADR-0005 Rejected、ADR-0007 Accepted；编号不复用 |
+| E2 结课报告       | [#13](https://github.com/hongyue0721/zhiling/issues/13) | 实现完成，进入评审 | #11 已完成；分享已由 ADR-0012 移出一期           |
+| F 用户闭环        | [#14](https://github.com/hongyue0721/zhiling/issues/14) | 阻塞               | 等待 #13，并等待 C3/D1 合入                      |
 
 ## 领取规则
 

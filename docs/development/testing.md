@@ -61,6 +61,12 @@
 
 HTTP 契约测试验证节点题面、答案提交和关系进度路由的 DTO、错误信封与 `Idempotency-Key`；不得把标准答案或提交答案放入公开题面及历史摘要。正式身份门禁复用统一 Route Handler 模式和既有身份契约测试。
 
+## 私人结课报告测试
+
+`src/modules/learning-report/domain/learning-report.test.ts` 覆盖固定关系/版本事实、完成度基点、已作答但未完成节点、观点接触、前置完成后的下一步排序、来源投影、错误事实拒绝和嵌套 DTO 隔离；领域投影明确不包含原始尝试或 `attemptId`。
+
+`tests/contracts/learning-report-http.test.ts` 覆盖正式身份门禁、成功 DTO、私有缓存头，以及不存在关系与错误账户统一的安全 `404`。`tests/integration/learning-report.test.ts` 使用真实 PostgreSQL 验证关系所有权、固定地图/题目集版本在精选切换后不漂移，以及报告不返回答案、账户或尝试标识。
+
 ## 最近一次完整验证
 
 2026-09-02 对 C1、C2、C3、D1 和 D2 执行了完整质量门禁：
