@@ -1,0 +1,37 @@
+name: 发布不可变生产镜像
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: 构建并推送提交镜像
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IMAGE_REPOSITORY: ghcr.io/hongyue0721/zhiling
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - name: 检出提交
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 登录 GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: 构建并推送不可变镜像
+        run: bash ops/publish-image.sh --repository "$IMAGE_REPOSITORY" --tag "$IMAGE_TAG"
