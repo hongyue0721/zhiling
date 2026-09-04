@@ -1,6 +1,6 @@
 # 知乎开放平台外部适配契约
 
-> 状态：一期生产 HTTP 适配器已实现，契约依据仓库 `.omp/skills/zhihu` 0.2.1 的官方 HTTP 文档快照（核验日期 2026-07-16）。本项目没有 Access Secret，尚未取得成功在线响应样本；本文不宣称在线验收完成。
+> 状态：一期生产 HTTP 适配器已实现；2026-09-04 已通过生产配置取得成功的知乎搜索响应，并登记线上附加字段兼容规则。本文不记录 Access Secret，也不宣称完整生产生成闭环已经验收。
 
 本文记录知乎供应方协议和知径外部适配边界，不定义知径自己的 HTTP API。供应方 DTO 只存在于 `src/modules/external-providers/infrastructure`，应用模块只能依赖 `public/server.ts` 导出的规范化端口。
 
@@ -14,7 +14,7 @@
 - 当前官方资料没有暴露独立的“正式接口/比赛接口”端点或 DTO；本项目只实现上述统一正式 HTTP 契约，不伪造第二套适配器。若赛事另行提供独立契约，必须新增兼容登记和适配器，并对未识别响应返回 `protocol_error`；
 - 开放平台文档当前记载邀测免费额度为知乎搜索 5,000 次/日、知乎直答 100 次/日；同一账号的 Access Secret 与页面/API 请求共享对应额度池，规则可能变化，最终以个人中心用量统计为准。这些是供应方事实而非知径 SLA；适配器不硬编码本地额度、不伪造额度剩余或本地兜底；
 - 版本常量由 `EXTERNAL_PROVIDER_VERSIONS` 提供：
-  - `sourceAdapterVersion = zhihu-http-2026-07-16-v1`；
+  - `sourceAdapterVersion = zhihu-http-2026-07-16-v2`；
   - `modelAdapterVersion = zhida-thinking-1p5-json-2026-07-16-v2`。
 
 ## 生产 HTTP 请求
@@ -51,7 +51,7 @@ GET https://developer.zhihu.com/api/v1/content/zhihu_search?Query=<url-encoded-q
 }
 ```
 
-成功 Item 的必要事实为 `Title`、`ContentType`、`ContentID`、`ContentText`、`Url`、`CommentCount`、`VoteUpCount`、`AuthorName`、`AuthorAvatar`、`AuthorBadge`、`AuthorBadgeText`、`EditTime`、`AuthorityLevel`、`RankingScore`。`CommentInfoList` 若存在，元素必须包含 `Content`。缺字段、类型错误、未知字段或 `Code != 0` 均不能伪装成空结果。
+成功 Item 的必要事实为 `Title`、`ContentType`、`ContentID`、`ContentText`、`Url`、`CommentCount`、`VoteUpCount`、`AuthorName`、`AuthorAvatar`、`AuthorBadge`、`AuthorBadgeText`、`EditTime`、`AuthorityLevel`、`RankingScore`。`CommentInfoList` 若存在，元素必须包含 `Content`。线上响应可能附带 `AuthorSignature`；适配器将它作为已知可选元数据接受，但不写入规范化 DTO。除该已登记字段外，未知字段、缺字段或类型错误均不能伪装成空结果。
 
 适配器只向应用输出以下规范化来源 DTO，不输出知乎原始 DTO：
 
@@ -143,19 +143,19 @@ ZHIHU_MODEL_TIMEOUT_MS=30000
 
 ## Fixtures 与在线采样事实
 
-`src/modules/external-providers/infrastructure/fixtures.ts` 中的搜索成功/空结果响应 envelope、缺字段和未知枚举数据来自官方 Skill 0.2.1/2026-07-16 文档样本并明确不是本项目在线采样；直答 fixture 仅复用官方非流式响应 envelope，content 是供 schema 测试使用的合成 JSON，同样不是在线采样。`REAL_AUTH_FAILURE_FIXTURE` 记录了 2026-09-02 的脱敏无密钥探针事实：
+`src/modules/external-providers/infrastructure/fixtures.ts` 中的搜索成功/空结果响应 envelope、缺字段和未知枚举数据来自官方 Skill 0.2.1/2026-07-16 文档样本并明确不是本项目在线采样；`ZHIHU_SEARCH_ADDITIVE_METADATA_FIXTURE` 是根据 2026-09-04 生产诊断观察到的 `AuthorSignature` 附加字段构造的脱敏兼容夹具；直答 fixture 仅复用官方非流式响应 envelope，content 是供 schema 测试使用的合成 JSON，同样不是在线采样。`REAL_AUTH_FAILURE_FIXTURE` 记录了 2026-09-02 的脱敏无密钥探针事实：
 
 - 搜索请求未发送 Authorization/Timestamp，HTTP 200，`Code=20001`、`Message=Authorization failed`、`Data=null`；
 - 直答请求未发送 Authorization/Timestamp，合法 `model/messages/stream=false`，HTTP 401，错误 `code=invalid_api_key`、`type=authentication_error`；
 - 动态响应头、Cookie、request-id 和任何凭据均未保存。
 
-由于当前仍没有本项目 Access Secret，成功搜索、成功空结果的在线响应、限流/配额在线样本和直答成功在线响应尚未取得。契约测试使用上述脱敏官方文档 fixtures 与稳定人工构造错误响应，不能替代真实在线采样；发布前必须在受控服务端环境补采并复核，不得在文档或验收中宣称已完成。
+2026-09-04 的生产诊断已使用受控服务端配置取得成功搜索响应（HTTP 200、`Code=0`、5 条结果），确认线上条目包含已登记的 `AuthorSignature` 附加字段；未保存原始响应、Access Secret 或动态请求信息。成功空结果、限流/配额在线样本和直答成功在线响应仍未取得；契约测试使用脱敏官方 fixtures、兼容夹具与稳定人工构造错误响应，不能替代完整真实生成闭环验收。
 
 ## 兼容登记
 
 | 编号   | 边界                                     | 当前支持                                                                                               | 失败方式                                          | 移除/复核条件                      |
 | ------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------- | ---------------------------------- |
-| ZH-001 | 知乎站内搜索 HTTP → `SourceSearchAccess` | 官方 Skill 0.2.1/2026-07-16 字段与上述封闭枚举                                                         | 必要字段、URL、枚举或 HTTP/业务错误不符时显式失败 | 官方字段或端点变化并完成版本迁移   |
+| ZH-001 | 知乎站内搜索 HTTP → `SourceSearchAccess` | 官方 Skill 0.2.1/2026-07-16 字段、封闭枚举及已观察的 `AuthorSignature` 可选附加字段                    | 必要字段、URL、枚举或 HTTP/业务错误不符时显式失败 | 官方字段或端点变化并完成版本迁移   |
 | ZH-002 | 知乎直答 HTTP → `StructuredModelAccess`  | `zhida-thinking-1p5`、`model/messages/stream=false`、JSON-only 提示、四种题型严格答案变体和用途 schema | 非 JSON、未知 ID/URL、关系不闭合或错误映射失败    | 模型版本冻结解除并完成新适配器契约 |
 
 该适配器不实现知乎 OAuth 登录、不读取用户数据接口、不使用 MCP 文本替代结构化 HTTP 来源。

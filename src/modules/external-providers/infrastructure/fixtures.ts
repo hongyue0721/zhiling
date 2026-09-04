@@ -51,6 +51,21 @@ export const ZHIHU_SEARCH_SUCCESS_FIXTURE = {
   },
 } as const;
 
+/**
+ * Live-compatible response with the provider's additive author metadata.
+ * `AuthorSignature` is accepted and intentionally omitted from normalized output.
+ */
+export const ZHIHU_SEARCH_ADDITIVE_METADATA_FIXTURE = {
+  ...ZHIHU_SEARCH_SUCCESS_FIXTURE,
+  Data: {
+    ...ZHIHU_SEARCH_SUCCESS_FIXTURE.Data,
+    Items: ZHIHU_SEARCH_SUCCESS_FIXTURE.Data.Items.map((item) => ({
+      ...item,
+      AuthorSignature: "fixture-author-signature",
+    })),
+  },
+} as const;
+
 /** Official contract shape for a successful search with no items. */
 export const ZHIHU_SEARCH_EMPTY_FIXTURE = {
   Code: 0,

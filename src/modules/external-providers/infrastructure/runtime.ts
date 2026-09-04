@@ -79,6 +79,7 @@ const sourceItemSchema = z.strictObject({
     .string()
     .min(1)
     .refine((value) => value.trim().length > 0),
+  AuthorSignature: z.string().optional(),
   AuthorAvatar: z.string(),
   AuthorBadge: z.string(),
   AuthorBadgeText: z.string(),

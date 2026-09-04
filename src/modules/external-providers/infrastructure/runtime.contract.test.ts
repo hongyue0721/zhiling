@@ -8,6 +8,7 @@ import {
 } from "../public/server";
 import {
   OFFICIAL_FIXTURE_PROVENANCE,
+  ZHIHU_SEARCH_ADDITIVE_METADATA_FIXTURE,
   REAL_AUTH_FAILURE_FIXTURE,
   ZHIDA_SUCCESS_FIXTURE,
   ZHIHU_SEARCH_EMPTY_FIXTURE,
@@ -163,6 +164,19 @@ describe("Zhihu source search adapter", () => {
     expect(new Headers(init?.headers).get("x-request-timestamp")).toBe(
       "1742822400",
     );
+  });
+
+  it("accepts known additive provider metadata without exposing it", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(ZHIHU_SEARCH_ADDITIVE_METADATA_FIXTURE)),
+      );
+
+    const result = await sourceRequest(fetcher);
+
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0]).not.toHaveProperty("authorSignature");
   });
 
   it("returns a successful empty result without confusing it with auth failure", async () => {
