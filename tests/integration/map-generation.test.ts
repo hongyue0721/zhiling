@@ -291,26 +291,40 @@ describe("map generation persistence", () => {
       extracting: 0,
       assessing: 0,
     };
+    const modelTimeouts: number[] = [];
+    const sourceTimeouts: number[] = [];
     const baseModel = provider();
     const countedModel: StructuredModelAccess = {
       async planDirections(input) {
         modelCalls.planning += 1;
+        modelTimeouts.push(input.timeoutMs);
         return baseModel.planDirections(input);
       },
       async structureMap(input) {
         modelCalls.structuring += 1;
+        modelTimeouts.push(input.timeoutMs);
         return baseModel.structureMap(input);
       },
       async extractViewpoints(input) {
         modelCalls.extracting += 1;
+        modelTimeouts.push(input.timeoutMs);
         return baseModel.extractViewpoints(input);
       },
       async generateAssessments(input) {
         modelCalls.assessing += 1;
+        modelTimeouts.push(input.timeoutMs);
         return baseModel.generateAssessments(input);
       },
     };
     let sourceCalls = 0;
+    const baseSourceSearch = sourceSearch();
+    const countedSource: SourceSearchAccess = {
+      async search(input) {
+        sourceCalls += 1;
+        sourceTimeouts.push(input.timeoutMs);
+        return baseSourceSearch.search(input);
+      },
+    };
     const generation = createMapGenerationRuntime({
       database,
       providerVersions: versions,
@@ -320,10 +334,12 @@ describe("map generation persistence", () => {
     const worker = createMapGenerationWorkerRuntime({
       database,
       providerVersions: versions,
-      sourceSearch: sourceSearch(() => {
-        sourceCalls += 1;
-      }),
+      sourceSearch: countedSource,
       structuredModel: countedModel,
+      externalRequestTimeouts: {
+        sourceTimeoutMs: 1_234,
+        modelTimeoutMs: 56_789,
+      },
       idGenerator: () => crypto.randomUUID(),
       sleep: async () => undefined,
     }).worker;
@@ -341,6 +357,8 @@ describe("map generation persistence", () => {
       assessing: 1,
     });
     expect(sourceCalls).toBe(3);
+    expect(modelTimeouts).toEqual([56_789, 56_789, 56_789, 56_789]);
+    expect(sourceTimeouts).toEqual([1_234, 1_234, 1_234]);
     expect(
       (await generation.getGeneration("user-a", created.snapshot.taskId))
         ?.status,

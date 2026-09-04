@@ -87,6 +87,11 @@ export type GenerationHeartbeatScheduler = (
   milliseconds: number,
 ) => () => void;
 
+export type GenerationExternalRequestTimeouts = Readonly<{
+  sourceTimeoutMs: number;
+  modelTimeoutMs: number;
+}>;
+
 export type GenerationProviderVersionInput = Readonly<{
   pipelineVersion?: string;
   sourceAdapterVersion: string;
@@ -94,7 +99,11 @@ export type GenerationProviderVersionInput = Readonly<{
 }>;
 
 export const DEFAULT_PIPELINE_VERSION = "generation-pipeline-v2";
-export const EXTERNAL_REQUEST_TIMEOUT_MS = 20_000;
+export const DEFAULT_EXTERNAL_REQUEST_TIMEOUTS: GenerationExternalRequestTimeouts =
+  Object.freeze({
+    sourceTimeoutMs: 20_000,
+    modelTimeoutMs: 60_000,
+  });
 export const GENERATION_CACHE_TTL_MS = 6 * 60 * 60 * 1_000;
 export const SEARCH_RESULTS_PER_DIRECTION = 8;
 export const SUPPLEMENT_RESULTS_PER_NODE = 6;
@@ -1709,6 +1718,7 @@ export class MapGenerationWorker {
     private readonly repository: DrizzleMapGenerationRepository,
     private readonly sourceSearch: GenerationSourceSearchPort,
     private readonly structuredModel: GenerationStructuredModelPort,
+    private readonly externalRequestTimeouts: GenerationExternalRequestTimeouts,
     private readonly now: GenerationClock,
     private readonly sleep: GenerationSleeper,
     private readonly scheduleHeartbeat: GenerationHeartbeatScheduler,
@@ -1883,7 +1893,7 @@ export class MapGenerationWorker {
             this.structuredModel.planDirections({
               topic: task.topic,
               requestId: `${task.id}:planning`,
-              timeoutMs: this.externalTimeout(task),
+              timeoutMs: this.externalTimeout(task, "model"),
             }),
         );
         await this.repository.completeStage(
@@ -1969,7 +1979,7 @@ export class MapGenerationWorker {
                 directions: planned.directions,
                 sources,
                 requestId: `${task.id}:structuring`,
-                timeoutMs: this.externalTimeout(task),
+                timeoutMs: this.externalTimeout(task, "model"),
               })
               .then((value) => {
                 assertModelOutputHasNoUrl(value, "structuring");
@@ -2075,7 +2085,7 @@ export class MapGenerationWorker {
                 map: effectiveMap,
                 sources: contextSources,
                 requestId: `${task.id}:extracting`,
-                timeoutMs: this.externalTimeout(task),
+                timeoutMs: this.externalTimeout(task, "model"),
               })
               .then((value) => {
                 assertModelOutputHasNoUrl(value, "extracting");
@@ -2154,7 +2164,7 @@ export class MapGenerationWorker {
                 map: { ...extracted.map, viewpoints: extracted.viewpoints },
                 sources: contextSources,
                 requestId: `${task.id}:assessing`,
-                timeoutMs: this.externalTimeout(task),
+                timeoutMs: this.externalTimeout(task, "model"),
               })
               .then((value) => {
                 assertModelOutputHasNoUrl(value, "assessing");
@@ -2225,12 +2235,16 @@ export class MapGenerationWorker {
     }
   }
 
-  private externalTimeout(task: TaskRow): number {
+  private externalTimeout(task: TaskRow, provider: "source" | "model"): number {
     const remaining = asDate(task.deadlineAt).getTime() - this.now().getTime();
     if (remaining <= 0) {
       throw new GenerationTaskFailure("generation_timeout", false);
     }
-    return Math.max(1, Math.min(EXTERNAL_REQUEST_TIMEOUT_MS, remaining));
+    const configuredTimeout =
+      provider === "model"
+        ? this.externalRequestTimeouts.modelTimeoutMs
+        : this.externalRequestTimeouts.sourceTimeoutMs;
+    return Math.max(1, Math.min(configuredTimeout, remaining));
   }
   private async callModel<T>(
     task: TaskRow,
@@ -2301,7 +2315,7 @@ export class MapGenerationWorker {
       try {
         const result = await withTimeout(
           call(attemptCount),
-          this.externalTimeout(task),
+          this.externalTimeout(task, provider),
           () =>
             new GenerationTaskFailure(
               provider === "source"
@@ -2520,7 +2534,7 @@ export class MapGenerationWorker {
             query: direction.searchQuery,
             count: SEARCH_RESULTS_PER_DIRECTION,
             requestId: `${task.id}:search:${direction.directionId}`,
-            timeoutMs: this.externalTimeout(task),
+            timeoutMs: this.externalTimeout(task, "source"),
           }),
       );
       if (
@@ -2596,7 +2610,7 @@ export class MapGenerationWorker {
             query: `${task.topic} ${node.title}`,
             count: SUPPLEMENT_RESULTS_PER_NODE,
             requestId: `${task.id}:supplement:${node.nodeId}`,
-            timeoutMs: this.externalTimeout(task),
+            timeoutMs: this.externalTimeout(task, "source"),
           }),
       );
       const responseRecord = asRecord(response);

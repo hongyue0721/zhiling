@@ -64,6 +64,10 @@ export async function runGenerationWorker(): Promise<void> {
     providerVersions: providerRuntime.versions,
     sourceSearch: providerRuntime.sourceSearch,
     structuredModel: providerRuntime.structuredModel,
+    externalRequestTimeouts: {
+      sourceTimeoutMs: externalEnvironment.sourceTimeoutMs,
+      modelTimeoutMs: externalEnvironment.modelTimeoutMs,
+    },
   });
 
   let stopping = false;

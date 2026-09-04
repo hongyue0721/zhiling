@@ -1,5 +1,6 @@
 import type {
   GenerationProviderVersionInput,
+  GenerationExternalRequestTimeouts,
   MapGenerationDatabase,
   GenerationClock,
   GenerationHeartbeatScheduler,
@@ -7,6 +8,7 @@ import type {
   GenerationSleeper,
 } from "./drizzle-map-generation";
 import {
+  DEFAULT_EXTERNAL_REQUEST_TIMEOUTS,
   DEFAULT_PIPELINE_VERSION,
   DrizzleMapGenerationRepository,
   MapGenerationWorker,
@@ -35,6 +37,7 @@ export type MapGenerationWorkerRuntimeDependencies = Omit<
   Readonly<{
     sourceSearch: GenerationSourceSearchPort;
     structuredModel: GenerationStructuredModelPort;
+    externalRequestTimeouts?: GenerationExternalRequestTimeouts;
     sleep?: GenerationSleeper;
     scheduleHeartbeat?: GenerationHeartbeatScheduler;
   }>;
@@ -99,6 +102,7 @@ export function createMapGenerationWorkerRuntime({
   providerVersions,
   sourceSearch,
   structuredModel,
+  externalRequestTimeouts = DEFAULT_EXTERNAL_REQUEST_TIMEOUTS,
   now = runtimeClock,
   idGenerator = runtimeId,
   sleep = runtimeSleep,
@@ -114,6 +118,7 @@ export function createMapGenerationWorkerRuntime({
     repository,
     sourceSearch,
     structuredModel,
+    externalRequestTimeouts,
     now,
     sleep,
     scheduleHeartbeat,

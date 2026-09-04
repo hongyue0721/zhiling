@@ -15,6 +15,7 @@ import type {
 } from "./contracts";
 import type {
   GenerationProviderVersionInput,
+  GenerationExternalRequestTimeouts,
   GenerationClock,
   GenerationHeartbeatScheduler,
   GenerationIdGenerator,
@@ -37,6 +38,7 @@ export type MapGenerationWorkerRuntimeDependencies = Omit<
   Readonly<{
     sourceSearch: SourceSearchAccess;
     structuredModel: StructuredModelAccess;
+    externalRequestTimeouts?: GenerationExternalRequestTimeouts;
     sleep?: GenerationSleeper;
     scheduleHeartbeat?: GenerationHeartbeatScheduler;
   }>;
