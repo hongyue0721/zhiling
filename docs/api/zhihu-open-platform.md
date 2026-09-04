@@ -15,7 +15,7 @@
 - 开放平台文档当前记载邀测免费额度为知乎搜索 5,000 次/日、知乎直答 100 次/日；同一账号的 Access Secret 与页面/API 请求共享对应额度池，规则可能变化，最终以个人中心用量统计为准。这些是供应方事实而非知径 SLA；适配器不硬编码本地额度、不伪造额度剩余或本地兜底；
 - 版本常量由 `EXTERNAL_PROVIDER_VERSIONS` 提供：
   - `sourceAdapterVersion = zhihu-http-2026-07-16-v2`；
-  - `modelAdapterVersion = zhida-thinking-1p5-json-2026-09-04-v4`。
+  - `modelAdapterVersion = zhida-thinking-1p5-json-2026-09-04-v5`。
 
 ## 生产 HTTP 请求
 

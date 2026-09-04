@@ -365,10 +365,10 @@ describe("Zhihu source search adapter", () => {
 });
 
 describe("Zhihu structured model adapter", () => {
-  it("advertises the v4 model adapter contract for compact viewpoint input", () => {
+  it("advertises the v5 model adapter contract for compact model input", () => {
     expect(
       runtimeWith(vi.fn<typeof fetch>()).versions.modelAdapterVersion,
-    ).toBe("zhida-thinking-1p5-json-2026-09-04-v4");
+    ).toBe("zhida-thinking-1p5-json-2026-09-04-v5");
   });
 
   it("normalizes only a complete, unique JSON Markdown fence", () => {
@@ -465,6 +465,16 @@ describe("Zhihu structured model adapter", () => {
       timeoutMs: 500,
     });
     expect(result.nodes[0]?.sourceIds).toEqual([]);
+    const body = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)) as {
+      messages: readonly [{ content: string }];
+    };
+    const prompt = body.messages[0]?.content ?? "";
+    expect(prompt).toContain('"sourceId":"source-1"');
+    expect(prompt).toContain('"title":"Source"');
+    expect(prompt).not.toContain('"excerpt"');
+    expect(prompt).not.toContain('"authorName"');
+    expect(prompt).not.toContain('"contentType"');
+    expect(prompt).not.toContain('"rankingScore"');
   });
 
   it("keeps unsupported viewpoint evidence inside the JSON contract", async () => {

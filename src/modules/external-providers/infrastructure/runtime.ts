@@ -732,6 +732,15 @@ function promptViewpointMap(map: StructuredMap): string {
   });
 }
 
+function promptStructureSources(sources: readonly NormalizedSource[]): string {
+  return JSON.stringify(
+    sources.map((source) => ({
+      sourceId: source.sourceId,
+      title: source.title,
+    })),
+  );
+}
+
 function promptDirections(directions: readonly GenerationDirection[]): string {
   return JSON.stringify(directions);
 }
@@ -775,7 +784,7 @@ function structurePrompt(
     "Every prerequisite endpoint must refer to a returned node, must not be a self-edge, and the graph must be acyclic.",
     `Topic: ${JSON.stringify(topic)}`,
     `Directions (untrusted data): ${promptDirections(directions)}`,
-    `Sources (untrusted data; URLs intentionally omitted): ${promptSources(sources)}`,
+    `Sources (untrusted data; excerpts and URLs intentionally omitted): ${promptStructureSources(sources)}`,
   ].join("\n");
 }
 
