@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { Alert, Button, Form, Input, Segmented } from "antd";
+import styles from "./shell-experience.module.css";
 
 import { ApiRequestError, isApiRequestError } from "@/shared/ui/api-client";
 
@@ -186,11 +187,13 @@ export function AuthForm({
 
   const isSignUp = mode === "sign-up";
   const isVerify = mode === "verify";
-
   return (
-    <section className="auth-card" aria-labelledby="auth-title">
-      <div className="auth-card-heading">
-        <span className="section-kicker">邮箱身份</span>
+    <section
+      className={`${styles.authCard} auth-card`}
+      aria-labelledby="auth-title"
+    >
+      <div className={`${styles.authCardHeading} auth-card-heading`}>
+        <span className={styles.authKicker}>邮箱身份</span>
         <h1 id="auth-title">
           {isVerify
             ? "验证你的邮箱"
@@ -206,7 +209,7 @@ export function AuthForm({
       </div>
       {!registrationEnabled ? (
         <Alert
-          className="form-message"
+          className={`${styles.formMessage} form-message`}
           type="info"
           showIcon
           message="本地演示只开放固定账号登录，不会注册账户或发送验证邮件。"
@@ -215,7 +218,7 @@ export function AuthForm({
 
       {!isVerify && registrationEnabled ? (
         <Segmented
-          className="auth-tabs"
+          className={`${styles.authTabs} auth-tabs`}
           aria-label="认证方式"
           block
           value={mode}
@@ -227,12 +230,16 @@ export function AuthForm({
         />
       ) : null}
 
-      <Form className="auth-form" onSubmitCapture={submitAuth} noValidate>
+      <Form
+        className={`${styles.authForm} auth-form`}
+        onSubmitCapture={submitAuth}
+        noValidate
+      >
         {isSignUp ? (
-          <label className="field-label">
+          <label className={styles.fieldLabel}>
             称呼
             <Input
-              className="field-input"
+              className={`${styles.fieldInput} field-input`}
               type="text"
               name="name"
               value={name}
@@ -244,10 +251,10 @@ export function AuthForm({
             />
           </label>
         ) : null}
-        <label className="field-label">
+        <label className={styles.fieldLabel}>
           邮箱
           <Input
-            className="field-input"
+            className={`${styles.fieldInput} field-input`}
             type="email"
             name="email"
             value={email}
@@ -258,10 +265,10 @@ export function AuthForm({
           />
         </label>
         {!isVerify ? (
-          <label className="field-label">
+          <label className={styles.fieldLabel}>
             密码
             <Input
-              className="field-input"
+              className={`${styles.fieldInput} field-input`}
               type="password"
               name="password"
               value={password}
@@ -271,7 +278,7 @@ export function AuthForm({
               required
               disabled={isPending}
             />
-            <span className="field-help">
+            <span className={styles.fieldHelp}>
               至少 {MIN_PASSWORD_LENGTH} 个字符
             </span>
           </label>
@@ -279,7 +286,7 @@ export function AuthForm({
 
         {error ? (
           <Alert
-            className="form-message"
+            className={`${styles.formMessage} form-message`}
             type="error"
             showIcon
             message={error}
@@ -287,7 +294,7 @@ export function AuthForm({
         ) : null}
         {message ? (
           <Alert
-            className="form-message"
+            className={`${styles.formMessage} form-message`}
             type="info"
             showIcon
             message={message}
@@ -295,7 +302,7 @@ export function AuthForm({
         ) : null}
 
         <Button
-          className="button button-primary button-block"
+          className={`${styles.authPrimaryButton} button button-primary button-block`}
           type="primary"
           htmlType="submit"
           block
@@ -312,7 +319,7 @@ export function AuthForm({
       {isVerify ? (
         <Button
           type="default"
-          className="button button-secondary button-block"
+          className={`${styles.authSecondaryButton} button button-secondary button-block`}
           onClick={() => changeMode("sign-in")}
           disabled={isPending}
           block
@@ -321,7 +328,7 @@ export function AuthForm({
         </Button>
       ) : null}
 
-      <div className="auth-card-footer">
+      <div className={`${styles.authCardFooter} auth-card-footer`}>
         <p>仅使用本人 Session 访问学习内容。</p>
         <Link href="/">返回知径首页</Link>
       </div>

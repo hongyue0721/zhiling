@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Input, Progress, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
+import styles from "@/components/discovery-experience.module.css";
 import {
   ApiRequestError,
   apiRequest,
@@ -68,9 +69,29 @@ const statusProgress: Readonly<Record<string, number>> = {
   publishing: 96,
   succeeded: 100,
 };
+const generationStages = Object.entries(statusProgress).map(
+  ([key, progress]) => ({
+    key,
+    label: statusLabels[key] ?? key,
+    progress,
+  }),
+);
 
+function timelineState(
+  stageProgress: number,
+  stageKey: string,
+  currentStatus: string,
+  currentProgress: number | null,
+): "complete" | "current" | "upcoming" {
+  if (stageKey === currentStatus) {
+    return "current";
+  }
+  if (currentProgress !== null && stageProgress < currentProgress) {
+    return "complete";
+  }
+  return "upcoming";
+}
 const { TextArea } = Input;
-
 const failureLabels: Record<string, string> = {
   invalid_topic: "这个主题暂时无法生成，请换一个更具体的学习目标。",
   source_unavailable: "知乎来源暂时不可用，请稍后再试。",
@@ -633,10 +654,10 @@ export function GenerationPage({
   const isGenerationDisabled = isBusy || !generationRequestsEnabled;
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${styles.page}`}>
       <AppHeader email={email} eyebrow="现场生成" />
-      <main className="generation-main">
-        <div className="generation-heading">
+      <main className={`generation-main ${styles.generationMain}`}>
+        <div className={styles.generationHeading}>
           <Link className="back-link" href="/learning">
             ← 我的学习
           </Link>
@@ -646,16 +667,16 @@ export function GenerationPage({
         </div>
 
         <section
-          className="generation-layout"
+          className={styles.generationLayout}
           aria-labelledby="generation-form-title"
         >
-          <div className="generation-form-panel">
-            <div className="panel-heading">
+          <div className={styles.formPanel}>
+            <div className={styles.panelHeading}>
               <h2 id="generation-form-title">你的学习目标</h2>
               <p>写清楚想理解的范围，最多 200 个字符。</p>
             </div>
             <Form
-              className="generation-form"
+              className={styles.form}
               onSubmitCapture={submitGeneration}
               noValidate
             >
@@ -675,7 +696,7 @@ export function GenerationPage({
                   disabled={isGenerationDisabled}
                 />
               </label>
-              <div className="field-counter" aria-live="polite">
+              <div className={styles.counter} aria-live="polite">
                 {topic.length}/200
               </div>
               {!generationRequestsEnabled ? (
@@ -695,7 +716,7 @@ export function GenerationPage({
                 />
               ) : null}
               <Button
-                className="button button-primary button-block"
+                className={`${styles.submitButton} button button-primary button-block`}
                 type="primary"
                 htmlType="submit"
                 block
@@ -705,18 +726,15 @@ export function GenerationPage({
                 {!generationRequestsEnabled ? "本地演示未启用" : "开始现场生成"}
               </Button>
             </Form>
-            <p className="privacy-note">
+            <p className={styles.privacyNote}>
               {generationRequestsEnabled
                 ? "主题随当前 Session 提交；前端不发送用户 ID，也不接收候选正文或供应方错误详情。"
                 : "当前运行模式不会提交主题，也不会创建生成任务。"}
             </p>
           </div>
 
-          <section
-            className="generation-status-panel"
-            aria-label="生成任务状态"
-          >
-            <div className="status-card-topline">
+          <section className={styles.statusPanel} aria-label="生成任务状态">
+            <div className={styles.statusTopline}>
               <span className="section-kicker">任务状态</span>
               {taskId ? <Tag color="processing">可恢复</Tag> : null}
             </div>
@@ -736,25 +754,12 @@ export function GenerationPage({
                 message="现场生成不会接收任务，也不会留下无法处理的排队任务。"
               />
             ) : state === "idle" ? (
-              <p className="status-card-description">
+              <p className={styles.statusDescription}>
                 提交后显示规范化、检索、结构化和校验进度。
               </p>
-            ) : state === "reconnecting" ? (
-              <Alert
-                type="warning"
-                showIcon
-                message={`连接暂时中断，正在恢复进度（第 ${reconnectAttempt} 次尝试）。`}
-              />
-            ) : state === "connection_error" ? (
-              <Alert
-                role="alert"
-                type="error"
-                showIcon
-                message={error ?? "进度连接暂时不可用。"}
-              />
             ) : state === "failed" ? (
               <section
-                className="generation-failure"
+                className={styles.failure}
                 role="region"
                 aria-labelledby="generation-failure-title"
               >
@@ -773,40 +778,114 @@ export function GenerationPage({
                 />
               </section>
             ) : (
-              <div
-                className="generation-progress"
-                role="status"
-                aria-live="polite"
-              >
-                <Progress
-                  percent={statusProgress[status] ?? 8}
-                  status={state === "succeeded" ? "success" : "active"}
-                  showInfo={false}
-                />
-                <strong>{statusLabel}</strong>
-                <span className="progress-caption">
-                  事件来自服务端，断线会自动恢复
-                </span>
-              </div>
+              <>
+                {state === "reconnecting" ? (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message={`连接暂时中断，正在恢复进度（第 ${reconnectAttempt} 次尝试）。`}
+                  />
+                ) : state === "connection_error" ? (
+                  <Alert
+                    role="alert"
+                    type="error"
+                    showIcon
+                    message={error ?? "进度连接暂时不可用。"}
+                  />
+                ) : null}
+                <div
+                  className={styles.timeline}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className={styles.timelineTopline}>
+                    <span>阶段时间线</span>
+                    {Object.prototype.hasOwnProperty.call(
+                      statusProgress,
+                      status,
+                    ) ? (
+                      <span className={styles.timelineProgress}>
+                        服务端状态已更新
+                      </span>
+                    ) : null}
+                  </div>
+                  {Object.prototype.hasOwnProperty.call(
+                    statusProgress,
+                    status,
+                  ) ? (
+                    <Progress
+                      percent={statusProgress[status]}
+                      status={state === "succeeded" ? "success" : "active"}
+                      showInfo={false}
+                    />
+                  ) : (
+                    <p className={styles.timelineUnknown}>
+                      当前状态：{statusLabel}
+                    </p>
+                  )}
+                  <ol className={styles.timelineList}>
+                    {generationStages.map((stage) => {
+                      const currentProgress =
+                        Object.prototype.hasOwnProperty.call(
+                          statusProgress,
+                          status,
+                        )
+                          ? statusProgress[status]
+                          : null;
+                      const stageStatus = timelineState(
+                        stage.progress,
+                        stage.key,
+                        status,
+                        currentProgress,
+                      );
+                      return (
+                        <li
+                          className={styles.timelineItem}
+                          data-state={stageStatus}
+                          aria-current={
+                            stageStatus === "current" ? "step" : undefined
+                          }
+                          key={stage.key}
+                        >
+                          <span
+                            className={styles.timelineMarker}
+                            aria-hidden="true"
+                          />
+                          <span className={styles.timelineLabel}>
+                            {stage.label}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  <span className={styles.timelineUnknown}>
+                    事件来自服务端，断线会自动恢复
+                  </span>
+                </div>
+              </>
             )}
             {state === "connection_error" && taskId ? (
-              <Button type="default" onClick={reconnectTask}>
-                重新连接任务
-              </Button>
+              <div className={styles.statusActions}>
+                <Button type="default" onClick={reconnectTask}>
+                  重新连接任务
+                </Button>
+              </div>
             ) : null}
             {state === "failed" ? (
-              <Button
-                type="default"
-                onClick={() => {
-                  setState("idle");
-                  setFailure(null);
-                  setError(null);
-                  setTaskId(null);
-                  setStatus("idle");
-                }}
-              >
-                重新提交主题
-              </Button>
+              <div className={styles.statusActions}>
+                <Button
+                  type="default"
+                  onClick={() => {
+                    setState("idle");
+                    setFailure(null);
+                    setError(null);
+                    setTaskId(null);
+                    setStatus("idle");
+                  }}
+                >
+                  重新提交主题
+                </Button>
+              </div>
             ) : null}
           </section>
         </section>

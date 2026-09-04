@@ -4,6 +4,8 @@ import type { PointerEvent, WheelEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { Button } from "antd";
 
+import styles from "./learning-experience.module.css";
+
 import type {
   LearningMapDetail,
   LearningProgressSummary,
@@ -28,13 +30,15 @@ type MapSize = Readonly<{
   height: number;
 }>;
 
-const NODE_WIDTH = 224;
-const NODE_HEIGHT = 122;
-const LEVEL_GAP = 94;
-const ROW_GAP = 32;
-const PADDING = 52;
+const NODE_WIDTH = 264;
+const NODE_HEIGHT = 150;
+const LEVEL_GAP = 112;
+const ROW_GAP = 42;
+const PADDING = 72;
 const MIN_SCALE = 0.58;
 const MAX_SCALE = 1.65;
+const INITIAL_VIEW_WIDTH = 1_180;
+const MIN_LAYOUT_HEIGHT = 660;
 
 function stableLayout(map: LearningMapDetail): {
   nodes: readonly LayoutNode[];
@@ -111,16 +115,17 @@ function stableLayout(map: LearningMapDetail): {
     ...Array.from(groups.values(), (group) => group.length),
   );
   const maxLevel = Math.max(0, ...Array.from(groups.keys()));
+  const contentHeight =
+    PADDING * 2 + maxRows * NODE_HEIGHT + (maxRows - 1) * ROW_GAP;
   const size = {
     width: PADDING * 2 + (maxLevel + 1) * NODE_WIDTH + maxLevel * LEVEL_GAP,
-    height: PADDING * 2 + maxRows * NODE_HEIGHT + (maxRows - 1) * ROW_GAP,
+    height: Math.max(MIN_LAYOUT_HEIGHT, contentHeight),
   };
   const layoutNodes: LayoutNode[] = [];
   for (const [level, group] of groups) {
     const groupHeight =
       group.length * NODE_HEIGHT + (group.length - 1) * ROW_GAP;
-    const offsetY =
-      PADDING + Math.max(0, (size.height - PADDING - groupHeight) / 2);
+    const offsetY = Math.max(PADDING, (size.height - groupHeight) / 2);
     group.forEach((nodeId, index) => {
       layoutNodes.push({
         nodeId,
@@ -211,8 +216,11 @@ export function LearningMapCanvas({
   }
 
   return (
-    <section className="map-canvas-shell" aria-label="学习地图画布">
-      <div className="map-canvas-toolbar">
+    <section
+      className={`map-canvas-shell ${styles.mapCanvasExperience}`}
+      aria-label="学习地图画布"
+    >
+      <div className={`map-canvas-toolbar ${styles.mapToolbar}`}>
         <p className="map-canvas-hint">拖动画布浏览 · 滚轮缩放</p>
         <div className="map-controls" aria-label="地图缩放控制">
           <Button
@@ -246,11 +254,11 @@ export function LearningMapCanvas({
           </Button>
         </div>
       </div>
-      <div className="map-canvas-viewport">
+      <div className={`map-canvas-viewport ${styles.mapViewport}`}>
         <svg
           ref={svgRef}
-          className="map-canvas"
-          viewBox={`0 0 ${size.width} ${size.height}`}
+          className={`map-canvas ${styles.mapSvg}`}
+          viewBox={`0 0 ${Math.min(size.width, INITIAL_VIEW_WIDTH)} ${size.height}`}
           role="application"
           aria-label="可缩放、可平移的学习路径图"
           onPointerDown={beginPan}
@@ -269,7 +277,7 @@ export function LearningMapCanvas({
               <path
                 d="M 32 0 L 0 0 0 32"
                 fill="none"
-                className="map-grid-line"
+                className={`${styles.mapGridLine} map-grid-line`}
               />
             </pattern>
             <marker
@@ -281,10 +289,18 @@ export function LearningMapCanvas({
               orient="auto"
               markerUnits="strokeWidth"
             >
-              <path d="M 0 0 L 8 4 L 0 8 z" className="map-edge-arrow" />
+              <path
+                d="M 0 0 L 8 4 L 0 8 z"
+                className={`${styles.mapEdgeArrow} map-edge-arrow`}
+              />
             </marker>
           </defs>
-          <rect width={size.width} height={size.height} fill="url(#map-grid)" />
+          <rect
+            className={styles.mapGridRect}
+            width={size.width}
+            height={size.height}
+            fill="url(#map-grid)"
+          />
           <g transform={`translate(${pan.x} ${pan.y}) scale(${scale})`}>
             <g aria-hidden="true">
               {map.prerequisites.map((edge) => {
@@ -300,7 +316,7 @@ export function LearningMapCanvas({
                 const curve = Math.max(44, (toX - fromX) / 2);
                 return (
                   <path
-                    className="map-edge"
+                    className={`${styles.mapEdge} map-edge`}
                     d={`M ${fromX} ${fromY} C ${fromX + curve} ${fromY}, ${toX - curve} ${toY}, ${toX} ${toY}`}
                     markerEnd="url(#map-arrow)"
                     key={`${edge.prerequisiteNodeId}:${edge.nodeId}`}
@@ -315,6 +331,10 @@ export function LearningMapCanvas({
               if (!node) {
                 return null;
               }
+              const nodeNumber =
+                map.nodes.findIndex(
+                  (candidate) => candidate.nodeId === node.nodeId,
+                ) + 1;
               const nodeProgress = progressByNodeId.get(node.nodeId);
               const completed = nodeProgress?.completed === true;
               const selected = selectedNodeId === node.nodeId;
@@ -329,19 +349,31 @@ export function LearningMapCanvas({
                 >
                   <button
                     type="button"
-                    className={`map-node ${selected ? "selected" : ""} ${completed ? "completed" : ""}`}
+                    className={`map-node ${styles.mapNode} ${selected ? "selected" : ""} ${completed ? "completed" : ""}`}
                     onClick={() => onSelectNode(node.nodeId)}
                     aria-pressed={selected}
                     aria-label={`${node.title}${completed ? "，已完成" : "，未完成"}`}
                   >
-                    <span className="map-node-status" aria-hidden="true">
+                    <span className={styles.mapNodeStep} aria-hidden="true">
+                      节点 {nodeNumber}
+                    </span>
+                    <span
+                      className={`${styles.mapNodeStatus} map-node-status`}
+                      aria-hidden="true"
+                    >
                       {completed ? "✓" : "○"}
                     </span>
-                    <span className="map-node-title">{node.title}</span>
-                    <span className="map-node-objective">
+                    <span className={`${styles.mapNodeTitle} map-node-title`}>
+                      {node.title}
+                    </span>
+                    <span
+                      className={`${styles.mapNodeObjective} map-node-objective`}
+                    >
                       {node.learningObjective}
                     </span>
-                    <span className="map-node-sources">
+                    <span
+                      className={`${styles.mapNodeSources} map-node-sources`}
+                    >
                       {node.sourceIds.length > 0
                         ? `${node.sourceIds.length} 个来源`
                         : "暂无来源"}
@@ -353,6 +385,44 @@ export function LearningMapCanvas({
           </g>
         </svg>
       </div>
+      <nav className={styles.mobileRoute} aria-label="移动端学习路线">
+        <div className={styles.mobileRouteHeader}>
+          <span className={styles.mobileRouteKicker}>纵向路线</span>
+          <span>按节点顺序查看</span>
+        </div>
+        <ol>
+          {map.nodes.map((node, index) => {
+            const nodeProgress = progressByNodeId.get(node.nodeId);
+            const completed = nodeProgress?.completed === true;
+            const selected = selectedNodeId === node.nodeId;
+            return (
+              <li
+                className={`${styles.mobileRouteItem} ${completed ? styles.mobileRouteItemCompleted : ""}`}
+                key={`mobile:${node.nodeId}`}
+              >
+                <button
+                  type="button"
+                  className={`map-route-node ${styles.mobileRouteNode} ${selected ? styles.mobileRouteNodeSelected : ""}`}
+                  onClick={() => onSelectNode(node.nodeId)}
+                  aria-pressed={selected}
+                  aria-label={`${node.title}${completed ? "，已完成" : "，未完成"}，移动端路线节点`}
+                >
+                  <span className={styles.mobileRouteIndex} aria-hidden="true">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className={styles.mobileRouteCopy}>
+                    <strong>{node.title}</strong>
+                    <small>{node.learningObjective}</small>
+                  </span>
+                  <span className={styles.mobileRouteState}>
+                    {completed ? "已完成" : "待验证"}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
     </section>
   );
 }

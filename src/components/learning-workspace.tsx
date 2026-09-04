@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Empty, Skeleton, Tag } from "antd";
+import { Alert, Button, Empty, Progress, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
 import { AssessmentPanel } from "@/components/assessment-panel";
 import { LearningMapCanvas } from "@/components/learning-map-canvas";
+import styles from "./learning-experience.module.css";
 import { apiRequest, isApiRequestError } from "@/shared/ui/api-client";
 import type {
   LearningMapDetail,
@@ -224,12 +225,42 @@ export function LearningWorkspace({
       ) ?? [],
     [map, selectedNodeId],
   );
+  const progressFacts = useMemo(() => {
+    const totalNodeCount = map?.nodes.length ?? 0;
+    const completedNodeIds = new Set(
+      (progress?.nodes ?? [])
+        .filter((node) => node.completed)
+        .map((node) => node.nodeId),
+    );
+    const completedNodeCount =
+      map?.nodes.filter((node) => completedNodeIds.has(node.nodeId)).length ??
+      0;
+    const selectedNodeIndex =
+      map?.nodes.findIndex((node) => node.nodeId === selectedNodeId) ?? -1;
+    const currentNodeNumber =
+      selectedNodeIndex >= 0
+        ? selectedNodeIndex + 1
+        : totalNodeCount > 0
+          ? Math.min(completedNodeCount + 1, totalNodeCount)
+          : 0;
+    const completionPercent =
+      totalNodeCount > 0
+        ? Math.round((completedNodeCount / totalNodeCount) * 100)
+        : 0;
+
+    return {
+      completedNodeCount,
+      totalNodeCount,
+      currentNodeNumber,
+      completionPercent,
+    };
+  }, [map, progress, selectedNodeId]);
 
   if (isLoading) {
     return (
-      <div className="app-frame">
+      <div className={`app-frame ${styles.workspaceExperience}`}>
         <AppHeader email={email} eyebrow="学习工作区" />
-        <main className="workspace-main">
+        <main className={`workspace-main ${styles.workspaceMain}`}>
           <div className="workspace-loading" aria-busy="true">
             <Skeleton active paragraph={{ rows: 8 }} />
           </div>
@@ -240,9 +271,9 @@ export function LearningWorkspace({
 
   if (!map || map.nodes.length === 0) {
     return (
-      <div className="app-frame">
+      <div className={`app-frame ${styles.workspaceExperience}`}>
         <AppHeader email={email} eyebrow="学习工作区" />
-        <main className="workspace-main">
+        <main className={`workspace-main ${styles.workspaceMain}`}>
           <Empty
             className="empty-panel page-empty"
             description={
@@ -266,17 +297,44 @@ export function LearningWorkspace({
   }
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${styles.workspaceExperience}`}>
       <AppHeader email={email} eyebrow="学习工作区" />
-      <main className="workspace-main">
-        <div className="workspace-heading">
-          <div>
-            <Link className="back-link" href="/learning">
-              ← 我的学习
-            </Link>
-            <span className="section-kicker">学习地图</span>
+      <main className={`workspace-main ${styles.workspaceMain}`}>
+        <div className={`workspace-heading ${styles.workspaceHeading}`}>
+          <div className={styles.workspaceHeadingCopy}>
+            <div className={styles.workspaceHeadingTrail}>
+              <Link className="back-link" href="/learning">
+                ← 我的学习
+              </Link>
+              <span className="section-kicker">学习地图</span>
+            </div>
             <h1>{map.title}</h1>
             <p>{map.summary}</p>
+            <div className={styles.workspaceProgress} aria-label="学习进度">
+              <div className={styles.workspaceProgressFacts}>
+                <span>
+                  已完成{" "}
+                  <strong>
+                    {progressFacts.completedNodeCount}/
+                    {progressFacts.totalNodeCount}
+                  </strong>{" "}
+                  个节点
+                </span>
+                <span>
+                  当前节点{" "}
+                  <strong>
+                    {progressFacts.currentNodeNumber}/
+                    {progressFacts.totalNodeCount}
+                  </strong>
+                </span>
+              </div>
+              <Progress
+                percent={progressFacts.completionPercent}
+                showInfo={false}
+                strokeColor="var(--experience-blue)"
+                trailColor="var(--experience-blue-soft)"
+              />
+            </div>
           </div>
           <div className="workspace-heading-actions">
             <Button
@@ -307,7 +365,7 @@ export function LearningWorkspace({
           />
         ) : null}
 
-        <div className="workspace-grid">
+        <div className={`workspace-grid ${styles.workspaceGrid}`}>
           <LearningMapCanvas
             map={map}
             progress={progress}
@@ -328,7 +386,7 @@ export function LearningWorkspace({
             />
           ) : (
             <aside
-              className="panel-card node-panel"
+              className={`panel-card node-panel ${styles.nodePanel}`}
               aria-labelledby="node-panel-title"
             >
               {selectedNode ? (
@@ -337,6 +395,23 @@ export function LearningWorkspace({
                     <span className="section-kicker">当前节点</span>
                     <h2 id="node-panel-title">{selectedNode.title}</h2>
                     <p>{selectedNode.learningObjective}</p>
+                  </div>
+                  <div className={styles.nodeFacts} aria-label="节点事实">
+                    <div>
+                      <span>节点序号</span>
+                      <strong>
+                        {progressFacts.currentNodeNumber}/
+                        {progressFacts.totalNodeCount}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>最佳成绩</span>
+                      <strong>
+                        {selectedProgress
+                          ? `${Math.round(selectedProgress.bestScore / 100)}%`
+                          : "未作答"}
+                      </strong>
+                    </div>
                   </div>
                   <div className="node-status-line">
                     <Tag

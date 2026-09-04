@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Empty, List, Progress, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
+import styles from "./learning-experience.module.css";
 import { apiRequest, isApiRequestError } from "@/shared/ui/api-client";
 import type { PrivateLearningReport } from "@/components/contracts";
 
@@ -115,10 +116,10 @@ export function LearningReportPage({
   }, [loadReport]);
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${styles.reportExperience}`}>
       <AppHeader email={email} eyebrow="私人报告" />
-      <main className="report-main">
-        <div className="report-heading">
+      <main className={`report-main ${styles.reportMain}`}>
+        <div className={`report-heading ${styles.reportHeading}`}>
           <Link
             className="back-link"
             href={`/learn/${encodeURIComponent(relationshipId)}`}
@@ -173,21 +174,38 @@ type ReportContentProps = Readonly<{
 function ReportContent({ report }: ReportContentProps) {
   const completionPercent = report.completion.completionBasisPoints / 100;
   return (
-    <div className="report-content">
+    <div className={`report-content ${styles.reportContent}`}>
       <section
-        className="report-overview"
+        className={`report-overview ${styles.reportOverview}`}
         aria-labelledby="report-overview-title"
       >
         <div className="report-overview-copy">
+          <span className={`section-kicker ${styles.reportProfileKicker}`}>
+            结课画像
+          </span>
           <span className="section-kicker">完成度</span>
           <h2 id="report-overview-title">按服务端记录的节点完成情况</h2>
           <p>
             已完成 {report.completion.completedNodeCount} /{" "}
             {report.completion.totalNodeCount} 个节点
           </p>
+          <div className={styles.reportFactRail} aria-label="报告事实摘要">
+            <div>
+              <strong>{report.completion.completedNodeCount}</strong>
+              <span>已完成节点</span>
+            </div>
+            <div>
+              <strong>{report.weakNodes.length}</strong>
+              <span>待巩固节点</span>
+            </div>
+            <div>
+              <strong>{report.encounteredViewpoints.length}</strong>
+              <span>已接触观点</span>
+            </div>
+          </div>
         </div>
         <div
-          className="completion-meter"
+          className={`completion-meter ${styles.completionMeter}`}
           aria-label={`完成度 ${completionPercent}%`}
         >
           <strong>{completionPercent.toFixed(0)}%</strong>
@@ -218,7 +236,8 @@ function ReportContent({ report }: ReportContentProps) {
                     <span>
                       <strong>{node.title}</strong>
                       <small>
-                        最佳成绩 {Math.round(node.bestScore / 100)}%
+                        最佳成绩 {Math.round(node.bestScore / 100)}% · 依据{" "}
+                        {node.sourceIds.length} 条来源
                       </small>
                     </span>
                     <span aria-hidden="true">→</span>
@@ -252,6 +271,8 @@ function ReportContent({ report }: ReportContentProps) {
                         {step.reason === "improve_score"
                           ? "再次验证，巩固理解"
                           : step.learningObjective}
+                        {" · 依据 "}
+                        {step.sourceIds.length} 条来源
                       </small>
                     </span>
                     <span aria-hidden="true">→</span>
@@ -295,6 +316,32 @@ function ReportContent({ report }: ReportContentProps) {
                     <strong>适用条件：</strong>
                     {viewpoint.conditions}
                   </p>
+                ) : null}
+                {viewpoint.sourceIds.length > 0 ? (
+                  <div className="viewpoint-sources" aria-label="观点依据来源">
+                    {viewpoint.sourceIds.map((sourceId) => {
+                      const source = report.sources.find(
+                        (candidate) => candidate.sourceId === sourceId,
+                      );
+                      return source ? (
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          key={`${viewpoint.viewpointId}:${sourceId}`}
+                        >
+                          {source.title}
+                        </a>
+                      ) : (
+                        <span
+                          className="source-missing"
+                          key={`${viewpoint.viewpointId}:${sourceId}`}
+                        >
+                          来源条目暂时无法关联
+                        </span>
+                      );
+                    })}
+                  </div>
                 ) : null}
               </article>
             ))}

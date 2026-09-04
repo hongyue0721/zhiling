@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Empty, List, Pagination, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
+import styles from "@/components/discovery-experience.module.css";
 import type {
   FeaturedLearningMapSummary,
   LearningRelationshipCreation,
@@ -158,18 +159,25 @@ export function FeaturedMapsPage({
   );
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${styles.page}`}>
       <AppHeader email={email} eyebrow="精选地图" />
-      <main className="directory-main">
-        <header className="directory-heading">
-          <span className="section-kicker">精选地图</span>
-          <h1>从可靠路径开始</h1>
-          <p>人工检查、版本固定、来源可追溯。</p>
+      <main className={`directory-main ${styles.pageMain}`}>
+        <header className={`directory-heading ${styles.heading}`}>
+          <div className={styles.headingCopy}>
+            <span className="section-kicker">精选地图</span>
+            <h1>从可靠路径开始</h1>
+            <p>人工检查、版本固定、来源可追溯。</p>
+          </div>
+          <div className={styles.headingStamp} aria-hidden="true">
+            路线
+            <br />
+            索引
+          </div>
         </header>
 
         {error ? (
           <Alert
-            className="page-alert"
+            className={styles.alert}
             role="alert"
             type="error"
             showIcon
@@ -186,13 +194,13 @@ export function FeaturedMapsPage({
         ) : null}
 
         {isLoading ? (
-          <div className="section-loading" aria-busy="true">
+          <div className={styles.loading} aria-busy="true">
             <Skeleton active paragraph={{ rows: 8 }} />
           </div>
         ) : featured.length > 0 ? (
           <section aria-label="精选地图列表" className="directory-content">
             <List
-              className="learning-list"
+              className={styles.cardList}
               dataSource={visibleFeatured}
               renderItem={(map, index) => {
                 const relationship = relationshipByMapAndVersion.get(
@@ -201,49 +209,55 @@ export function FeaturedMapsPage({
                 const isJoining = joiningMapId === map.mapId;
                 return (
                   <ListItem
-                    className="learning-list-item"
+                    className={styles.cardListItem}
                     key={`${map.mapId}:${map.versionId}`}
                   >
-                    <article className="learning-row">
-                      <span className="learning-row-index" aria-hidden="true">
-                        {String(
-                          (currentPage - 1) * PAGE_SIZE + index + 1,
-                        ).padStart(2, "0")}
-                      </span>
-                      <div className="learning-row-copy">
-                        <div className="learning-row-meta">
-                          <Tag color="blue">已发布地图</Tag>
-                          <span>{map.nodeCount} 个节点</span>
-                        </div>
+                    <article className={styles.directionCard}>
+                      <div className={styles.cardTopline}>
+                        <span className={styles.cardIndex} aria-hidden="true">
+                          {String(
+                            (currentPage - 1) * PAGE_SIZE + index + 1,
+                          ).padStart(2, "0")}
+                        </span>
+                        <Tag color="blue">已发布地图</Tag>
+                      </div>
+                      <div className={styles.cardCopy}>
                         <h2 title={map.title}>{map.title}</h2>
                         <p title={map.summary}>{map.summary}</p>
                       </div>
-                      <Button
-                        type={relationship ? "default" : "primary"}
-                        onClick={() => void joinFeaturedMap(map)}
-                        loading={isJoining}
-                      >
-                        {relationship ? "继续学习" : "加入学习"}
-                      </Button>
+                      <div className={styles.cardFooter}>
+                        <span className={styles.cardFooterFact}>
+                          {map.nodeCount} 个节点
+                        </span>
+                        <Button
+                          type={relationship ? "default" : "primary"}
+                          onClick={() => void joinFeaturedMap(map)}
+                          loading={isJoining}
+                        >
+                          {relationship ? "继续学习" : "加入学习"}
+                        </Button>
+                      </div>
                     </article>
                   </ListItem>
                 );
               }}
             />
-            <Pagination
-              current={currentPage}
-              pageSize={PAGE_SIZE}
-              total={featured.length}
-              hideOnSinglePage
-              showLessItems
-              showSizeChanger={false}
-              onChange={changePage}
-              aria-label="精选地图分页"
-            />
+            <div className={styles.pagination}>
+              <Pagination
+                current={currentPage}
+                pageSize={PAGE_SIZE}
+                total={featured.length}
+                hideOnSinglePage
+                showLessItems
+                showSizeChanger={false}
+                onChange={changePage}
+                aria-label="精选地图分页"
+              />
+            </div>
           </section>
         ) : (
           <Empty
-            className="empty-panel"
+            className={styles.empty}
             description={
               <div>
                 <h2>精选地图正在准备中</h2>

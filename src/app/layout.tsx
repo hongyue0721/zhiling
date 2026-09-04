@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { AntdRegistry } from "@ant-design/nextjs-registry";
+import "@fontsource-variable/noto-serif-sc/wght.css";
+import "lxgw-wenkai-screen-web/lxgwwenkaiscreen/result.css";
 
 import { AppThemeProvider } from "@/components/app-theme-provider";
+import { PaperParticles } from "@/components/paper-particles";
+import { ScrollReveal } from "@/components/scroll-reveal";
 
 import "./globals.css";
 
@@ -21,6 +25,8 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
+        <PaperParticles />
+        <ScrollReveal />
         <AntdRegistry>
           <AppThemeProvider>{children}</AppThemeProvider>
         </AntdRegistry>

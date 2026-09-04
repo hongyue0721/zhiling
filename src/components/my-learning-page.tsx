@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Empty, List, Pagination, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
+import styles from "@/components/discovery-experience.module.css";
 import type {
   LearningRelationshipList,
   LearningRelationshipSummary,
@@ -101,18 +102,25 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
   );
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${styles.page}`}>
       <AppHeader email={email} eyebrow="我的学习" />
-      <main className="directory-main">
-        <header className="directory-heading">
-          <span className="section-kicker">我的学习</span>
-          <h1>继续你的学习路径</h1>
-          <p>当前账户已保存的学习关系与节点进度。</p>
+      <main className={`directory-main ${styles.pageMain}`}>
+        <header className={`directory-heading ${styles.heading}`}>
+          <div className={styles.headingCopy}>
+            <span className="section-kicker">我的学习</span>
+            <h1>继续你的学习路径</h1>
+            <p>当前账户已保存的学习关系与节点进度。</p>
+          </div>
+          <div className={styles.headingStamp} aria-hidden="true">
+            继续
+            <br />
+            上路
+          </div>
         </header>
 
         {error ? (
           <Alert
-            className="page-alert"
+            className={styles.alert}
             role="alert"
             type="error"
             showIcon
@@ -129,56 +137,65 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
         ) : null}
 
         {isLoading ? (
-          <div className="section-loading" aria-busy="true">
+          <div className={styles.loading} aria-busy="true">
             <Skeleton active paragraph={{ rows: 8 }} />
           </div>
         ) : relationships.length > 0 ? (
           <section aria-label="我的学习列表" className="directory-content">
             <List
-              className="relationship-list"
+              className={styles.resumeList}
               dataSource={visibleRelationships}
               renderItem={(relationship) => (
                 <ListItem
-                  className="relationship-list-item"
+                  className={styles.resumeListItem}
                   key={relationship.learningRelationshipId}
                 >
-                  <Link
-                    className="relationship-row learning-directory-row"
-                    href={`/learn/${encodeURIComponent(relationship.learningRelationshipId)}`}
-                  >
-                    <span className="relationship-row-copy">
-                      <span className="learning-row-meta">
+                  <article className={styles.resumeCard}>
+                    <Link
+                      className={styles.resumeCardLink}
+                      href={`/learn/${encodeURIComponent(relationship.learningRelationshipId)}`}
+                    >
+                      <div className={styles.resumeTopline}>
                         <Tag color="blue">学习中</Tag>
-                      </span>
-                      <strong title={relationship.title}>
-                        {relationship.title}
-                      </strong>
-                      <span
-                        className="relationship-row-summary"
-                        title={relationship.summary}
-                      >
-                        {relationship.summary}
-                      </span>
-                    </span>
-                    <span className="relationship-row-action">继续 →</span>
-                  </Link>
+                        <span className={styles.cardIndex} aria-hidden="true">
+                          已保存
+                        </span>
+                      </div>
+                      <div className={styles.resumeCardBody}>
+                        <strong title={relationship.title}>
+                          {relationship.title}
+                        </strong>
+                        <p title={relationship.summary}>
+                          {relationship.summary}
+                        </p>
+                      </div>
+                      <div className={styles.resumeFooter}>
+                        <span className={styles.resumeFooterFact}>
+                          当前账户的学习关系
+                        </span>
+                        <span className={styles.resumeAction}>继续学习 →</span>
+                      </div>
+                    </Link>
+                  </article>
                 </ListItem>
               )}
             />
-            <Pagination
-              current={currentPage}
-              pageSize={PAGE_SIZE}
-              total={relationships.length}
-              hideOnSinglePage
-              showLessItems
-              showSizeChanger={false}
-              onChange={changePage}
-              aria-label="我的学习分页"
-            />
+            <div className={styles.pagination}>
+              <Pagination
+                current={currentPage}
+                pageSize={PAGE_SIZE}
+                total={relationships.length}
+                hideOnSinglePage
+                showLessItems
+                showSizeChanger={false}
+                onChange={changePage}
+                aria-label="我的学习分页"
+              />
+            </div>
           </section>
         ) : (
           <Empty
-            className="empty-panel"
+            className={styles.empty}
             description={
               <div>
                 <h2>还没有学习关系</h2>

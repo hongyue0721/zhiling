@@ -14,6 +14,8 @@ import {
   Tag,
 } from "antd";
 
+import styles from "./learning-experience.module.css";
+
 import {
   apiRequest,
   createIdempotencyKey,
@@ -77,6 +79,33 @@ function matchingOptions(question: AssessmentQuestionPrompt): {
     right: question.options.filter((option) => option.side === "right"),
   };
 }
+function questionTypeLabel(question: AssessmentQuestionPrompt): string {
+  switch (question.type) {
+    case "single_choice":
+      return "单选题";
+    case "multiple_choice":
+      return "多选题";
+    case "matching":
+      return "匹配题";
+    case "opinion_analysis":
+      return "观点辨析";
+  }
+  return question.type;
+}
+
+function questionTypeHint(question: AssessmentQuestionPrompt): string {
+  switch (question.type) {
+    case "single_choice":
+      return "选择一个最符合题意的选项";
+    case "multiple_choice":
+      return "选择所有符合题意的选项";
+    case "matching":
+      return "把左侧概念与右侧关系对应起来";
+    case "opinion_analysis":
+      return "根据已读观点判断陈述";
+  }
+  return question.type;
+}
 
 export function AssessmentPanel({
   relationshipId,
@@ -135,6 +164,28 @@ export function AssessmentPanel({
       ),
     [result],
   );
+  const answerProgress = useMemo(() => {
+    const total = assessment?.questions.length ?? 0;
+    const answered =
+      assessment?.questions.reduce((count, question) => {
+        if (question.type === "matching") {
+          return (
+            count +
+            (Object.keys(matching[question.questionId] ?? {}).length > 0
+              ? 1
+              : 0)
+          );
+        }
+        return (
+          count + ((selection[question.questionId] ?? []).length > 0 ? 1 : 0)
+        );
+      }, 0) ?? 0;
+    return {
+      answered,
+      total,
+      percent: total > 0 ? Math.round((answered / total) * 100) : 0,
+    };
+  }, [assessment, matching, selection]);
 
   function toggleSelection(
     questionId: string,
@@ -225,7 +276,7 @@ export function AssessmentPanel({
   if (isLoading) {
     return (
       <section
-        className="panel-card assessment-panel"
+        className={`panel-card assessment-panel ${styles.assessmentExperience}`}
         aria-busy="true"
         aria-label="正在加载题目"
       >
@@ -238,7 +289,7 @@ export function AssessmentPanel({
   if (!assessment) {
     return (
       <section
-        className="panel-card assessment-panel"
+        className={`panel-card assessment-panel ${styles.assessmentExperience}`}
         aria-labelledby="assessment-error-title"
       >
         <Button type="text" className="panel-back-link" onClick={onBack}>
@@ -256,7 +307,7 @@ export function AssessmentPanel({
 
   return (
     <section
-      className="panel-card assessment-panel"
+      className={`panel-card assessment-panel ${styles.assessmentExperience}`}
       aria-labelledby="assessment-title"
     >
       <Button type="text" className="panel-back-link" onClick={onBack}>
@@ -267,26 +318,52 @@ export function AssessmentPanel({
         <h2 id="assessment-title">完成这组题，确认你真的掌握了</h2>
         <p>提交后，评分、解释和来源均由服务端返回。</p>
       </div>
+      <div
+        className={styles.assessmentProgress}
+        aria-label={`答题进度 ${answerProgress.answered}/${answerProgress.total}`}
+      >
+        <div className={styles.assessmentProgressHeader}>
+          <span>验证进度</span>
+          <strong>
+            {answerProgress.answered}/{answerProgress.total} 题
+          </strong>
+        </div>
+        <Progress
+          percent={answerProgress.percent}
+          showInfo={false}
+          strokeColor="var(--experience-blue)"
+          trailColor="var(--experience-blue-soft)"
+        />
+      </div>
 
       <Form className="assessment-form" onSubmitCapture={submitAssessment}>
         {assessment.questions.map((question, questionIndex) => {
           const questionResult = resultByQuestionId.get(question.questionId);
           const isMultiple = question.type === "multiple_choice";
           return (
-            <fieldset className="question-block" key={question.questionId}>
+            <fieldset
+              className={`question-block ${styles.questionBlock} ${
+                questionResult
+                  ? questionResult.correct
+                    ? styles.questionCorrect
+                    : styles.questionIncorrect
+                  : ""
+              }`}
+              data-question-type={question.type}
+              key={question.questionId}
+            >
               <legend>
-                <span className="question-number">{questionIndex + 1}</span>
-                <span>{question.prompt}</span>
+                <span className={`question-number ${styles.questionNumber}`}>
+                  {questionIndex + 1}
+                </span>
+                <span className={styles.questionPrompt}>{question.prompt}</span>
               </legend>
-              <p className="question-kind">
-                {isMultiple
-                  ? "多选题"
-                  : question.type === "matching"
-                    ? "匹配题"
-                    : question.type === "opinion_analysis"
-                      ? "观点辨析"
-                      : "单选题"}
-              </p>
+              <div className={styles.questionMeta}>
+                <p className="question-kind">{questionTypeLabel(question)}</p>
+                <span className={styles.questionHint}>
+                  {questionTypeHint(question)}
+                </span>
+              </div>
               {question.type === "matching" ? (
                 <MatchingQuestion
                   question={question}
@@ -301,7 +378,7 @@ export function AssessmentPanel({
                   }
                 />
               ) : (
-                <div className="option-list">
+                <div className={`option-list ${styles.optionList}`}>
                   {question.options.map((option) => {
                     const checked = (
                       selection[question.questionId] ?? []
@@ -317,7 +394,7 @@ export function AssessmentPanel({
                           isMultiple,
                         ),
                       disabled: result !== null || isSubmitting,
-                      className: `option-row ${checked ? "checked" : ""}`,
+                      className: `option-row ${styles.optionRow} ${checked ? "checked" : ""}`,
                     };
                     return isMultiple ? (
                       <Checkbox key={option.optionId} {...optionProps}>
@@ -331,7 +408,7 @@ export function AssessmentPanel({
                   })}
                 </div>
               )}
-              <div className="question-sources">
+              <div className={`question-sources ${styles.questionSources}`}>
                 <span>依据来源：</span>
                 {question.sourceIds.map((sourceId) => (
                   <Tag color="blue" key={`${question.questionId}:${sourceId}`}>
@@ -341,7 +418,11 @@ export function AssessmentPanel({
               </div>
               {questionResult ? (
                 <Alert
-                  className="question-result"
+                  className={`question-result ${styles.questionResult} ${
+                    questionResult.correct
+                      ? styles.questionResultCorrect
+                      : styles.questionResultIncorrect
+                  }`}
                   type={questionResult.correct ? "success" : "error"}
                   showIcon
                   message={questionResult.correct ? "回答正确" : "这次未答对"}
@@ -368,7 +449,7 @@ export function AssessmentPanel({
 
         {error ? (
           <Alert
-            className="form-message"
+            className={`form-message ${styles.formMessage}`}
             role="alert"
             type="error"
             showIcon
@@ -377,7 +458,14 @@ export function AssessmentPanel({
         ) : null}
 
         {result ? (
-          <div className="assessment-result" role="status">
+          <div
+            className={`assessment-result ${styles.assessmentResult} ${
+              result.completed
+                ? styles.assessmentResultComplete
+                : styles.assessmentResultPending
+            }`}
+            role="status"
+          >
             <div className="assessment-result-score">
               <span className="result-label">本次节点得分</span>
               <strong>{Math.round(result.nodeScore / 100)}%</strong>
@@ -398,7 +486,7 @@ export function AssessmentPanel({
           </div>
         ) : (
           <Button
-            className="button button-primary button-block"
+            className={`button button-primary button-block ${styles.submitButton}`}
             type="primary"
             htmlType="submit"
             block
@@ -427,12 +515,15 @@ function MatchingQuestion({
 }: MatchingQuestionProps) {
   const { left, right } = matchingOptions(question);
   return (
-    <div className="matching-list">
+    <div className={`matching-list ${styles.matchingList}`}>
       {left.map((leftOption) => (
-        <label className="matching-row" key={leftOption.optionId}>
+        <label
+          className={`matching-row ${styles.matchingRow}`}
+          key={leftOption.optionId}
+        >
           <span>{leftOption.label}</span>
           <Select
-            className="field-input"
+            className={`field-input ${styles.matchingSelect}`}
             aria-label={`${leftOption.label}的对应项`}
             virtual={false}
             value={values[leftOption.optionId] || undefined}

@@ -18,6 +18,14 @@ const eslintConfig = [
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    // Playwright fixture 的 use() 是测试夹具生命周期 API 而非 React Hook，
+    // 规则无法区分，按官方建议对 e2e 测试目录关闭 hooks 规则
+    files: ["tests/e2e/**"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
 ];
 
 export default eslintConfig;
