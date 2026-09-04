@@ -123,10 +123,14 @@ bash ops/preflight-production.sh --env-file /etc/zhijing/production.env
 
 ## 2. 构建、推送与发布
 
-在已审查的 commit checkout 构建和推送，不向 Docker build 传入数据库或
-任何服务端密钥。`ops/publish-image.sh` 默认读取当前 commit 的完整 SHA，
-并在 Registry 已存在同名 tag 时拒绝覆盖；生产 Registry 仍必须启用不可变
-tag 策略。
+在已审查的 commit checkout 构建和推送。Next.js 收集路由时会读取服务端
+配置，因此 `ops/publish-image.sh` 会显式传入仅用于构建的非生产占位配置；
+这些值不含生产 secret，不进入最终 runtime stage，生产配置仍只在容器启动
+时由 Compose 注入。生产数据库 URL、认证 secret、Zhihu secret 等服务端
+secret 不得传入 Docker build 或 build context。
+
+`ops/publish-image.sh` 默认读取当前 commit 的完整 SHA，并在 Registry 已存在
+同名 tag 时拒绝覆盖；生产 Registry 仍必须启用不可变 tag 策略。
 
 ```bash
 export IMAGE_REPOSITORY=registry.example.invalid/team/zhijing

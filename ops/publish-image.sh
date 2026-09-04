@@ -6,6 +6,19 @@ readonly REPOSITORY_ROOT="$(cd -- "${SCRIPT_DIRECTORY}/.." && pwd)"
 
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-}"
 IMAGE_TAG="${IMAGE_TAG:-}"
+# Next.js evaluates server configuration while collecting routes. These values
+# make that build-time evaluation explicit without placing production secrets in
+# the build context or final runtime image; production values are injected only
+# by compose at container startup.
+readonly BUILD_DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build"
+readonly BUILD_BETTER_AUTH_SECRET="build-only-auth-secret-not-used-at-runtime-123456"
+readonly BUILD_BETTER_AUTH_URL="http://localhost:3000"
+readonly BUILD_BETTER_AUTH_TRUSTED_ORIGINS="http://localhost:3000"
+readonly BUILD_BETTER_AUTH_TRUSTED_PROXIES="127.0.0.1"
+readonly BUILD_EMAIL_VERIFICATION_ENABLED="false"
+readonly BUILD_GENERATION_RATE_LIMIT_WINDOW_SECONDS="60"
+readonly BUILD_GENERATION_RATE_LIMIT_MAX_REQUESTS="30"
+
 
 usage() {
   cat <<'USAGE'
@@ -75,9 +88,16 @@ if docker manifest inspect "$image" >/dev/null 2>&1; then
   exit 1
 fi
 
-cd -- "$REPOSITORY_ROOT"
 docker build \
   --pull \
+  --build-arg "BUILD_DATABASE_URL=${BUILD_DATABASE_URL}" \
+  --build-arg "BUILD_BETTER_AUTH_SECRET=${BUILD_BETTER_AUTH_SECRET}" \
+  --build-arg "BUILD_BETTER_AUTH_URL=${BUILD_BETTER_AUTH_URL}" \
+  --build-arg "BUILD_BETTER_AUTH_TRUSTED_ORIGINS=${BUILD_BETTER_AUTH_TRUSTED_ORIGINS}" \
+  --build-arg "BUILD_BETTER_AUTH_TRUSTED_PROXIES=${BUILD_BETTER_AUTH_TRUSTED_PROXIES}" \
+  --build-arg "BUILD_EMAIL_VERIFICATION_ENABLED=${BUILD_EMAIL_VERIFICATION_ENABLED}" \
+  --build-arg "BUILD_GENERATION_RATE_LIMIT_WINDOW_SECONDS=${BUILD_GENERATION_RATE_LIMIT_WINDOW_SECONDS}" \
+  --build-arg "BUILD_GENERATION_RATE_LIMIT_MAX_REQUESTS=${BUILD_GENERATION_RATE_LIMIT_MAX_REQUESTS}" \
   --label "org.opencontainers.image.revision=${IMAGE_TAG}" \
   --label "org.opencontainers.image.source=zhijing" \
   --tag "$image" \
