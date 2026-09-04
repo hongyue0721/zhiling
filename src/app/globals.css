@@ -1000,6 +1000,66 @@ button:disabled {
   font-size: 11px;
 }
 
+.generation-stage-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 12px;
+  margin-top: 18px;
+}
+
+.generation-stage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+
+.generation-stage > span {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid var(--paper-deep);
+  border-radius: 50%;
+  font-size: 10px;
+}
+
+.generation-stage-active {
+  color: var(--teal-dark);
+  font-weight: 700;
+}
+
+.generation-stage-active > span {
+  border-color: var(--teal);
+}
+
+.generation-stage-complete {
+  color: var(--teal-dark);
+}
+
+.generation-stage-complete > span {
+  border-color: var(--teal);
+  color: var(--teal-dark);
+  background: var(--teal-pale);
+}
+
+.generation-progress-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 16px;
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.progress-recovery {
+  margin: 12px 0 0;
+  color: var(--teal-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .generation-failure {
   max-width: 390px;
   margin: 13px 0 24px;
@@ -1893,6 +1953,10 @@ button:disabled {
   .workspace-main,
   .report-main {
     width: min(100% - 38px, 760px);
+  }
+
+  .generation-layout {
+    grid-template-columns: 1fr;
   }
 
   .app-header-inner {

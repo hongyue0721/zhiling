@@ -24,6 +24,7 @@ export const generationFailureCategories = [
   "source_unavailable",
   "source_insufficient",
   "model_unavailable",
+  "model_output_invalid",
   "candidate_invalid",
   "generation_timeout",
   "internal_failure",
@@ -43,6 +44,20 @@ export type GenerationFailure = Readonly<{
   code: GenerationFailureCategory;
   retryable: boolean;
 }>;
+export type GenerationProgress = Readonly<{
+  model?: Readonly<{ attempt: number; maxAttempts: 3 }>;
+  search?: Readonly<{ completed: number; total: number }>;
+  supplement?: Readonly<{ completed: number; total: number }>;
+  recovery?: Readonly<{
+    reason: "model_output_invalid";
+    state: "started" | "exhausted";
+    attempt: number;
+    maxAttempts: 3;
+    used: number;
+    limit: 3;
+  }>;
+  reusedStages?: readonly GenerationStage[];
+}>;
 
 export type GenerationResult = Readonly<{
   mapId: string;
@@ -61,6 +76,7 @@ export type GenerationSnapshot = Readonly<{
   result: GenerationResult | null;
   failure: GenerationFailure | null;
   completedAt: string | null;
+  progress?: GenerationProgress;
 }>;
 
 export type GenerationEventType =

@@ -1064,6 +1064,31 @@ function validateAssessments(
   };
 }
 
+/**
+ * Removes only transport whitespace/BOM and one complete JSON Markdown
+ * fence. It deliberately does not search arbitrary text for JSON braces.
+ */
+export function normalizeModelJsonContent(content: string): string {
+  const withoutBom = content.startsWith("\uFEFF") ? content.slice(1) : content;
+  const trimmed = withoutBom.trim();
+  if (!trimmed.startsWith("```")) {
+    return trimmed;
+  }
+
+  const lines = trimmed.split(/\r?\n/);
+  const closing = lines[lines.length - 1];
+  const opening = lines[0];
+  if (
+    lines.length < 3 ||
+    !/^```(?:json)?[ \t]*$/iu.test(opening ?? "") ||
+    closing !== "```"
+  ) {
+    return trimmed;
+  }
+  const body = lines.slice(1, -1).join("\n").trim();
+  return body.includes("```") ? trimmed : body;
+}
+
 class ZhihuStructuredModel implements StructuredModelAccess {
   constructor(
     private readonly environment: ExternalProviderEnvironment,
@@ -1144,7 +1169,7 @@ class ZhihuStructuredModel implements StructuredModelAccess {
       throw createProviderError("model", "protocol_error");
     }
     try {
-      return JSON.parse(content) as unknown;
+      return JSON.parse(normalizeModelJsonContent(content)) as unknown;
     } catch {
       throw createProviderError("model", "protocol_error");
     }

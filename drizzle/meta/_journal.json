@@ -50,6 +50,13 @@
       "when": 1788354000000,
       "tag": "0006_generation_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788480000000,
+      "tag": "0007_generation_model_output",
+      "breakpoints": true
     }
   ]
 }

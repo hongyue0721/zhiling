@@ -9,7 +9,8 @@ const generationErrorMessages = {
   source_unavailable: "知乎来源暂时不可用",
   source_insufficient: "可用学习材料不足",
   model_unavailable: "结构化模型暂时不可用",
-  candidate_invalid: "生成内容未通过校验",
+  model_output_invalid: "模型返回的结构化内容无效，地图未发布",
+  candidate_invalid: "生成内容未通过质量校验",
   generation_timeout: "生成任务已超时",
   internal_failure: "生成任务失败",
   rate_limited: "生成请求过于频繁",
@@ -109,6 +110,7 @@ function generationErrorStatus(
     case "generation_timeout":
       return 504;
     case "source_insufficient":
+    case "model_output_invalid":
     case "candidate_invalid":
     case "internal_failure":
       return 500;
@@ -167,6 +169,7 @@ const safeFailureCodes: Record<string, true> = {
   source_unavailable: true,
   source_insufficient: true,
   model_unavailable: true,
+  model_output_invalid: true,
   candidate_invalid: true,
   generation_timeout: true,
   internal_failure: true,
@@ -177,6 +180,9 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     return null;
   }
   return value as Record<string, unknown>;
+}
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value);
 }
 
 function safeIdentifier(value: unknown): string | undefined {
@@ -215,6 +221,94 @@ function safeFailure(
     : undefined;
 }
 
+function safeProgressPart(
+  value: unknown,
+): { completed: number; total: number } | undefined {
+  const record = asRecord(value);
+  if (
+    !record ||
+    !isSafeInteger(record.completed) ||
+    !isSafeInteger(record.total) ||
+    record.completed < 0 ||
+    record.total < 0 ||
+    record.completed > record.total
+  ) {
+    return undefined;
+  }
+  return { completed: record.completed, total: record.total };
+}
+
+function safeModelProgress(
+  value: unknown,
+): { attempt: number; maxAttempts: 3 } | undefined {
+  const record = asRecord(value);
+  if (
+    !record ||
+    !isSafeInteger(record.attempt) ||
+    record.maxAttempts !== 3 ||
+    record.attempt < 1 ||
+    record.attempt > record.maxAttempts
+  ) {
+    return undefined;
+  }
+  return { attempt: record.attempt, maxAttempts: record.maxAttempts };
+}
+
+function safeRecoveryProgress(
+  value: unknown,
+): Record<string, string | number> | undefined {
+  const record = asRecord(value);
+  if (
+    !record ||
+    record.reason !== "model_output_invalid" ||
+    (record.state !== "started" && record.state !== "exhausted") ||
+    !isSafeInteger(record.attempt) ||
+    record.maxAttempts !== 3 ||
+    !isSafeInteger(record.used) ||
+    record.limit !== 3 ||
+    record.attempt < 1 ||
+    record.attempt > record.maxAttempts ||
+    record.used < 0 ||
+    record.used > record.limit
+  ) {
+    return undefined;
+  }
+  return {
+    reason: "model_output_invalid",
+    state: record.state,
+    attempt: record.attempt,
+    maxAttempts: record.maxAttempts,
+    used: record.used,
+    limit: record.limit,
+  };
+}
+
+function safeProgress(value: unknown): Record<string, unknown> | undefined {
+  const record = asRecord(value);
+  if (!record) return undefined;
+  const progress: Record<string, unknown> = {};
+  const model = safeModelProgress(record.model);
+  const search = safeProgressPart(record.search);
+  const supplement = safeProgressPart(record.supplement);
+  const recovery = safeRecoveryProgress(record.recovery);
+  if (model) progress.model = model;
+  if (search) progress.search = search;
+  if (supplement) progress.supplement = supplement;
+  if (recovery) progress.recovery = recovery;
+  if (Array.isArray(record.reusedStages)) {
+    const reusedStages = record.reusedStages.filter(
+      (stage): stage is string =>
+        typeof stage === "string" &&
+        safeStatuses[stage] === true &&
+        stage !== "queued" &&
+        stage !== "failed" &&
+        stage !== "succeeded",
+    );
+    if (reusedStages.length > 0) progress.reusedStages = reusedStages;
+  }
+  return Object.keys(progress).length > 0 ? progress : undefined;
+}
+
 export function safeEventData(
   data: Readonly<Record<string, unknown>>,
 ): Readonly<Record<string, unknown>> {
@@ -240,7 +334,7 @@ export function safeEventData(
   if (stage && safeStatuses[stage] === true) safe.stage = stage;
   if (
     typeof sequence === "number" &&
-    Number.isSafeInteger(sequence) &&
+    isSafeInteger(sequence) &&
     sequence >= 0
   ) {
     safe.sequence = sequence;
@@ -251,6 +345,11 @@ export function safeEventData(
   if (mapId) safe.mapId = mapId;
   if (versionId) safe.versionId = versionId;
   if (code && safeFailureCodes[code] === true) safe.code = code;
+
+  const eventProgress = safeProgress(record);
+  if (eventProgress) Object.assign(safe, eventProgress);
+  const snapshotProgress = safeProgress(record.progress);
+  if (snapshotProgress) safe.progress = snapshotProgress;
 
   if ("result" in record) {
     const result = safeResult(record.result);
@@ -290,6 +389,7 @@ export function snapshotEvent(
     createdAt: string;
     updatedAt: string;
     deadlineAt: string;
+    progress?: unknown;
     result: unknown;
     failure: unknown;
   }>,
@@ -308,6 +408,7 @@ export function snapshotEvent(
       createdAt: snapshot.createdAt,
       updatedAt: snapshot.updatedAt,
       deadlineAt: snapshot.deadlineAt,
+      progress: snapshot.progress,
       result: snapshot.result,
       failure: snapshot.failure,
     }),

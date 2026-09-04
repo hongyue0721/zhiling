@@ -1,6 +1,6 @@
 export const EXTERNAL_PROVIDER_VERSIONS = Object.freeze({
   sourceAdapterVersion: "zhihu-http-2026-07-16-v2",
-  modelAdapterVersion: "zhida-thinking-1p5-json-2026-07-16-v2",
+  modelAdapterVersion: "zhida-thinking-1p5-json-2026-09-04-v3",
 } as const);
 
 export type ExternalProviderVersions = typeof EXTERNAL_PROVIDER_VERSIONS;

@@ -13,6 +13,7 @@ import type { LearningProgressSummary } from "@/modules/learning-progress/public
 import type { PrivateLearningReport } from "@/modules/learning-report/public/contracts";
 import type {
   GenerationEventType,
+  GenerationProgress,
   GenerationRequestResult,
   GenerationSnapshot,
 } from "@/modules/map-generation/public/contracts";
@@ -28,6 +29,7 @@ export type { LearningProgressSummary, LearningAssessmentSubmissionResult };
 export type { PrivateLearningReport };
 export type {
   GenerationEventType,
+  GenerationProgress,
   GenerationRequestResult,
   GenerationSnapshot,
 };

@@ -170,6 +170,66 @@ describe("map generation HTTP contract", () => {
     expect(runtime.readEvents).toHaveBeenCalledWith("user-1", "task-1", 7);
   });
 
+  it("replays reconnect progress with model and source facts", async () => {
+    runtime.readEvents.mockResolvedValue({
+      kind: "events",
+      events: [
+        {
+          taskId: "task-1",
+          sequence: 5,
+          type: "progress",
+          occurredAt: "2026-07-16T00:00:05.000Z",
+          data: {
+            status: "structuring",
+            stage: "structuring",
+            model: { attempt: 2, maxAttempts: 3 },
+            search: { completed: 3, total: 3 },
+            recovery: {
+              reason: "model_output_invalid",
+              state: "started",
+              attempt: 2,
+              maxAttempts: 3,
+              used: 1,
+              limit: 3,
+            },
+            reusedStages: ["planning", "searching"],
+            sourceUrl: "https://must-not-escape",
+          },
+        },
+        {
+          taskId: "task-1",
+          sequence: 6,
+          type: "failed",
+          occurredAt: "2026-07-16T00:00:06.000Z",
+          data: {
+            status: "failed",
+            stage: "structuring",
+            code: "model_output_invalid",
+            failure: { code: "model_output_invalid", retryable: false },
+          },
+        },
+      ],
+    });
+
+    const response = await streamGenerationEvents(
+      new Request("https://example.test/events", {
+        headers: { "last-event-id": "4" },
+      }),
+      { params: Promise.resolve({ taskId: "task-1" }) },
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain("id: 5");
+    expect(body).toContain("event: progress");
+    expect(body).toContain('"attempt":2');
+    expect(body).toContain('"completed":3');
+    expect(body).toContain('"used":1');
+    expect(body).toContain('"reusedStages":["planning","searching"]');
+    expect(body).not.toContain("must-not-escape");
+    expect(runtime.readEvents).toHaveBeenCalledWith("user-1", "task-1", 4);
+  });
+
   it("closes with a safe succeeded snapshot at the exact terminal cursor", async () => {
     runtime.readEvents.mockResolvedValue({
       kind: "snapshot",
@@ -219,7 +279,7 @@ describe("map generation HTTP contract", () => {
         sequence: 8,
         result: null,
         failure: {
-          code: "candidate_invalid",
+          code: "model_output_invalid",
           retryable: false,
         },
         completedAt: "2026-07-16T00:00:08.000Z",
@@ -239,7 +299,7 @@ describe("map generation HTTP contract", () => {
     expect(body).toContain("id: 8");
     expect(body).toContain("event: snapshot");
     expect(body).toContain('"status":"failed"');
-    expect(body).toContain('"code":"candidate_invalid"');
+    expect(body).toContain('"code":"model_output_invalid"');
     expect(body).not.toContain("candidate-data");
     expect(body).not.toContain("https://");
     expect(runtime.readEvents).toHaveBeenCalledWith("user-1", "task-1", 8);

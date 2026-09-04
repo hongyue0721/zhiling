@@ -16,6 +16,7 @@ import {
   ZHIHU_SEARCH_SUCCESS_FIXTURE,
   ZHIHU_SEARCH_UNKNOWN_ENUM_FIXTURE,
 } from "./fixtures";
+import { normalizeModelJsonContent } from "./runtime";
 
 const environment: ExternalProviderEnvironment = {
   accessSecret: "server-secret-that-must-not-escape",
@@ -364,10 +365,28 @@ describe("Zhihu source search adapter", () => {
 });
 
 describe("Zhihu structured model adapter", () => {
-  it("advertises the v2 model adapter contract for four question types", () => {
+  it("advertises the v3 model adapter contract for four question types", () => {
     expect(
       runtimeWith(vi.fn<typeof fetch>()).versions.modelAdapterVersion,
-    ).toBe("zhida-thinking-1p5-json-2026-07-16-v2");
+    ).toBe("zhida-thinking-1p5-json-2026-09-04-v3");
+  });
+
+  it("normalizes only a complete, unique JSON Markdown fence", () => {
+    expect(normalizeModelJsonContent('\uFEFF  {"ok":true}  ')).toBe(
+      '{"ok":true}',
+    );
+    expect(normalizeModelJsonContent('  ```json\n{"ok":true}\n```  ')).toBe(
+      '{"ok":true}',
+    );
+    expect(normalizeModelJsonContent('plain text {"ok":true}')).toBe(
+      'plain text {"ok":true}',
+    );
+    expect(
+      normalizeModelJsonContent('```json\n{"ok":true}\n```\ntrailing'),
+    ).toBe('```json\n{"ok":true}\n```\ntrailing');
+    expect(normalizeModelJsonContent("```json\n{}\n```\n```")).toBe(
+      "```json\n{}\n```\n```",
+    );
   });
 
   it("sends only the documented model fields and ignores reasoning_content", async () => {

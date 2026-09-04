@@ -46,6 +46,9 @@
 - 地图生成运行基线确认为自管 VPS Docker、PostgreSQL 租约 Worker、可恢复 SSE、十分钟任务时限和原子发布。
 - 学习验证确认为等权计分、80% 完成、无限重试、幂等并发提交和不可变题目版本。
 - 自定义生成确认为任务参与者授权与私有地图读取；缓存内容可以复用，但资源 ID 不授予跨账户访问。
+- 修复生产生成中模型返回普通文本或非唯一 JSON 围栏导致的误分类：新增 `model_output_invalid`，模型协议问题最多 3 次总尝试并受任务级恢复预算限制；`candidate_invalid` 仅表示最终候选质量校验失败。
+- 生成输入按方向保留真实 `sourceId` 并逐次收敛来源数量、摘要长度和来源上下文字符目标；SSE/UI 展示服务端事实阶段、搜索/补充子进度、模型 `n/3`、checkpoint 复用、恢复预算和客户端已用时。
+- 生成管线身份升级为 `generation-pipeline-v2` 与 `zhida-thinking-1p5-json-2026-09-04-v3`，并追加数据库迁移 `0007_generation_model_output`。
 
 ### Verification notes
 

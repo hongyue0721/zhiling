@@ -12,6 +12,7 @@ import {
   isApiRequestError,
 } from "@/shared/ui/api-client";
 import type {
+  GenerationProgress,
   GenerationRequestResult,
   GenerationSnapshot,
   SafeGenerationEvent,
@@ -52,11 +53,25 @@ const statusLabels: Record<string, string> = {
   failed: "生成未完成",
 };
 
+const generationStages = [
+  "normalizing",
+  "cache_lookup",
+  "planning",
+  "searching",
+  "structuring",
+  "supplementing",
+  "extracting",
+  "assessing",
+  "validating",
+  "publishing",
+] as const;
 const failureLabels: Record<string, string> = {
   invalid_topic: "这个主题暂时无法生成，请换一个更具体的学习目标。",
   source_unavailable: "知乎来源暂时不可用，请稍后再试。",
   source_insufficient: "当前可用材料不足，暂时无法形成可靠的学习地图。",
   model_unavailable: "结构化服务暂时不可用，请稍后再试。",
+  model_output_invalid:
+    "模型返回的结构化内容无效，任务没有发布不完整的学习地图。",
   candidate_invalid: "生成内容未通过质量校验，请稍后重试。",
   generation_timeout: "生成任务超时了，请稍后重新提交。",
   internal_failure: "生成任务失败，请稍后重试。",
@@ -92,7 +107,7 @@ function isGenerationEvent(value: unknown): value is SafeGenerationEvent {
     typeof value.taskId !== "string" ||
     !("sequence" in value) ||
     typeof value.sequence !== "number" ||
-    !Number.isSafeInteger(value.sequence) ||
+    !isSafeInteger(value.sequence) ||
     !("type" in value) ||
     (value.type !== "snapshot" &&
       value.type !== "progress" &&
@@ -110,6 +125,17 @@ function isGenerationEvent(value: unknown): value is SafeGenerationEvent {
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
+}
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value);
+}
+
+export function readServerTimestamp(value: unknown): number | null {
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 function readResult(value: unknown): GenerationSnapshot["result"] {
@@ -129,6 +155,106 @@ function readResult(value: unknown): GenerationSnapshot["result"] {
   return mapId && versionId && learningRelationshipId
     ? { mapId, versionId, learningRelationshipId }
     : null;
+}
+export function readProgress(value: unknown): GenerationProgress | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const progress: {
+    model?: GenerationProgress["model"];
+    search?: GenerationProgress["search"];
+    supplement?: GenerationProgress["supplement"];
+    recovery?: GenerationProgress["recovery"];
+    reusedStages?: GenerationProgress["reusedStages"];
+  } = {};
+  const model =
+    typeof record.model === "object" &&
+    record.model !== null &&
+    !Array.isArray(record.model)
+      ? (record.model as Record<string, unknown>)
+      : null;
+  if (
+    model &&
+    isSafeInteger(model.attempt) &&
+    model.maxAttempts === 3 &&
+    model.attempt >= 1 &&
+    model.attempt <= model.maxAttempts
+  ) {
+    progress.model = {
+      attempt: model.attempt,
+      maxAttempts: model.maxAttempts,
+    };
+  }
+  const readCounts = (
+    candidate: unknown,
+  ): { completed: number; total: number } | undefined => {
+    if (
+      typeof candidate !== "object" ||
+      candidate === null ||
+      Array.isArray(candidate)
+    ) {
+      return undefined;
+    }
+    const counts = candidate as Record<string, unknown>;
+    return isSafeInteger(counts.completed) &&
+      isSafeInteger(counts.total) &&
+      counts.completed >= 0 &&
+      counts.total >= counts.completed
+      ? { completed: counts.completed, total: counts.total }
+      : undefined;
+  };
+  const search = readCounts(record.search);
+  const supplement = readCounts(record.supplement);
+  if (search) progress.search = search;
+  if (supplement) progress.supplement = supplement;
+  const recovery =
+    typeof record.recovery === "object" &&
+    record.recovery !== null &&
+    !Array.isArray(record.recovery)
+      ? (record.recovery as Record<string, unknown>)
+      : null;
+  if (
+    recovery &&
+    recovery.reason === "model_output_invalid" &&
+    (recovery.state === "started" || recovery.state === "exhausted") &&
+    isSafeInteger(recovery.attempt) &&
+    recovery.maxAttempts === 3 &&
+    isSafeInteger(recovery.used) &&
+    recovery.limit === 3 &&
+    recovery.attempt >= 1 &&
+    recovery.attempt <= recovery.maxAttempts &&
+    recovery.used >= 0 &&
+    recovery.used <= recovery.limit
+  ) {
+    progress.recovery = {
+      reason: "model_output_invalid",
+      state: recovery.state,
+      attempt: recovery.attempt,
+      maxAttempts: recovery.maxAttempts,
+      used: recovery.used,
+      limit: recovery.limit,
+    };
+  }
+  if (Array.isArray(record.reusedStages)) {
+    const reusedStages = record.reusedStages.filter(
+      (
+        stage,
+      ): stage is NonNullable<GenerationProgress["reusedStages"]>[number] =>
+        typeof stage === "string" &&
+        generationStages.some((knownStage) => knownStage === stage),
+    );
+    if (reusedStages.length > 0) progress.reusedStages = reusedStages;
+  }
+  return Object.keys(progress).length > 0 ? progress : null;
+}
+
+function extractEventProgress(
+  event: SafeGenerationEvent,
+): GenerationProgress | null {
+  if (typeof event.data !== "object" || event.data === null) return null;
+  const value = "progress" in event.data ? event.data.progress : event.data;
+  return readProgress(value);
 }
 
 function readFailure(value: unknown): GenerationFailure | null {
@@ -202,6 +328,7 @@ async function streamGeneration(
   signal: AbortSignal,
   onEvent: (event: SafeGenerationEvent) => void | Promise<void>,
   onReconnect: (attempt: number) => void,
+  onConnected: () => void,
 ): Promise<void> {
   let sequence = initialSequence;
   let reconnectAttempt = 0;
@@ -285,6 +412,7 @@ async function streamGeneration(
       );
     }
 
+    onConnected();
     reconnectAttempt = 0;
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -336,6 +464,14 @@ async function streamGeneration(
     await waitBeforeReconnect(reconnectAttempt, signal);
   }
 }
+export function formatElapsed(milliseconds: number): string {
+  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes > 0
+    ? `${minutes}分${String(remainder).padStart(2, "0")}秒`
+    : `${remainder}秒`;
+}
 
 async function waitBeforeReconnect(
   attempt: number,
@@ -375,21 +511,50 @@ export function GenerationPage({
   const [failure, setFailure] = useState<GenerationFailure | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
+  const [progress, setProgress] = useState<GenerationProgress | null>(null);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
 
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
     };
   }, []);
+  useEffect(() => {
+    if (startedAt === null) {
+      setElapsedMs(0);
+      return;
+    }
+    const updateElapsed = () => {
+      setElapsedMs(Math.max(0, Date.now() - startedAt));
+    };
+    updateElapsed();
+    if (
+      state === "succeeded" ||
+      state === "failed" ||
+      state === "connection_error"
+    ) {
+      return;
+    }
+    const interval = window.setInterval(updateElapsed, 1_000);
+    return () => window.clearInterval(interval);
+  }, [startedAt, state]);
 
   async function handleGenerationEvent(
     event: SafeGenerationEvent,
     signal: AbortSignal,
   ) {
     lastSequenceRef.current = event.sequence;
+    setReconnectAttempt(0);
+    setState((current) => (current === "reconnecting" ? "streaming" : current));
     const nextStatus = extractStatus(event);
     if (nextStatus) {
       setStatus(nextStatus);
+    }
+
+    const nextProgress = extractEventProgress(event);
+    if (nextProgress) {
+      setProgress(nextProgress);
     }
 
     if (event.type === "succeeded" || event.type === "failed") {
@@ -420,6 +585,9 @@ export function GenerationPage({
         return;
       }
       setStatus(terminalSnapshot.status);
+      if (terminalSnapshot.progress) {
+        setProgress(terminalSnapshot.progress);
+      }
       if (event.type === "succeeded") {
         if (terminalSnapshot.result?.learningRelationshipId) {
           setState("succeeded");
@@ -490,6 +658,9 @@ export function GenerationPage({
     setTaskId(null);
     lastSequenceRef.current = 0;
     setReconnectAttempt(0);
+    setStartedAt(null);
+    setElapsedMs(0);
+    setProgress(null);
 
     try {
       const response = await apiRequest<GenerationRequestResult>(
@@ -506,7 +677,15 @@ export function GenerationPage({
         setError("生成服务没有返回有效任务，请稍后重试。");
         return;
       }
+      const serverStartedAt = readServerTimestamp(snapshot.createdAt);
+      if (serverStartedAt !== null) {
+        setStartedAt(serverStartedAt);
+        setElapsedMs(Math.max(0, Date.now() - serverStartedAt));
+      }
       setTaskId(snapshot.taskId);
+      if (snapshot.progress) {
+        setProgress(snapshot.progress);
+      }
       lastSequenceRef.current = snapshot.sequence;
       setStatus(snapshot.status);
       const snapshotResult = snapshot.result;
@@ -542,6 +721,12 @@ export function GenerationPage({
         (attempt) => {
           setReconnectAttempt(attempt);
           setState("reconnecting");
+        },
+        () => {
+          setReconnectAttempt(0);
+          setState((current) =>
+            current === "reconnecting" ? "streaming" : current,
+          );
         },
       );
     } catch (requestError) {
@@ -588,6 +773,12 @@ export function GenerationPage({
         setReconnectAttempt(attempt);
         setState("reconnecting");
       },
+      () => {
+        setReconnectAttempt(0);
+        setState((current) =>
+          current === "reconnecting" ? "streaming" : current,
+        );
+      },
     ).catch((requestError: unknown) => {
       if (controller.signal.aborted) {
         return;
@@ -606,6 +797,15 @@ export function GenerationPage({
   const failureLabel = failure
     ? (failureLabels[failure.code] ?? "生成任务未能完成，请稍后重试。")
     : null;
+
+  const currentStageIndex = generationStages.findIndex(
+    (stage) => stage === status,
+  );
+  const reusedStages = progress?.reusedStages ?? [];
+  const modelProgress = progress?.model;
+  const searchProgress = progress?.search;
+  const supplementProgress = progress?.supplement;
+  const recoveryProgress = progress?.recovery;
   const isBusy =
     state === "submitting" || state === "streaming" || state === "reconnecting";
 
@@ -712,18 +912,82 @@ export function GenerationPage({
                 </p>
               </div>
             ) : (
-              <div
-                className="generation-progress"
-                role="status"
-                aria-live="polite"
-              >
+              <div className="generation-progress">
                 <div className="progress-track">
                   <span className="progress-indicator" />
                 </div>
-                <p>{statusLabel}</p>
-                <span className="progress-caption">
-                  事件来自服务端，断线会自动恢复
-                </span>
+                <div
+                  className="generation-progress-live"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <p>{statusLabel}</p>
+                  {recoveryProgress ? (
+                    <p className="progress-recovery">
+                      {recoveryProgress.state === "started"
+                        ? `将执行第 ${recoveryProgress.attempt}/${recoveryProgress.maxAttempts} 次模型尝试（全局恢复预算 ${recoveryProgress.used}/${recoveryProgress.limit}）`
+                        : "自动恢复预算已耗尽，未发布不完整地图"}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="generation-stage-list" aria-label="生成阶段">
+                  {generationStages.map((stage, index) => {
+                    const reused = reusedStages.includes(stage);
+                    const complete =
+                      reused ||
+                      (currentStageIndex >= 0 && index < currentStageIndex);
+                    const active = status === stage;
+                    return (
+                      <span
+                        className={`generation-stage ${
+                          complete
+                            ? "generation-stage-complete"
+                            : active
+                              ? "generation-stage-active"
+                              : ""
+                        }`}
+                        key={stage}
+                      >
+                        <span aria-hidden="true">
+                          {complete ? "✓" : index + 1}
+                        </span>
+                        {statusLabels[stage]}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="generation-progress-facts">
+                  <span>已用时 {formatElapsed(elapsedMs)}</span>
+                  {modelProgress ? (
+                    <span>
+                      模型尝试 {modelProgress.attempt}/
+                      {modelProgress.maxAttempts}
+                    </span>
+                  ) : null}
+                  {searchProgress ? (
+                    <span>
+                      搜索方向 {searchProgress.completed}/{searchProgress.total}
+                    </span>
+                  ) : null}
+                  {supplementProgress ? (
+                    <span>
+                      补充材料 {supplementProgress.completed}/
+                      {supplementProgress.total}
+                    </span>
+                  ) : null}
+                </div>
+                {reusedStages.length > 0 ? (
+                  <span className="progress-caption">
+                    已复用阶段结果：
+                    {reusedStages
+                      .map((stage) => statusLabels[stage])
+                      .join("、")}
+                  </span>
+                ) : (
+                  <span className="progress-caption">
+                    事件来自服务端，断线会自动恢复
+                  </span>
+                )}
               </div>
             )}
             {state === "connection_error" && taskId ? (
@@ -745,6 +1009,8 @@ export function GenerationPage({
                   setError(null);
                   setTaskId(null);
                   setStatus("idle");
+                  setProgress(null);
+                  setStartedAt(null);
                 }}
               >
                 重新提交主题

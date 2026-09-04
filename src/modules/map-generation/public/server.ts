@@ -91,6 +91,7 @@ export type {
   GenerationEvent,
   GenerationEventsResult,
   GenerationFailure,
+  GenerationProgress,
   GenerationRequestResult,
   GenerationResult,
   GenerationRuntimeVersions,

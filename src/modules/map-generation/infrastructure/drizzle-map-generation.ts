@@ -40,20 +40,21 @@ import {
   generationTask,
 } from "@/platform/database/generation-schema";
 import type { PostgresDatabase } from "@/platform/database/postgres";
-
 import {
   assertGenerationTransition,
+  generationStatuses,
   GENERATION_DEADLINE_MS,
   GENERATION_HEARTBEAT_MS,
   GENERATION_LEASE_MS,
   LOCAL_OPERATION_TIMEOUT_MS,
   MAX_EXTERNAL_RETRIES,
+  type GenerationFailureCategory,
+  type GenerationProgress,
 } from "../domain/state-machine";
 import {
   createGenerationIdentity,
   normalizeGenerationTopic,
 } from "../domain/identity";
-import type { GenerationRateLimitReservation } from "./rate-limit";
 import {
   assertNoModelUrl,
   type GenerationCandidate,
@@ -62,12 +63,20 @@ import {
   type GenerationSourceCandidate,
   type GenerationViewpointCandidate,
   validateGenerationCandidate,
+  GenerationCandidateValidationError,
 } from "../domain/candidate";
 import type {
   GenerationProviderVersions,
   GenerationSourceSearchPort,
   GenerationStructuredModelPort,
 } from "../application/ports";
+import {
+  createModelContextBudget,
+  MODEL_MAX_ATTEMPTS,
+  type GenerationDirectionSourceCoverage,
+  type ModelContextBudget,
+} from "../application/context-budget";
+import type { GenerationRateLimitReservation } from "./rate-limit";
 
 export type MapGenerationDatabase = PostgresDatabase;
 export type GenerationIdGenerator = () => string;
@@ -84,15 +93,17 @@ export type GenerationProviderVersionInput = Readonly<{
   modelAdapterVersion: string;
 }>;
 
-export const DEFAULT_PIPELINE_VERSION = "generation-pipeline-v1";
+export const DEFAULT_PIPELINE_VERSION = "generation-pipeline-v2";
 export const EXTERNAL_REQUEST_TIMEOUT_MS = 20_000;
 export const GENERATION_CACHE_TTL_MS = 6 * 60 * 60 * 1_000;
 export const SEARCH_RESULTS_PER_DIRECTION = 8;
 export const SUPPLEMENT_RESULTS_PER_NODE = 6;
+export const MAX_TASK_AUTO_RECOVERIES = 3;
 function stableMapId(normalizedTopic: string): string {
   return `map_${createHash("sha256").update(normalizedTopic, "utf8").digest("hex")}`;
 }
 const STAGE_CHECKPOINT_KEY = "stage";
+const TASK_RECOVERY_CHECKPOINT_KEY = "task:auto-recovery";
 
 export class GenerationLeaseLostError extends Error {
   readonly code = "generation_lease_lost" as const;
@@ -105,14 +116,7 @@ export class GenerationLeaseLostError extends Error {
 
 export class GenerationTaskFailure extends Error {
   constructor(
-    readonly category:
-      | "invalid_topic"
-      | "source_unavailable"
-      | "source_insufficient"
-      | "model_unavailable"
-      | "candidate_invalid"
-      | "generation_timeout"
-      | "internal_failure",
+    readonly category: GenerationFailureCategory,
     readonly retryable: boolean,
     message = category,
     readonly retryAfterMs?: number,
@@ -131,6 +135,10 @@ type CacheRow = {
   versionId: string;
   questionSetId: string;
 };
+type SearchStageOutput = Readonly<{
+  sources: readonly GenerationSourceCandidate[];
+  sourceIdsByDirection: readonly GenerationDirectionSourceCoverage[];
+}>;
 
 type TaskProjection = {
   id: typeof generationTask.id;
@@ -202,14 +210,127 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   }
   return value as Record<string, unknown>;
 }
-
 function isArray(value: unknown): value is readonly unknown[] {
   return Array.isArray(value);
+}
+
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value);
+}
+
+const generationStageOrder = generationStatuses.filter(
+  (status): status is TaskRow["stage"] =>
+    status !== "succeeded" && status !== "failed",
+);
+const generationStageValues: Readonly<Record<string, true>> =
+  Object.fromEntries(generationStageOrder.map((stage) => [stage, true]));
+const generationStageOrderIndex: Readonly<Record<string, number>> =
+  Object.fromEntries(
+    generationStageOrder.map((stage, index) => [stage, index]),
+  );
+
+function sortGenerationStages(
+  stages: readonly TaskRow["stage"][],
+): TaskRow["stage"][] {
+  return [...stages].sort(
+    (left, right) =>
+      (generationStageOrderIndex[left] ?? Number.MAX_SAFE_INTEGER) -
+      (generationStageOrderIndex[right] ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+function readProgress(value: unknown): GenerationProgress | undefined {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  const progress: {
+    model?: GenerationProgress["model"];
+    search?: GenerationProgress["search"];
+    supplement?: GenerationProgress["supplement"];
+    recovery?: GenerationProgress["recovery"];
+    reusedStages?: GenerationProgress["reusedStages"];
+  } = {};
+  const model = asRecord(record.model);
+  if (
+    model &&
+    isSafeInteger(model.attempt) &&
+    model.maxAttempts === MODEL_MAX_ATTEMPTS &&
+    model.attempt >= 1 &&
+    model.attempt <= model.maxAttempts
+  ) {
+    progress.model = {
+      attempt: model.attempt,
+      maxAttempts: model.maxAttempts,
+    };
+  }
+  const search = asRecord(record.search);
+  if (
+    search &&
+    isSafeInteger(search.completed) &&
+    isSafeInteger(search.total) &&
+    search.completed >= 0 &&
+    search.total >= search.completed
+  ) {
+    progress.search = {
+      completed: search.completed,
+      total: search.total,
+    };
+  }
+  const supplement = asRecord(record.supplement);
+  if (
+    supplement &&
+    isSafeInteger(supplement.completed) &&
+    isSafeInteger(supplement.total) &&
+    supplement.completed >= 0 &&
+    supplement.total >= supplement.completed
+  ) {
+    progress.supplement = {
+      completed: supplement.completed,
+      total: supplement.total,
+    };
+  }
+  const recovery = asRecord(record.recovery);
+  if (
+    recovery &&
+    recovery.reason === "model_output_invalid" &&
+    (recovery.state === "started" || recovery.state === "exhausted") &&
+    isSafeInteger(recovery.attempt) &&
+    recovery.maxAttempts === MODEL_MAX_ATTEMPTS &&
+    isSafeInteger(recovery.used) &&
+    recovery.limit === MAX_TASK_AUTO_RECOVERIES &&
+    recovery.attempt >= 1 &&
+    recovery.attempt <= recovery.maxAttempts &&
+    recovery.used >= 0 &&
+    recovery.used <= recovery.limit
+  ) {
+    progress.recovery = {
+      reason: "model_output_invalid",
+      state: recovery.state,
+      attempt: recovery.attempt,
+      maxAttempts: recovery.maxAttempts,
+      used: recovery.used,
+      limit: recovery.limit,
+    };
+  }
+  if (isArray(record.reusedStages)) {
+    const reusedStages = record.reusedStages.filter(
+      (
+        stage,
+      ): stage is NonNullable<GenerationProgress["reusedStages"]>[number] =>
+        typeof stage === "string" && generationStageValues[stage] === true,
+    );
+    if (reusedStages.length > 0) {
+      progress.reusedStages = reusedStages;
+    }
+  }
+  return Object.keys(progress).length > 0 ? progress : undefined;
 }
 
 function toSnapshot(
   task: TaskRow,
   learningRelationshipId: string | null,
+  progress?: GenerationProgress,
 ): {
   taskId: string;
   status: TaskRow["status"];
@@ -224,10 +345,11 @@ function toSnapshot(
     learningRelationshipId: string;
   } | null;
   failure: {
-    code: NonNullable<TaskRow["failureCode"]>;
+    code: GenerationFailureCategory;
     retryable: boolean;
   } | null;
   completedAt: string | null;
+  progress?: GenerationProgress;
 } {
   const result =
     task.status === "succeeded" &&
@@ -260,6 +382,7 @@ function toSnapshot(
     completedAt: task.completedAt
       ? asDate(task.completedAt).toISOString()
       : null,
+    ...(progress ? { progress } : {}),
   };
 }
 
@@ -304,6 +427,13 @@ function externalRetryAfter(error: unknown): number | undefined {
     : undefined;
 }
 
+function isModelOutputProtocolError(
+  error: unknown,
+  provider: "source" | "model",
+): boolean {
+  return provider === "model" && externalCode(error) === "protocol_error";
+}
+
 function mapExternalFailure(
   error: unknown,
   provider: "source" | "model",
@@ -312,8 +442,8 @@ function mapExternalFailure(
   const category =
     knownProvider === "source"
       ? "source_unavailable"
-      : externalCode(error) === "protocol_error"
-        ? "candidate_invalid"
+      : isModelOutputProtocolError(error, knownProvider)
+        ? "model_output_invalid"
         : "model_unavailable";
   return new GenerationTaskFailure(
     category,
@@ -321,6 +451,17 @@ function mapExternalFailure(
     category,
     externalRetryAfter(error),
   );
+}
+function modelOutputInvalid(): GenerationTaskFailure {
+  return new GenerationTaskFailure("model_output_invalid", true);
+}
+
+function assertModelOutputHasNoUrl(value: unknown, label: string): void {
+  try {
+    assertNoModelUrl(value, label);
+  } catch {
+    throw modelOutputInvalid();
+  }
 }
 
 function withTimeout<T>(
@@ -631,19 +772,36 @@ export class DrizzleMapGenerationRepository {
     workerId: string,
     stage: TaskRow["stage"],
     operationKey: string,
-    input: unknown,
+    input: (attempt: number) => unknown,
+    progress?: GenerationProgress,
+    modelMaxAttempts?: number,
   ): Promise<number> {
     const now = this.now();
+    let recordedAttempt = 1;
     await this.database.transaction(async (transaction) => {
+      const previousRows = await transaction
+        .select({ attemptCount: generationCheckpoint.attemptCount })
+        .from(generationCheckpoint)
+        .where(
+          and(
+            eq(generationCheckpoint.taskId, taskId),
+            eq(generationCheckpoint.stage, stage),
+            eq(generationCheckpoint.operationKey, operationKey),
+          ),
+        )
+        .limit(1)
+        .for("update");
+      recordedAttempt = Number(previousRows[0]?.attemptCount ?? 0) + 1;
+      const attemptInput = input(recordedAttempt);
       await transaction
         .insert(generationCheckpoint)
         .values({
           taskId,
           stage,
           operationKey,
-          input,
+          input: attemptInput,
           output: null,
-          attemptCount: 1,
+          attemptCount: recordedAttempt,
           completedAt: null,
           updatedAt: now,
         })
@@ -654,8 +812,10 @@ export class DrizzleMapGenerationRepository {
             generationCheckpoint.operationKey,
           ],
           set: {
-            attemptCount: sql`${generationCheckpoint.attemptCount} + 1`,
-            input,
+            attemptCount: recordedAttempt,
+            input: attemptInput,
+            output: null,
+            completedAt: null,
             updatedAt: now,
           },
         });
@@ -663,6 +823,7 @@ export class DrizzleMapGenerationRepository {
         .update(generationTask)
         .set({
           retryCount: sql`${generationTask.retryCount} + 1`,
+          sequence: sql`${generationTask.sequence} + 1`,
           leaseExpiresAt: new Date(now.getTime() + GENERATION_LEASE_MS),
           heartbeatAt: now,
           updatedAt: now,
@@ -675,23 +836,220 @@ export class DrizzleMapGenerationRepository {
             gt(generationTask.leaseExpiresAt, now),
           ),
         )
-        .returning({ id: generationTask.id });
+        .returning({
+          id: generationTask.id,
+          sequence: generationTask.sequence,
+        });
       if (renewed.length === 0) {
         throw new GenerationLeaseLostError();
       }
+      await transaction.insert(generationEvent).values({
+        taskId,
+        sequence: Number(renewed[0]!.sequence),
+        type: "progress",
+        data: {
+          status: stage,
+          stage,
+          ...(modelMaxAttempts === undefined
+            ? {}
+            : {
+                model: {
+                  attempt: recordedAttempt,
+                  maxAttempts: modelMaxAttempts,
+                },
+              }),
+          ...(progress ?? {}),
+        },
+        occurredAt: now,
+      });
     });
-    const rows = await this.database
-      .select({ attemptCount: generationCheckpoint.attemptCount })
-      .from(generationCheckpoint)
-      .where(
-        and(
-          eq(generationCheckpoint.taskId, taskId),
-          eq(generationCheckpoint.stage, stage),
-          eq(generationCheckpoint.operationKey, operationKey),
-        ),
-      )
-      .limit(1);
-    return rows[0]?.attemptCount ?? 1;
+    return recordedAttempt;
+  }
+  async publishProgress(
+    taskId: string,
+    workerId: string,
+    data: Readonly<Record<string, unknown>>,
+  ): Promise<void> {
+    const now = this.now();
+    await this.database.transaction(async (transaction) => {
+      const updated = await transaction
+        .update(generationTask)
+        .set({
+          sequence: sql`${generationTask.sequence} + 1`,
+          leaseExpiresAt: new Date(now.getTime() + GENERATION_LEASE_MS),
+          heartbeatAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(generationTask.id, taskId),
+            eq(generationTask.leaseOwner, workerId),
+            notInArray(generationTask.status, ["succeeded", "failed"]),
+            gt(generationTask.leaseExpiresAt, now),
+          ),
+        )
+        .returning({ sequence: generationTask.sequence });
+      if (updated.length === 0) {
+        throw new GenerationLeaseLostError();
+      }
+      await transaction.insert(generationEvent).values({
+        taskId,
+        sequence: Number(updated[0]!.sequence),
+        type: "progress",
+        data,
+        occurredAt: now,
+      });
+    });
+  }
+
+  async consumeAutomaticRecovery(
+    taskId: string,
+    workerId: string,
+    stage: TaskRow["stage"],
+    attempt: number,
+  ): Promise<
+    Readonly<{
+      allowed: boolean;
+      used: number;
+      progress: GenerationProgress;
+    }>
+  > {
+    const now = this.now();
+    return this.database.transaction(async (transaction) => {
+      const currentRows = await transaction
+        .select({ status: generationTask.status, stage: generationTask.stage })
+        .from(generationTask)
+        .where(
+          and(
+            eq(generationTask.id, taskId),
+            eq(generationTask.leaseOwner, workerId),
+            eq(generationTask.stage, stage),
+            notInArray(generationTask.status, ["succeeded", "failed"]),
+            gt(generationTask.leaseExpiresAt, now),
+          ),
+        )
+        .limit(1)
+        .for("update");
+      const current = currentRows[0];
+      if (!current) {
+        throw new GenerationLeaseLostError();
+      }
+      const completedStageRows = await transaction
+        .select({
+          stage: generationCheckpoint.stage,
+          completedAt: generationCheckpoint.completedAt,
+        })
+        .from(generationCheckpoint)
+        .where(
+          and(
+            eq(generationCheckpoint.taskId, taskId),
+            eq(generationCheckpoint.operationKey, STAGE_CHECKPOINT_KEY),
+          ),
+        );
+      const reusedStages = sortGenerationStages(
+        completedStageRows
+          .filter((row) => row.completedAt !== null && row.stage !== stage)
+          .map((row) => row.stage),
+      );
+      const budgetRows = await transaction
+        .select({ output: generationCheckpoint.output })
+        .from(generationCheckpoint)
+        .where(
+          and(
+            eq(generationCheckpoint.taskId, taskId),
+            eq(generationCheckpoint.stage, "queued"),
+            eq(generationCheckpoint.operationKey, TASK_RECOVERY_CHECKPOINT_KEY),
+          ),
+        )
+        .limit(1)
+        .for("update");
+      const budgetRow = budgetRows[0];
+      let used = 0;
+      if (budgetRow) {
+        const budget = asRecord(budgetRow.output);
+        if (
+          typeof budget?.used !== "number" ||
+          !isSafeInteger(budget.used) ||
+          budget.used < 0 ||
+          budget.used > MAX_TASK_AUTO_RECOVERIES
+        ) {
+          throw new GenerationTaskFailure("internal_failure", false);
+        }
+        used = budget.used;
+      }
+      const allowed = used < MAX_TASK_AUTO_RECOVERIES;
+      const nextUsed = allowed ? used + 1 : used;
+      if (allowed) {
+        await transaction
+          .insert(generationCheckpoint)
+          .values({
+            taskId,
+            stage: "queued",
+            operationKey: TASK_RECOVERY_CHECKPOINT_KEY,
+            input: { limit: MAX_TASK_AUTO_RECOVERIES },
+            output: { used: nextUsed },
+            attemptCount: 0,
+            completedAt: null,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [
+              generationCheckpoint.taskId,
+              generationCheckpoint.stage,
+              generationCheckpoint.operationKey,
+            ],
+            set: {
+              output: { used: nextUsed },
+              updatedAt: now,
+            },
+          });
+      }
+      const nextAttempt = Math.min(attempt + 1, MODEL_MAX_ATTEMPTS);
+      const refreshed = await transaction
+        .update(generationTask)
+        .set({
+          sequence: sql`${generationTask.sequence} + 1`,
+          leaseExpiresAt: new Date(now.getTime() + GENERATION_LEASE_MS),
+          heartbeatAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(generationTask.id, taskId),
+            eq(generationTask.leaseOwner, workerId),
+            eq(generationTask.stage, stage),
+            gt(generationTask.leaseExpiresAt, now),
+          ),
+        )
+        .returning({ sequence: generationTask.sequence });
+      if (refreshed.length === 0) {
+        throw new GenerationLeaseLostError();
+      }
+      const recoveryProgress: GenerationProgress = {
+        recovery: {
+          reason: "model_output_invalid",
+          state: allowed ? "started" : "exhausted",
+          attempt: nextAttempt,
+          maxAttempts: MODEL_MAX_ATTEMPTS,
+          used: nextUsed,
+          limit: MAX_TASK_AUTO_RECOVERIES,
+        },
+        ...(reusedStages.length > 0 ? { reusedStages } : {}),
+      };
+      await transaction.insert(generationEvent).values({
+        taskId,
+        sequence: Number(refreshed[0]!.sequence),
+        type: "progress",
+        data: {
+          status: current.status,
+          stage,
+          model: { attempt: nextAttempt, maxAttempts: MODEL_MAX_ATTEMPTS },
+          ...recoveryProgress,
+        },
+        occurredAt: now,
+      });
+      return { allowed, used: nextUsed, progress: recoveryProgress };
+    });
   }
 
   async resetAttempt(
@@ -1222,6 +1580,24 @@ export class DrizzleMapGenerationRepository {
     return rows[0] ? asTaskRow(rows[0]) : null;
   }
 
+  private async latestProgressData(
+    db: DbExecutor,
+    taskId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const rows = await db
+      .select({ data: generationEvent.data })
+      .from(generationEvent)
+      .where(
+        and(
+          eq(generationEvent.taskId, taskId),
+          eq(generationEvent.type, "progress"),
+        ),
+      )
+      .orderBy(desc(generationEvent.sequence))
+      .limit(1);
+    return asRecord(rows[0]?.data);
+  }
+
   private async snapshotForUser(db: DbExecutor, task: TaskRow, userId: string) {
     let relationshipId: string | null = null;
     if (task.versionId) {
@@ -1237,7 +1613,11 @@ export class DrizzleMapGenerationRepository {
         .limit(1);
       relationshipId = rows[0]?.id ?? null;
     }
-    return toSnapshot(task, relationshipId);
+    const progress =
+      task.status === "failed" || task.status === "succeeded"
+        ? undefined
+        : readProgress(await this.latestProgressData(db, task.id));
+    return toSnapshot(task, relationshipId, progress);
   }
 
   private async addParticipant(
@@ -1420,6 +1800,23 @@ export class MapGenerationWorker {
       const value = stageOutputs.get(stage);
       return value === null || value === undefined ? null : (value as T);
     };
+    const reusedStages = sortGenerationStages(
+      [...checkpoints]
+        .filter(
+          ([stage, checkpoint]) =>
+            stage !== status &&
+            checkpoint.completedAt !== null &&
+            checkpoint.output !== null,
+        )
+        .map(([stage]) => stage as TaskRow["stage"]),
+    );
+    if (reusedStages.length > 0) {
+      await this.repository.publishProgress(task.id, workerId, {
+        status,
+        stage: task.stage,
+        reusedStages,
+      });
+    }
     while (status !== "succeeded" && status !== "failed") {
       this.assertDeadline(task);
       if (status === "queued") {
@@ -1481,7 +1878,7 @@ export class MapGenerationWorker {
           workerId,
           "planning",
           "planning",
-          { topic: task.topic },
+          (attempt) => ({ topic: task.topic, attempt }),
           () =>
             this.structuredModel.planDirections({
               topic: task.topic,
@@ -1489,23 +1886,6 @@ export class MapGenerationWorker {
               timeoutMs: this.externalTimeout(task),
             }),
         );
-        const plannedRecord = asRecord(planned);
-        const directions = plannedRecord?.directions;
-        if (
-          !isArray(directions) ||
-          directions.length < 3 ||
-          directions.length > 4 ||
-          directions.some((direction) => {
-            const record = asRecord(direction);
-            return (
-              !record ||
-              typeof record.directionId !== "string" ||
-              typeof record.searchQuery !== "string"
-            );
-          })
-        ) {
-          throw new GenerationTaskFailure("candidate_invalid", false);
-        }
         await this.repository.completeStage(
           task.id,
           workerId,
@@ -1513,9 +1893,9 @@ export class MapGenerationWorker {
           "searching",
           "planning",
           { topic: task.topic },
-          { directions },
+          planned,
         );
-        stageOutputs.set("planning", { directions });
+        stageOutputs.set("planning", planned);
         status = "searching";
         continue;
       }
@@ -1526,12 +1906,12 @@ export class MapGenerationWorker {
         if (!planned || !isArray(planned.directions)) {
           throw new GenerationTaskFailure("internal_failure", false);
         }
-        const sources = await this.searchDirections(
+        const searched = await this.searchDirections(
           task,
           workerId,
           planned.directions,
         );
-        if (sources.length === 0) {
+        if (searched.sources.length === 0) {
           throw new GenerationTaskFailure("source_insufficient", false);
         }
         await this.repository.completeStage(
@@ -1541,9 +1921,9 @@ export class MapGenerationWorker {
           "structuring",
           "searching",
           { directions: planned.directions },
-          { sources },
+          searched,
         );
-        stageOutputs.set("searching", { sources });
+        stageOutputs.set("searching", searched);
         status = "structuring";
         continue;
       }
@@ -1551,49 +1931,68 @@ export class MapGenerationWorker {
         const planned = output<{
           directions: readonly GenerationDirectionCandidate[];
         }>("planning");
-        const searched = output<{
-          sources: readonly GenerationSourceCandidate[];
-        }>("searching");
+        const searched = output<SearchStageOutput>("searching");
         if (!planned || !searched) {
           throw new GenerationTaskFailure("internal_failure", false);
         }
+        const budgetForAttempt = (attempt: number): ModelContextBudget =>
+          createModelContextBudget({
+            attempt,
+            directions: planned.directions,
+            sources: searched.sources,
+            sourceIdsByDirection: searched.sourceIdsByDirection,
+          });
+        let successfulBudget = budgetForAttempt(1);
         const structured = await this.callModel(
           task,
           workerId,
           "structuring",
           "structuring",
-          { directions: planned.directions, sources: searched.sources },
-          () =>
-            this.structuredModel.structureMap({
-              topic: task.topic,
+          (attempt) => {
+            const budget = budgetForAttempt(attempt);
+            return {
               directions: planned.directions,
-              sources: searched.sources,
-              requestId: `${task.id}:structuring`,
-              timeoutMs: this.externalTimeout(task),
-            }),
+              sources: budget.sources,
+              contextBudget: {
+                strategy: budget.strategy,
+                attempt: budget.attempt,
+                serializedChars: budget.serializedChars,
+              },
+            };
+          },
+          (attempt) => {
+            successfulBudget = budgetForAttempt(attempt);
+            const sources = successfulBudget.sources;
+            return this.structuredModel
+              .structureMap({
+                topic: task.topic,
+                directions: planned.directions,
+                sources,
+                requestId: `${task.id}:structuring`,
+                timeoutMs: this.externalTimeout(task),
+              })
+              .then((value) => {
+                assertModelOutputHasNoUrl(value, "structuring");
+                return value;
+              });
+          },
         );
-        assertNoModelUrl(structured, "structuring");
-        const structuredRecord = asRecord(structured);
-        const structuredNodes = structuredRecord?.nodes;
-        const structuredPrerequisites = structuredRecord?.prerequisites;
-        if (
-          !structuredRecord ||
-          !isArray(structuredNodes) ||
-          !isArray(structuredPrerequisites) ||
-          structuredNodes.some((node) => {
-            const record = asRecord(node);
-            return !record || !isArray(record.sourceIds);
-          })
-        ) {
-          throw new GenerationTaskFailure("candidate_invalid", false);
-        }
+        const completedBudget = successfulBudget;
         await this.repository.completeStage(
           task.id,
           workerId,
           "structuring",
           "supplementing",
           "structuring",
-          { directions: planned.directions, sources: searched.sources },
+          {
+            directions: planned.directions,
+            sources: completedBudget.sources,
+            contextBudget: {
+              strategy: completedBudget.strategy,
+              attempt: completedBudget.attempt,
+              serializedChars: completedBudget.serializedChars,
+            },
+          },
           structured,
         );
         stageOutputs.set("structuring", structured);
@@ -1602,9 +2001,7 @@ export class MapGenerationWorker {
       }
       if (status === "supplementing") {
         const structured = output<GenerationMapCandidate>("structuring");
-        const searched = output<{
-          sources: readonly GenerationSourceCandidate[];
-        }>("searching");
+        const searched = output<SearchStageOutput>("searching");
         if (!structured || !searched) {
           throw new GenerationTaskFailure("internal_failure", false);
         }
@@ -1629,40 +2026,63 @@ export class MapGenerationWorker {
       }
       if (status === "extracting") {
         const map = output<GenerationMapCandidate>("supplementing");
-        const searched = output<{
-          sources: readonly GenerationSourceCandidate[];
-        }>("searching");
+        const searched = output<SearchStageOutput>("searching");
         const supplemented = output<{
           map: GenerationMapCandidate;
           sources: readonly GenerationSourceCandidate[];
         }>("supplementing");
         const effectiveMap = supplemented?.map ?? map;
         const sources = supplemented?.sources ?? searched?.sources;
-        if (!effectiveMap || !sources) {
+        const planned = output<{
+          directions: readonly GenerationDirectionCandidate[];
+        }>("planning");
+        if (!effectiveMap || !sources || !planned) {
           throw new GenerationTaskFailure("internal_failure", false);
         }
+        const requiredSourceIds = effectiveMap.nodes.flatMap(
+          (node) => node.sourceIds,
+        );
+        const budgetForAttempt = (attempt: number): ModelContextBudget =>
+          createModelContextBudget({
+            attempt,
+            directions: planned.directions,
+            sources,
+            requiredSourceIds,
+            sourceIdsByDirection: searched?.sourceIdsByDirection,
+          });
         const extracted = await this.callModel(
           task,
           workerId,
           "extracting",
           "extracting",
-          { map: effectiveMap, sources },
-          () =>
-            this.structuredModel.extractViewpoints({
-              topic: task.topic,
+          (attempt) => {
+            const budget = budgetForAttempt(attempt);
+            return {
               map: effectiveMap,
-              sources,
-              requestId: `${task.id}:extracting`,
-              timeoutMs: this.externalTimeout(task),
-            }),
+              sources: budget.sources,
+              contextBudget: {
+                strategy: budget.strategy,
+                attempt: budget.attempt,
+                serializedChars: budget.serializedChars,
+              },
+            };
+          },
+          (attempt) => {
+            const contextSources = budgetForAttempt(attempt).sources;
+            return this.structuredModel
+              .extractViewpoints({
+                topic: task.topic,
+                map: effectiveMap,
+                sources: contextSources,
+                requestId: `${task.id}:extracting`,
+                timeoutMs: this.externalTimeout(task),
+              })
+              .then((value) => {
+                assertModelOutputHasNoUrl(value, "extracting");
+                return value;
+              });
+          },
         );
-        assertNoModelUrl(extracted, "extracting");
-        if (
-          !asRecord(extracted) ||
-          !isArray((extracted as { viewpoints?: unknown }).viewpoints)
-        ) {
-          throw new GenerationTaskFailure("candidate_invalid", false);
-        }
         await this.repository.completeStage(
           task.id,
           workerId,
@@ -1673,15 +2093,13 @@ export class MapGenerationWorker {
           {
             map: effectiveMap,
             sources,
-            viewpoints: (extracted as { viewpoints: unknown }).viewpoints,
+            viewpoints: extracted.viewpoints,
           },
         );
-        const extractedViewpoints = (extracted as { viewpoints: unknown })
-          .viewpoints;
         stageOutputs.set("extracting", {
           map: effectiveMap,
           sources,
-          viewpoints: extractedViewpoints,
+          viewpoints: extracted.viewpoints,
         });
         status = "assessing";
         continue;
@@ -1692,31 +2110,59 @@ export class MapGenerationWorker {
           sources: readonly GenerationSourceCandidate[];
           viewpoints: readonly GenerationViewpointCandidate[];
         }>("extracting");
-        if (!extracted) {
+        const planned = output<{
+          directions: readonly GenerationDirectionCandidate[];
+        }>("planning");
+        const searched = output<SearchStageOutput>("searching");
+        if (!extracted || !planned) {
           throw new GenerationTaskFailure("internal_failure", false);
         }
+        const requiredSourceIds = extracted.map.nodes.flatMap(
+          (node) => node.sourceIds,
+        );
+        const budgetForAttempt = (attempt: number): ModelContextBudget =>
+          createModelContextBudget({
+            attempt,
+            directions: planned.directions,
+            sources: extracted.sources,
+            requiredSourceIds,
+            sourceIdsByDirection: searched?.sourceIdsByDirection,
+          });
         const assessed = await this.callModel(
           task,
           workerId,
           "assessing",
           "assessing",
-          extracted,
-          () =>
-            this.structuredModel.generateAssessments({
-              topic: task.topic,
-              map: { ...extracted.map, viewpoints: extracted.viewpoints },
-              sources: extracted.sources,
-              requestId: `${task.id}:assessing`,
-              timeoutMs: this.externalTimeout(task),
-            }),
+          (attempt) => {
+            const budget = budgetForAttempt(attempt);
+            return {
+              map: extracted.map,
+              viewpoints: extracted.viewpoints,
+              sources: budget.sources,
+              contextBudget: {
+                strategy: budget.strategy,
+                attempt: budget.attempt,
+                serializedChars: budget.serializedChars,
+              },
+            };
+          },
+          (attempt) => {
+            const contextSources = budgetForAttempt(attempt).sources;
+            return this.structuredModel
+              .generateAssessments({
+                topic: task.topic,
+                map: { ...extracted.map, viewpoints: extracted.viewpoints },
+                sources: contextSources,
+                requestId: `${task.id}:assessing`,
+                timeoutMs: this.externalTimeout(task),
+              })
+              .then((value) => {
+                assertModelOutputHasNoUrl(value, "assessing");
+                return value;
+              });
+          },
         );
-        assertNoModelUrl(assessed, "assessing");
-        if (
-          !asRecord(assessed) ||
-          !isArray((assessed as { questions?: unknown }).questions)
-        ) {
-          throw new GenerationTaskFailure("candidate_invalid", false);
-        }
+        const directions = planned.directions;
         await this.repository.completeStage(
           task.id,
           workerId,
@@ -1725,24 +2171,18 @@ export class MapGenerationWorker {
           "assessing",
           extracted,
           {
-            directions:
-              output<{ directions: readonly GenerationDirectionCandidate[] }>(
-                "planning",
-              )?.directions ?? [],
+            directions,
             map: extracted.map,
             viewpoints: extracted.viewpoints,
-            questions: (assessed as { questions: unknown }).questions,
+            questions: assessed.questions,
             sources: extracted.sources,
           },
         );
         stageOutputs.set("assessing", {
-          directions:
-            output<{ directions: readonly GenerationDirectionCandidate[] }>(
-              "planning",
-            )?.directions ?? [],
+          directions,
           map: extracted.map,
           viewpoints: extracted.viewpoints,
-          questions: (assessed as { questions: unknown }).questions,
+          questions: assessed.questions,
           sources: extracted.sources,
         });
         status = "validating";
@@ -1797,8 +2237,8 @@ export class MapGenerationWorker {
     workerId: string,
     stage: TaskRow["stage"],
     operationKey: string,
-    input: unknown,
-    call: () => Promise<T>,
+    input: (attempt: number) => unknown,
+    call: (attempt: number) => Promise<T>,
   ): Promise<T> {
     return this.callExternal(
       task,
@@ -1824,9 +2264,9 @@ export class MapGenerationWorker {
       workerId,
       stage,
       operationKey,
-      input,
+      () => input,
       "source",
-      call,
+      () => call(),
     );
   }
 
@@ -1835,10 +2275,13 @@ export class MapGenerationWorker {
     workerId: string,
     stage: TaskRow["stage"],
     operationKey: string,
-    input: unknown,
+    input: (attempt: number) => unknown,
     provider: "source" | "model",
-    call: () => Promise<T>,
+    call: (attempt: number) => Promise<T>,
   ): Promise<T> {
+    const maxAttempts =
+      provider === "model" ? MODEL_MAX_ATTEMPTS : MAX_EXTERNAL_RETRIES + 1;
+    let activeRecoveryProgress: GenerationProgress | undefined;
     for (;;) {
       const attemptCount = await this.repository.recordAttempt(
         task.id,
@@ -1846,16 +2289,18 @@ export class MapGenerationWorker {
         stage,
         operationKey,
         input,
+        activeRecoveryProgress,
+        provider === "model" ? MODEL_MAX_ATTEMPTS : undefined,
       );
-      if (attemptCount > MAX_EXTERNAL_RETRIES + 1) {
+      if (attemptCount > maxAttempts) {
         throw new GenerationTaskFailure(
-          provider === "source" ? "source_unavailable" : "model_unavailable",
-          true,
+          provider === "model" ? "model_unavailable" : "source_unavailable",
+          false,
         );
       }
       try {
         const result = await withTimeout(
-          call(),
+          call(attemptCount),
           this.externalTimeout(task),
           () =>
             new GenerationTaskFailure(
@@ -1873,14 +2318,39 @@ export class MapGenerationWorker {
         );
         return result;
       } catch (error) {
-        if (error instanceof GenerationTaskFailure && !error.retryable) {
-          throw error;
-        }
         const failure =
           error instanceof GenerationTaskFailure
             ? error
             : mapExternalFailure(error, provider);
-        if (!failure.retryable || attemptCount >= MAX_EXTERNAL_RETRIES + 1) {
+        const modelOutputProtocol =
+          provider === "model" &&
+          (isModelOutputProtocolError(error, provider) ||
+            failure.category === "model_output_invalid");
+        if (modelOutputProtocol) {
+          if (attemptCount >= MODEL_MAX_ATTEMPTS) {
+            throw new GenerationTaskFailure("model_output_invalid", false);
+          }
+          const delay = 250 * 2 ** (attemptCount - 1);
+          const remaining =
+            asDate(task.deadlineAt).getTime() - this.now().getTime();
+          if (remaining <= delay) {
+            throw new GenerationTaskFailure("generation_timeout", false);
+          }
+          const recovery = await this.repository.consumeAutomaticRecovery(
+            task.id,
+            workerId,
+            stage,
+            attemptCount,
+          );
+          if (!recovery.allowed) {
+            throw new GenerationTaskFailure("model_output_invalid", false);
+          }
+          activeRecoveryProgress = recovery.progress;
+          await this.repository.renewLease(task.id, workerId);
+          await this.sleep(delay);
+          continue;
+        }
+        if (!failure.retryable || attemptCount >= maxAttempts) {
           throw failure;
         }
         const exponentialBackoff = 250 * 2 ** (attemptCount - 1);
@@ -2030,9 +2500,15 @@ export class MapGenerationWorker {
     task: TaskRow,
     workerId: string,
     directions: readonly GenerationDirectionCandidate[],
-  ): Promise<GenerationSourceCandidate[]> {
+  ): Promise<SearchStageOutput> {
     const byId = new Map<string, GenerationSourceCandidate>();
-    for (const direction of directions) {
+    const sourceIdsByDirection: GenerationDirectionSourceCoverage[] = [];
+    await this.repository.publishProgress(task.id, workerId, {
+      status: "searching",
+      stage: "searching",
+      search: { completed: 0, total: directions.length },
+    });
+    for (const [index, direction] of directions.entries()) {
       const response = await this.callSource(
         task,
         workerId,
@@ -2053,6 +2529,7 @@ export class MapGenerationWorker {
       ) {
         throw new GenerationTaskFailure("source_unavailable", false);
       }
+      const directionSourceIds: string[] = [];
       for (const source of (
         response as { sources: readonly GenerationSourceCandidate[] }
       ).sources) {
@@ -2063,9 +2540,28 @@ export class MapGenerationWorker {
         ) {
           byId.set(source.sourceId, source);
         }
+        if (
+          source &&
+          typeof source.sourceId === "string" &&
+          !directionSourceIds.includes(source.sourceId)
+        ) {
+          directionSourceIds.push(source.sourceId);
+        }
       }
+      sourceIdsByDirection.push({
+        directionId: direction.directionId,
+        sourceIds: directionSourceIds,
+      });
+      await this.repository.publishProgress(task.id, workerId, {
+        status: "searching",
+        stage: "searching",
+        search: { completed: index + 1, total: directions.length },
+      });
     }
-    return [...byId.values()];
+    return {
+      sources: [...byId.values()],
+      sourceIdsByDirection,
+    };
   }
 
   private async supplementMap(
@@ -2082,10 +2578,13 @@ export class MapGenerationWorker {
       ...node,
       sourceIds: [...node.sourceIds],
     }));
-    for (const node of nodes) {
-      if (node.sourceIds.length > 0) {
-        continue;
-      }
+    const pendingNodes = nodes.filter((node) => node.sourceIds.length === 0);
+    await this.repository.publishProgress(task.id, workerId, {
+      status: "supplementing",
+      stage: "supplementing",
+      supplement: { completed: 0, total: pendingNodes.length },
+    });
+    for (const [index, node] of pendingNodes.entries()) {
       const response = await this.callSource(
         task,
         workerId,
@@ -2100,24 +2599,34 @@ export class MapGenerationWorker {
             timeoutMs: this.externalTimeout(task),
           }),
       );
-      const supplemental =
-        asRecord(response) &&
-        isArray((response as { sources?: unknown }).sources)
-          ? (response as { sources: readonly GenerationSourceCandidate[] })
-              .sources
-          : [];
-      for (const source of supplemental) {
+      const responseRecord = asRecord(response);
+      const supplemental = responseRecord?.sources;
+      if (!isArray(supplemental)) {
+        throw new GenerationTaskFailure("source_unavailable", false);
+      }
+      // SourceSearchAccess validates each normalized source at its boundary.
+      const supplementalSources =
+        supplemental as readonly GenerationSourceCandidate[];
+      for (const source of supplementalSources) {
         if (source && typeof source.sourceId === "string") {
           byId.set(source.sourceId, source);
         }
       }
-      const first = supplemental.find(
+      const first = supplementalSources.find(
         (source) => source && typeof source.sourceId === "string",
       );
       if (!first) {
         throw new GenerationTaskFailure("source_insufficient", false);
       }
       node.sourceIds = [first.sourceId];
+      await this.repository.publishProgress(task.id, workerId, {
+        status: "supplementing",
+        stage: "supplementing",
+        supplement: {
+          completed: index + 1,
+          total: pendingNodes.length,
+        },
+      });
     }
     return {
       map: { ...map, nodes },
@@ -2129,7 +2638,15 @@ export class MapGenerationWorker {
     candidate: GenerationCandidate,
   ): Promise<GenerationCandidate> {
     const startedAt = this.now().getTime();
-    const validated = validateGenerationCandidate(candidate);
+    let validated: GenerationCandidate;
+    try {
+      validated = validateGenerationCandidate(candidate);
+    } catch (error) {
+      if (error instanceof GenerationCandidateValidationError) {
+        throw new GenerationTaskFailure("candidate_invalid", false);
+      }
+      throw error;
+    }
     if (this.now().getTime() - startedAt > LOCAL_OPERATION_TIMEOUT_MS) {
       throw new GenerationTaskFailure("generation_timeout", false);
     }

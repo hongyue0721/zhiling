@@ -1280,6 +1280,9 @@ components:
           oneOf:
             - $ref: "#/components/schemas/GenerationFailure"
             - type: "null"
+        progress:
+          $ref: "#/components/schemas/GenerationProgress"
+
     GenerationResult:
       type: object
       additionalProperties: false
@@ -1311,11 +1314,99 @@ components:
             - source_unavailable
             - source_insufficient
             - model_unavailable
+            - model_output_invalid
             - candidate_invalid
             - generation_timeout
             - internal_failure
         retryable:
           type: boolean
+    GenerationProgress:
+      type: object
+      additionalProperties: false
+      properties:
+        model:
+          $ref: "#/components/schemas/GenerationModelProgress"
+        search:
+          $ref: "#/components/schemas/GenerationProgressCounts"
+        supplement:
+          $ref: "#/components/schemas/GenerationProgressCounts"
+        recovery:
+          $ref: "#/components/schemas/GenerationProgressRecovery"
+        reusedStages:
+          type: array
+          items:
+            type: string
+            enum:
+              - normalizing
+              - cache_lookup
+              - planning
+              - searching
+              - structuring
+              - supplementing
+              - extracting
+              - assessing
+              - validating
+              - publishing
+          uniqueItems: true
+    GenerationModelProgress:
+      type: object
+      additionalProperties: false
+      required:
+        - attempt
+        - maxAttempts
+      properties:
+        attempt:
+          type: integer
+          minimum: 1
+          maximum: 3
+        maxAttempts:
+          type: integer
+          const: 3
+    GenerationProgressCounts:
+      type: object
+      additionalProperties: false
+      required:
+        - completed
+        - total
+      properties:
+        completed:
+          type: integer
+          minimum: 0
+        total:
+          type: integer
+          minimum: 0
+    GenerationProgressRecovery:
+      type: object
+      additionalProperties: false
+      required:
+        - reason
+        - state
+        - attempt
+        - maxAttempts
+        - used
+        - limit
+      properties:
+        reason:
+          type: string
+          const: model_output_invalid
+        state:
+          type: string
+          enum:
+            - started
+            - exhausted
+        attempt:
+          type: integer
+          minimum: 1
+        maxAttempts:
+          type: integer
+          const: 3
+        used:
+          type: integer
+          minimum: 0
+          maximum: 3
+        limit:
+          type: integer
+          const: 3
     GenerationSseEventEnvelope:
       type: object
       additionalProperties: false
@@ -1405,6 +1496,8 @@ components:
           oneOf:
             - $ref: "#/components/schemas/GenerationFailure"
             - type: "null"
+        progress:
+          $ref: "#/components/schemas/GenerationProgress"
     GenerationSseSnapshotActiveData:
       allOf:
         - $ref: "#/components/schemas/GenerationSseSnapshotCommon"
@@ -1532,6 +1625,30 @@ components:
             - assessing
             - validating
             - publishing
+        model:
+          $ref: "#/components/schemas/GenerationModelProgress"
+        search:
+          $ref: "#/components/schemas/GenerationProgressCounts"
+        supplement:
+          $ref: "#/components/schemas/GenerationProgressCounts"
+        recovery:
+          $ref: "#/components/schemas/GenerationProgressRecovery"
+        reusedStages:
+          type: array
+          items:
+            type: string
+            enum:
+              - normalizing
+              - cache_lookup
+              - planning
+              - searching
+              - structuring
+              - supplementing
+              - extracting
+              - assessing
+              - validating
+              - publishing
+          uniqueItems: true
     GenerationSseSucceededData:
       type: object
       additionalProperties: false
@@ -1583,6 +1700,7 @@ components:
             - source_unavailable
             - source_insufficient
             - model_unavailable
+            - model_output_invalid
             - candidate_invalid
             - generation_timeout
             - internal_failure

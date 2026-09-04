@@ -72,7 +72,9 @@ Web 进程只读写任务的持久化状态，不读取知乎 Access Secret。�
 
 `completedAt` 在任务终止前为 `null`，成功或失败后为终止时间。
 
-`invalid_topic`、`source_unavailable`、`source_insufficient`、`model_unavailable`、`candidate_invalid`、`generation_timeout`、`internal_failure`。
+`invalid_topic`、`source_unavailable`、`source_insufficient`、`model_unavailable`、`model_output_invalid`、`candidate_invalid`、`generation_timeout`、`internal_failure`。
+
+`model_output_invalid` 只表示 HTTP 已成功但模型内容不是可解析 JSON，或不满足当前用途的严格 schema/来源关系门禁；它与最终候选质量校验失败的 `candidate_invalid` 分开。服务端只会对这类模型协议问题自动恢复：单个模型阶段最多 3 次总尝试（首次加最多 2 次恢复），全任务最多 3 次额外自动恢复，正常路径不会增加调用。
 
 快照读取不返回候选正文。任务不存在、过期或当前账户未参与时都使用相同的 `404 resource_not_found`。
 
@@ -97,5 +99,7 @@ data: {"protocolVersion":"1","taskId":"task_01JXEXAMPLE","sequence":7,"type":"pr
 ```
 
 `event` 只能是 `snapshot`、`progress`、`succeeded` 或 `failed`。JSON 信封中的 `data` 只允许安全状态、阶段、序号、时间、正式结果标识和稳定失败类别。`succeeded`/`failed` 是 task-wide 终态事件，不携带 participant-specific `learningRelationshipId`；客户端收到后必须用当前账户授权的 `GET /api/map-generations/{taskId}` 快照读取 `result` 或 `failure`，再导航或展示失败。失败的 `retryable` 必须来自该授权快照，未知时不得推断。非终态连接每 15 秒发送 `: keep-alive` 注释；客户端取消请求后服务端停止轮询并释放流。
+
+非终态 `progress` 数据只携带服务端已记录的离散事实，不伪造百分比或 ETA：`model` 为当前模型尝试 `attempt/maxAttempts`（最多 `3` 次总尝试），`search` 和 `supplement` 为已完成/总数，`recovery` 为任务级自动恢复预算（当前使用量/上限 `3`；恢复事件的 `attempt` 表示即将执行的下一次总尝试），`reusedStages` 列出从 checkpoint 复用的阶段。客户端应显示阶段和这些计数，并在断线后以最新快照或重放事件恢复。
 
 未登录或错误账户在建立初次连接和每次重连时都重新验证，统一返回 `401` 或不暴露存在性的 `404`，而不是建立匿名流。

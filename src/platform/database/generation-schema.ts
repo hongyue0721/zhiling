@@ -55,6 +55,7 @@ export const generationFailureCategory = pgEnum("generation_failure_category", [
   "source_unavailable",
   "source_insufficient",
   "model_unavailable",
+  "model_output_invalid",
   "candidate_invalid",
   "generation_timeout",
   "internal_failure",

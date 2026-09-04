@@ -15,7 +15,7 @@
 - 开放平台文档当前记载邀测免费额度为知乎搜索 5,000 次/日、知乎直答 100 次/日；同一账号的 Access Secret 与页面/API 请求共享对应额度池，规则可能变化，最终以个人中心用量统计为准。这些是供应方事实而非知径 SLA；适配器不硬编码本地额度、不伪造额度剩余或本地兜底；
 - 版本常量由 `EXTERNAL_PROVIDER_VERSIONS` 提供：
   - `sourceAdapterVersion = zhihu-http-2026-07-16-v2`；
-  - `modelAdapterVersion = zhida-thinking-1p5-json-2026-07-16-v2`。
+  - `modelAdapterVersion = zhida-thinking-1p5-json-2026-09-04-v3`。
 
 ## 生产 HTTP 请求
 
@@ -110,8 +110,7 @@ type NormalizedSource = {
 - `reasoning_content` 永远不作为结果；
 - URL 字段不是任何模型输出 schema 的成员，出现即失败。
 
-模型内容不是可信输入。非 JSON、schema 失败、未知枚举、未知 ID、闭合关系失败均返回稳定 `protocol_error`，不静默删除字段后继续。
-
+模型内容不是可信输入。适配器只去除首尾空白/一个前导 BOM，或在首尾严格匹配且内容完整唯一时去除一层 `json` Markdown 围栏；普通文本、任意花括号片段、残缺或重复围栏均返回稳定 `protocol_error`，不静默删除字段后继续。
 ## 错误和重试语义
 
 应用只接收 `ExternalProviderError`：`provider` 为 `source` 或 `model`，`code` 为以下稳定值，且不携带响应正文：
@@ -126,8 +125,7 @@ type NormalizedSource = {
 | 请求 Abort/超时或明确 timeout                    | `timeout`                 | 是        |
 | 成功状态但响应结构、必要字段、枚举或模型关系不符 | `protocol_error`          | 否        |
 
-HTTP 状态和供应方业务码都参与映射；状态码优先识别明确的鉴权、限流、配额、超时和 5xx 语义，其余再按业务码解析。可解析的 `Retry-After` 会作为 `retryAfterMs` 返回；不保存响应正文。上层按 ADR-0004 对瞬时外部失败每个阶段最多重试两次，适配器自身不重试。
-
+HTTP 状态和供应方业务码都参与映射；状态码优先识别明确的鉴权、限流、配额、超时和 5xx 语义，其余再按业务码解析。可解析的 `Retry-After` 会作为 `retryAfterMs` 返回；不保存响应正文。适配器自身不重试；上层只对瞬时外部失败沿用每阶段最多两次重试，对 `protocol_error` 由任务级生成恢复策略决定（模型阶段最多 3 次总尝试、全任务最多 3 次额外恢复）。
 ## 配置
 
 以下变量只在服务端读取，全部必填：
