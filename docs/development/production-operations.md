@@ -81,7 +81,7 @@ GENERATION_WORKER_ID=generation-worker-1
 ZHIHU_ACCESS_SECRET='<真实知乎开放平台Access Secret>'
 ZHIHU_MODEL=zhida-thinking-1p5
 ZHIHU_SOURCE_TIMEOUT_MS=30000
-ZHIHU_MODEL_TIMEOUT_MS=60000
+ZHIHU_MODEL_TIMEOUT_MS=68000
 ```
 
 生产若明确关闭邮箱验证，使用 `EMAIL_VERIFICATION_ENABLED=false` 并删除
@@ -94,7 +94,6 @@ ZHIHU_MODEL_TIMEOUT_MS=60000
 openssl rand -base64 36
 openssl rand -base64 48
 ```
-
 `DATABASE_URL` 必须严格使用 Compose 服务名 `postgres`、端口 `5432`、
 配置的 `POSTGRES_USER` 和 `POSTGRES_DB`；公网主机、回环地址、其他服务名
 或错库会在启动前拒绝。密码必须按 URL 规则编码，并与初始化 PostgreSQL
