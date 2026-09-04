@@ -94,7 +94,7 @@ type NormalizedSource = {
 - `extractViewpoints`：只投影节点证据关系及来源标题/摘要，生成带 `nodeId`、封闭观点类型和 `sourceIds` 的观点；材料不能支持观点时返回空 `viewpoints`，不得改用解释性正文；
 - `generateAssessments`：四种题型（`single_choice`、`multiple_choice`、`matching`、`opinion_analysis`），均带选项、解释和 `sourceIds`，并按题型带严格互斥的答案字段。
 
-为避免把全部节点题目耦合为一个长请求，生成管线将 `generateAssessments` 按每批两个节点调用；5–7 个节点对应 3–4 次请求。每次请求仍携带完整地图（含观点）、本批共用的来源上下文和 `contextBudget`，只额外传入 `targetNodeIds` 约束本批题目，保证证据关系与地图上下文完整。每批成功结果立即写入 `generation_checkpoint`（`stage=assessing`、`operationKey=assessing:batch-<index>`）；任务租约接管时复用已完成批，只重新请求缺失批次，全部批合并后才进入统一的 `validating`。
+为避免把全部节点题目耦合为一个长请求，生成管线将 `generateAssessments` 按每批一个节点调用；5–7 个节点对应 5–7 次请求。每次请求仍携带完整地图（含观点）、本批共用的来源上下文和 `contextBudget`，只额外传入 `targetNodeIds` 约束本批题目，保证证据关系与地图上下文完整。每批成功结果立即写入 `generation_checkpoint`（`stage=assessing`、`operationKey=assessing:batch-<index>`）；任务租约接管时复用已完成批，只重新请求缺失批次，全部批合并后才进入统一的 `validating`。
 
 `generateAssessments` 的题目对象严格按 `type` 选择答案字段：
 

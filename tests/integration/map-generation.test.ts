@@ -362,15 +362,18 @@ describe("map generation persistence", () => {
       planning: 1,
       structuring: 1,
       extracting: 1,
-      assessing: 3,
+      assessing: 6,
     });
     expect(assessmentTargets).toEqual([
-      ["node-0", "node-1"],
-      ["node-2", "node-3"],
-      ["node-4", "node-5"],
+      ["node-0"],
+      ["node-1"],
+      ["node-2"],
+      ["node-3"],
+      ["node-4"],
+      ["node-5"],
     ]);
     expect(modelTimeouts).toEqual([
-      56_789, 56_789, 56_789, 56_789, 56_789, 56_789,
+      56_789, 56_789, 56_789, 56_789, 56_789, 56_789, 56_789, 56_789, 56_789,
     ]);
     const assessingStage = await database
       .select({ output: generationCheckpoint.output })
@@ -465,10 +468,7 @@ describe("map generation persistence", () => {
 
     await firstWorker.runOnce("assessment-recovery-worker-1");
 
-    expect(assessmentTargets).toEqual([
-      ["node-0", "node-1"],
-      ["node-2", "node-3"],
-    ]);
+    expect(assessmentTargets).toEqual([["node-0"], ["node-1"], ["node-2"]]);
     expect((await generation.getGeneration("user-a", taskId))?.status).toBe(
       "assessing",
     );
@@ -495,10 +495,13 @@ describe("map generation persistence", () => {
     await secondWorker.runOnce("assessment-recovery-worker-2");
 
     expect(assessmentTargets).toEqual([
-      ["node-0", "node-1"],
-      ["node-2", "node-3"],
-      ["node-2", "node-3"],
-      ["node-4", "node-5"],
+      ["node-0"],
+      ["node-1"],
+      ["node-2"],
+      ["node-2"],
+      ["node-3"],
+      ["node-4"],
+      ["node-5"],
     ]);
     expect((await generation.getGeneration("user-a", taskId))?.status).toBe(
       "succeeded",
@@ -514,7 +517,7 @@ describe("map generation persistence", () => {
         const key = (input.targetNodeIds ?? []).join(",");
         const attempts = (attemptsByBatch.get(key) ?? 0) + 1;
         attemptsByBatch.set(key, attempts);
-        if (key === "node-0,node-1" && attempts < 3) {
+        if (key === "node-0" && attempts < 3) {
           throw {
             provider: "model",
             code: "temporarily_unavailable",
@@ -547,9 +550,12 @@ describe("map generation persistence", () => {
 
     expect(attemptsByBatch).toEqual(
       new Map([
-        ["node-0,node-1", 3],
-        ["node-2,node-3", 1],
-        ["node-4,node-5", 1],
+        ["node-0", 3],
+        ["node-1", 1],
+        ["node-2", 1],
+        ["node-3", 1],
+        ["node-4", 1],
+        ["node-5", 1],
       ]),
     );
     const batchCheckpoints = await database
@@ -574,21 +580,11 @@ describe("map generation persistence", () => {
           left.operationKey.localeCompare(right.operationKey),
         ),
     ).toEqual([
-      {
-        operationKey: "assessing:batch-0",
+      ...[0, 1, 2, 3, 4, 5].map((index) => ({
+        operationKey: `assessing:batch-${index}`,
         attemptCount: 0,
         completedAt: expect.any(Date),
-      },
-      {
-        operationKey: "assessing:batch-1",
-        attemptCount: 0,
-        completedAt: expect.any(Date),
-      },
-      {
-        operationKey: "assessing:batch-2",
-        attemptCount: 0,
-        completedAt: expect.any(Date),
-      },
+      })),
     ]);
   });
 

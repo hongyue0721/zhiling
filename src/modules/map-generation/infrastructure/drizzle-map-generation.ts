@@ -111,8 +111,8 @@ export const GENERATION_CACHE_TTL_MS = 6 * 60 * 60 * 1_000;
 export const SEARCH_RESULTS_PER_DIRECTION = 8;
 export const SUPPLEMENT_RESULTS_PER_NODE = 6;
 export const MAX_TASK_AUTO_RECOVERIES = 3;
-/** Two nodes keep each model response near six questions and below Zhihu's roughly 70-second processing limit; larger batches reduce requests but make timeouts more likely. */
-export const ASSESSMENT_BATCH_SIZE = 2;
+/** One node per batch keeps each model response near three questions, far below Zhihu's roughly 70-second processing limit even when server-side latency degrades several-fold; larger batches reduce request count but risk timeouts that kill the whole task. */
+export const ASSESSMENT_BATCH_SIZE = 1;
 const ASSESSMENT_BATCH_OPERATION_PREFIX = "assessing:batch-";
 function stableMapId(normalizedTopic: string): string {
   return `map_${createHash("sha256").update(normalizedTopic, "utf8").digest("hex")}`;

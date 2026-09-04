@@ -18,7 +18,7 @@
 | `structuring`   | 基于来源重建 5–7 个最终节点        | 否               |
 | `supplementing` | 仅对材料不足节点补充一次搜索       | 否               |
 | `extracting`    | 提取有来源关联的观点结构           | 否               |
-| `assessing`     | 按两个节点一批生成有来源依据的客观题候选 | 否               |
+| `assessing`     | 按单个节点分批生成有来源依据的客观题候选 | 否               |
 | `validating`    | 校验图结构、来源、观点和题目不变量 | 否               |
 | `publishing`    | 在事务边界内持久化完整地图         | 正在进行         |
 | `succeeded`     | 已得到可读取地图，或命中有效缓存   | 是               |
@@ -58,7 +58,7 @@ normalizedTopic + pipelineVersion + sourceAdapterVersion + modelAdapterVersion
 
 ### 出题批级缓存
 
-`assessing` 不再把所有节点题目放进一次模型调用：节点按地图顺序每两个组成一批，最后一批可以少于两个。每批请求仍携带完整地图、观点和同一份来源上下文，只用 `targetNodeIds` 限定本批节点；成功后立刻写入 `generation_checkpoint`，键为 `stage=assessing` 与 `operationKey=assessing:batch-<index>`，且不转移任务状态。接管者按当前节点数重新计算批次数，复用已完成批并只补缺失批，随后将题目按地图节点顺序合并，再经过原有统一校验和发布。
+`assessing` 不再把所有节点题目放进一次模型调用：节点按地图顺序每个组成一批（单节点批，含 2–3 道题）。每批请求仍携带完整地图、观点和同一份来源上下文，只用 `targetNodeIds` 限定本批节点；成功后立刻写入 `generation_checkpoint`，键为 `stage=assessing` 与 `operationKey=assessing:batch-<index>`，且不转移任务状态。接管者按当前节点数重新计算批次数，复用已完成批并只补缺失批，随后将题目按地图节点顺序合并，再经过原有统一校验和发布。
 
 批级 checkpoint 是任务执行中的细粒度恢复层；`generation_cache` 仍是完成发布后的任务级结果缓存。前者只保存当前任务的单批模型输出，后者保存可供相同生成身份复用的完整地图、题目集和版本关系，两者互不替代。
 
