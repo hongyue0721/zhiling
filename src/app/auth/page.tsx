@@ -37,7 +37,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
     <main className={styles.authPage}>
       <div className={styles.authAside}>
         <div className={styles.authAsideGrid} aria-hidden="true" />
-        <div className={styles.authAsideContent}>
+        <div className={styles.authAsideContent} data-reveal>
           <span className={styles.authBrand} aria-hidden="true">
             <span className={styles.authBrandGlyph}>
               <svg
@@ -60,7 +60,9 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
             <span />
           </div>
           <p className={styles.authAsideQuote}>
-            把零散讨论，走成一条学会的路。
+            把零散的讨论
+            <br />
+            走成一条学会的路
           </p>
           <div className={styles.authAsidePoints}>
             <span>真实来源</span>

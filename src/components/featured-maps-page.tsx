@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Alert, Button, Empty, List, Pagination, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
@@ -162,7 +162,7 @@ export function FeaturedMapsPage({
     <div className={`app-frame ${styles.page}`}>
       <AppHeader email={email} eyebrow="精选地图" />
       <main className={`directory-main ${styles.pageMain}`}>
-        <header className={`directory-heading ${styles.heading}`}>
+        <header className={`directory-heading ${styles.heading}`} data-reveal>
           <div className={styles.headingCopy}>
             <span className="section-kicker">精选地图</span>
             <h1>从可靠路径开始</h1>
@@ -178,6 +178,7 @@ export function FeaturedMapsPage({
         {error ? (
           <Alert
             className={styles.alert}
+            data-reveal
             role="alert"
             type="error"
             showIcon
@@ -212,7 +213,15 @@ export function FeaturedMapsPage({
                     className={styles.cardListItem}
                     key={`${map.mapId}:${map.versionId}`}
                   >
-                    <article className={styles.directionCard}>
+                    <article
+                      className={styles.directionCard}
+                      data-reveal
+                      style={
+                        {
+                          "--reveal-delay": `${index * 60}ms`,
+                        } as CSSProperties
+                      }
+                    >
                       <div className={styles.cardTopline}>
                         <span className={styles.cardIndex} aria-hidden="true">
                           {String(
@@ -242,7 +251,7 @@ export function FeaturedMapsPage({
                 );
               }}
             />
-            <div className={styles.pagination}>
+            <div className={styles.pagination} data-reveal>
               <Pagination
                 current={currentPage}
                 pageSize={PAGE_SIZE}
@@ -258,6 +267,7 @@ export function FeaturedMapsPage({
         ) : (
           <Empty
             className={styles.empty}
+            data-reveal
             description={
               <div>
                 <h2>精选地图正在准备中</h2>

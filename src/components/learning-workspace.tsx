@@ -419,11 +419,6 @@ export function LearningWorkspace({
                     >
                       {selectedProgress?.completed ? "已完成" : "尚未完成"}
                     </Tag>
-                    <span>
-                      {selectedProgress?.completed
-                        ? "服务端已记录完成状态"
-                        : "完成题目后更新状态"}
-                    </span>
                   </div>
 
                   <section
@@ -557,9 +552,6 @@ export function LearningWorkspace({
                         ? "再次验证"
                         : "开始节点验证"}
                     </Button>
-                    <p className="panel-action-help">
-                      每次提交由服务端评分并保存最佳成绩。
-                    </p>
                   </div>
                 </>
               ) : (

@@ -42,9 +42,7 @@ import {
   GenerationTaskFailure,
 } from "../application/ports";
 import { validateGenerationCandidate } from "../domain/candidate";
-import {
-  LOCAL_OPERATION_TIMEOUT_MS,
-} from "../domain/state-machine";
+import { LOCAL_OPERATION_TIMEOUT_MS } from "../domain/state-machine";
 import type { MapGenerationDatabase } from "./generation-database";
 import {
   STAGE_CHECKPOINT_KEY,

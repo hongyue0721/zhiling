@@ -255,7 +255,7 @@ export const generationCache = pgTable(
     index("generation_cache_version_idx").on(table.versionId),
   ],
 );
- 
+
 export const generationRateLimit = pgTable(
   "generation_rate_limit",
   {

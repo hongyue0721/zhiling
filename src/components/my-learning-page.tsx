@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Alert, Button, Empty, List, Pagination, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
@@ -105,7 +105,7 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
     <div className={`app-frame ${styles.page}`}>
       <AppHeader email={email} eyebrow="我的学习" />
       <main className={`directory-main ${styles.pageMain}`}>
-        <header className={`directory-heading ${styles.heading}`}>
+        <header className={`directory-heading ${styles.heading}`} data-reveal>
           <div className={styles.headingCopy}>
             <span className="section-kicker">我的学习</span>
             <h1>继续你的学习路径</h1>
@@ -121,6 +121,7 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
         {error ? (
           <Alert
             className={styles.alert}
+            data-reveal
             role="alert"
             type="error"
             showIcon
@@ -145,12 +146,20 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
             <List
               className={styles.resumeList}
               dataSource={visibleRelationships}
-              renderItem={(relationship) => (
+              renderItem={(relationship, index) => (
                 <ListItem
                   className={styles.resumeListItem}
                   key={relationship.learningRelationshipId}
                 >
-                  <article className={styles.resumeCard}>
+                  <article
+                    className={styles.resumeCard}
+                    data-reveal
+                    style={
+                      {
+                        "--reveal-delay": `${index * 60}ms`,
+                      } as CSSProperties
+                    }
+                  >
                     <Link
                       className={styles.resumeCardLink}
                       href={`/learn/${encodeURIComponent(relationship.learningRelationshipId)}`}
@@ -170,9 +179,6 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
                         </p>
                       </div>
                       <div className={styles.resumeFooter}>
-                        <span className={styles.resumeFooterFact}>
-                          当前账户的学习关系
-                        </span>
                         <span className={styles.resumeAction}>继续学习 →</span>
                       </div>
                     </Link>
@@ -180,7 +186,7 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
                 </ListItem>
               )}
             />
-            <div className={styles.pagination}>
+            <div className={styles.pagination} data-reveal>
               <Pagination
                 current={currentPage}
                 pageSize={PAGE_SIZE}
@@ -196,6 +202,7 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
         ) : (
           <Empty
             className={styles.empty}
+            data-reveal
             description={
               <div>
                 <h2>还没有学习关系</h2>

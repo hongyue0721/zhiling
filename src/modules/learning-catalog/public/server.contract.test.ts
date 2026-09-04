@@ -167,8 +167,9 @@ describe("learning catalog public server boundary", () => {
         "map-without-complete-assessment",
       ),
     ).resolves.toBeNull();
-    expect(
-      internal.establishFeaturedLearningRelationship,
-    ).toHaveBeenCalledWith("user-1", "map-without-complete-assessment");
+    expect(internal.establishFeaturedLearningRelationship).toHaveBeenCalledWith(
+      "user-1",
+      "map-without-complete-assessment",
+    );
   });
 });

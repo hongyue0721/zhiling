@@ -191,6 +191,7 @@ export function AuthForm({
     <section
       className={`${styles.authCard} auth-card`}
       aria-labelledby="auth-title"
+      data-reveal
     >
       <div className={`${styles.authCardHeading} auth-card-heading`}>
         <span className={styles.authKicker}>邮箱身份</span>
@@ -329,7 +330,6 @@ export function AuthForm({
       ) : null}
 
       <div className={`${styles.authCardFooter} auth-card-footer`}>
-        <p>仅使用本人 Session 访问学习内容。</p>
         <Link href="/">返回知径首页</Link>
       </div>
     </section>

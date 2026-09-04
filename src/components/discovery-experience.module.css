@@ -1,167 +1,148 @@
-.page {
-  --discovery-ink: #14151a;
-  --discovery-ink-soft: #59606e;
-  --discovery-ink-muted: #858c98;
-  --discovery-blue: #2f6bff;
-  --discovery-blue-deep: #1946c4;
-  --discovery-coral: #f06f5d;
-  --discovery-paper: #fffdfa;
-  --discovery-paper-tint: #f5f7fc;
-  --discovery-grid: rgb(138 68 35 / 8%);
-  --discovery-line: #dde3ee;
-  --discovery-line-strong: #c9d2e1;
-  min-height: 100vh;
-  color: var(--discovery-ink);
-  background-color: var(--discovery-paper);
-  background-image:
-    linear-gradient(var(--discovery-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--discovery-grid) 1px, transparent 1px),
-    radial-gradient(circle at 88% 8%, rgb(138 68 35 / 11%), transparent 30rem),
-    radial-gradient(circle at 8% 92%, rgb(240 111 93 / 8%), transparent 26rem);
-  background-position: center;
-  background-size:
-    2rem 2rem,
-    2rem 2rem,
-    auto,
-    auto;
-}
+/* 书卷手帐 · 精选目录 / 我的学习 / 现场生成
+   全部颜色取自 globals.css :root 令牌，禁止硬编码。 */
 
-.page :global(h1),
-.page :global(h2),
-.page :global(h3) {
-  color: var(--discovery-ink);
+.page {
+  min-height: 100vh;
+  color: var(--ink);
 }
 
 .pageMain {
   position: relative;
   isolation: isolate;
-  padding-top: clamp(2rem, 5vw, 4.5rem);
+  padding-top: clamp(2rem, 5vw, 3.5rem);
 }
+
+/* ---- 卷首 ---- */
 
 .heading {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   min-width: 0;
-  padding: 0 0 clamp(2rem, 4vw, 3.5rem);
-  border-bottom: 1px solid var(--discovery-line);
+  padding: 0 0 clamp(1.5rem, 3.5vw, 2.75rem);
+  border-bottom: 1px dashed var(--line);
   gap: 2rem;
 }
 
 .headingCopy {
   min-width: 0;
-  max-width: 48rem;
-}
-
-.heading :global(.section-kicker),
-.generationHeading :global(.section-kicker) {
-  margin-bottom: 0.75rem;
-  color: var(--discovery-blue-deep);
-}
-
-.heading h1,
-.generationHeading h1 {
-  max-width: 15ch;
-  margin: 0;
-  font-size: clamp(2.8rem, 7vw, 5.8rem);
-  font-weight: 760;
-  letter-spacing: -0.07em;
-  line-height: 0.98;
-}
-
-.heading p,
-.generationHeading p {
-  max-width: 42rem;
-  margin: 1.25rem 0 0;
-  color: var(--discovery-ink-soft);
-  font-size: clamp(0.98rem, 1.5vw, 1.08rem);
 }
 
 .headingStamp {
+  position: relative;
   display: grid;
   flex: none;
-  width: clamp(7rem, 14vw, 10rem);
+  width: clamp(6.5rem, 12vw, 9rem);
   aspect-ratio: 1;
   place-items: center;
-  border: 1px solid var(--discovery-line-strong);
+  border: 1px solid var(--primary-soft-strong);
   border-radius: 50%;
-  color: var(--discovery-blue-deep);
-  background: rgb(255 253 250 / 82%);
-  box-shadow: 0.5rem 0.5rem 0 rgb(240 111 93 / 14%);
-  font-size: clamp(0.72rem, 1.4vw, 0.88rem);
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  line-height: 1.45;
+  color: var(--primary);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-serif);
+  font-size: clamp(0.8rem, 1.3vw, 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  line-height: 1.9;
   text-align: center;
-  text-transform: uppercase;
+}
+
+.headingStamp::after {
+  position: absolute;
+  inset: 0.45rem;
+  border: 1px dashed var(--primary-soft-strong);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
 }
 
 .headingStamp::first-line {
-  color: var(--discovery-coral);
+  color: var(--cinnabar);
 }
+
+.generationHeading {
+  display: grid;
+  max-width: 58rem;
+  margin-bottom: clamp(1.5rem, 3.5vw, 2.5rem);
+}
+
+.generationHeading h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(2.1rem, 4.5vw, 3.25rem);
+}
+
+.generationHeading p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 1rem;
+}
+
+/* ---- 提示与加载 ---- */
 
 .alert {
   margin: 0;
-  border-color: rgb(240 111 93 / 34%);
 }
 
 .loading {
-  padding: clamp(1.25rem, 4vw, 2.5rem);
-  border: 1px solid var(--discovery-line);
-  border-radius: 1.25rem;
-  background: rgb(255 253 250 / 90%);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
 }
 
-.cardList {
+/* ---- 手帐目录（精选 / 我的学习）----
+   一册纸面板，条目间以 1px dashed var(--line) 分隔。 */
+
+.cardList,
+.resumeList {
   min-width: 0;
 }
 
-.cardList :global(.ant-list-items) {
+.cardList :global(.ant-list-items),
+.resumeList :global(.ant-list-items) {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(0.85rem, 2.2vw, 1.5rem);
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding: clamp(0.35rem, 1vw, 0.7rem) clamp(1rem, 2.5vw, 2rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
 }
 
-.cardListItem {
+.cardListItem,
+.resumeListItem {
   display: block;
   min-width: 0;
   padding: 0 !important;
   border: 0 !important;
 }
 
-.directionCard {
+.directionCard,
+.resumeCard {
   position: relative;
-  display: flex;
   min-width: 0;
-  min-height: 20rem;
+  border-bottom: 1px dashed var(--line);
+  transition: background var(--duration-fast) var(--ease-out-soft);
+}
+
+.directionCard:last-child,
+.resumeCard:last-child {
+  border-bottom: 0;
+}
+
+.directionCard:hover,
+.resumeCard:hover {
+  background: var(--paper);
+}
+
+.directionCard {
+  display: flex;
   flex-direction: column;
-  overflow: hidden;
-  padding: clamp(1.25rem, 3vw, 2rem);
-  border: 1px solid var(--discovery-line);
-  border-radius: 1.25rem;
-  background: rgb(255 253 250 / 94%);
-  box-shadow: 0 1rem 2.25rem rgb(20 21 26 / 5%);
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
-}
-
-.directionCard::before {
-  position: absolute;
-  top: 0;
-  left: 1.5rem;
-  width: 3.5rem;
-  height: 0.25rem;
-  border-radius: 0 0 0.25rem 0.25rem;
-  background: var(--discovery-coral);
-  content: "";
-}
-
-.directionCard:hover {
-  border-color: rgb(138 68 35 / 52%);
-  box-shadow: 0 1.2rem 2.8rem rgb(138 68 35 / 12%);
-  transform: translateY(-0.2rem);
+  padding: clamp(1.3rem, 2.6vw, 1.85rem) 0.35rem;
 }
 
 .cardTopline,
@@ -176,58 +157,71 @@
 }
 
 .cardIndex {
-  color: var(--discovery-coral);
-  font-size: 0.77rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  color: var(--primary);
+  font-family: var(--font-serif);
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  transition: color var(--duration-fast) var(--ease-out-soft);
+}
+
+.directionCard:hover .cardIndex,
+.resumeCard:hover .cardIndex {
+  color: var(--cinnabar);
 }
 
 .cardFact {
-  color: var(--discovery-ink-muted);
-  font-size: 0.77rem;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .directionCard :global(.ant-tag),
-.resumeCard :global(.ant-tag) {
+.resumeCard :global(.ant-tag),
+.statusTopline :global(.ant-tag) {
   margin-inline-end: 0;
-  border-color: rgb(138 68 35 / 22%);
+  padding: 0 0.7em;
+  border: 1px dashed var(--primary-soft-strong);
   border-radius: 999px;
-  color: var(--discovery-blue-deep);
-  background: rgb(138 68 35 / 8%);
+  color: var(--primary-dark);
+  background: var(--primary-soft);
   font-size: 0.72rem;
+  line-height: 1.8;
 }
 
 .cardCopy {
   display: grid;
   min-width: 0;
   flex: 1;
-  align-content: center;
-  padding: 2rem 0 1.5rem;
+  align-content: start;
+  padding: 0.85rem 0 1.05rem;
 }
 
 .cardCopy h2 {
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  font-size: clamp(1.45rem, 2.5vw, 2.05rem);
-  font-weight: 730;
-  letter-spacing: -0.045em;
-  line-height: 1.12;
+  font-size: clamp(1.3rem, 2.2vw, 1.65rem);
+  font-weight: 600;
+  line-height: 1.35;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
 }
 
-.cardCopy p {
+.cardCopy p,
+.resumeCardBody p {
   display: -webkit-box;
   overflow: hidden;
-  margin: 0.85rem 0 0;
-  color: var(--discovery-ink-soft);
-  line-height: 1.65;
+  margin: 0.55rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.75;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 2;
 }
 
 .cardFooter {
@@ -235,32 +229,30 @@
   align-items: center;
   justify-content: space-between;
   min-width: 0;
-  padding-top: 1rem;
-  border-top: 1px solid var(--discovery-line);
   gap: 1rem;
 }
 
 .cardFooterFact {
-  color: var(--discovery-ink-soft);
+  color: var(--ink-muted);
   font-size: 0.82rem;
-  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .cardFooter :global(.ant-btn),
 .resumeAction {
   flex: none;
-  border-radius: 999px;
-  font-weight: 700;
+  border-radius: var(--radius);
+  font-weight: 600;
 }
 
 .cardFooter :global(.ant-btn-primary) {
-  border-color: var(--discovery-blue);
-  background: var(--discovery-blue);
+  border-color: var(--primary);
+  background: var(--primary);
 }
 
 .cardFooter :global(.ant-btn-primary:hover) {
-  border-color: var(--discovery-blue-deep);
-  background: var(--discovery-blue-deep);
+  border-color: var(--primary-dark);
+  background: var(--primary-dark);
 }
 
 .empty {
@@ -268,9 +260,10 @@
   min-height: 16rem;
   place-items: center;
   padding: 2.5rem 1.5rem;
-  border: 1px dashed var(--discovery-line-strong);
-  border-radius: 1.25rem;
-  background: rgb(255 253 250 / 82%);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
   text-align: center;
 }
 
@@ -280,12 +273,14 @@
 
 .empty p {
   margin: 0;
-  color: var(--discovery-ink-soft);
+  color: var(--ink-soft);
 }
 
 .empty :global(.button) {
   margin-top: 1.25rem;
 }
+
+/* ---- 分页 ---- */
 
 .pagination {
   display: flex;
@@ -299,55 +294,44 @@
   margin: 0;
 }
 
-.resumeList :global(.ant-list-items) {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(0.85rem, 2.2vw, 1.5rem);
+.pagination :global(.ant-pagination-item),
+.pagination :global(.ant-pagination-prev),
+.pagination :global(.ant-pagination-next) {
+  border-color: var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
 }
 
-.resumeListItem {
-  display: block;
-  min-width: 0;
-  padding: 0 !important;
-  border: 0 !important;
+.pagination :global(.ant-pagination-item a) {
+  color: var(--ink-soft);
+  font-family: var(--font-serif);
+  font-variant-numeric: tabular-nums;
 }
 
-.resumeCard {
-  position: relative;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--discovery-line);
-  border-radius: 1.25rem;
-  background: rgb(255 253 250 / 94%);
-  box-shadow: 0 1rem 2.25rem rgb(20 21 26 / 5%);
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
+.pagination :global(.ant-pagination-item:hover) {
+  border-color: var(--primary);
 }
 
-.resumeCard::after {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 0.3rem;
-  height: 100%;
-  background: var(--discovery-blue);
-  content: "";
+.pagination :global(.ant-pagination-item:hover a) {
+  color: var(--primary);
 }
 
-.resumeCard:hover {
-  border-color: rgb(138 68 35 / 52%);
-  box-shadow: 0 1.2rem 2.8rem rgb(138 68 35 / 12%);
-  transform: translateY(-0.2rem);
+.pagination :global(.ant-pagination-item-active) {
+  border-color: var(--primary);
+  background: var(--primary);
 }
+
+.pagination :global(.ant-pagination-item-active a) {
+  color: var(--white);
+}
+
+/* ---- 我的学习条目 ---- */
 
 .resumeCardLink {
   display: grid;
   min-width: 0;
-  min-height: 16rem;
   grid-template-rows: auto 1fr auto;
-  padding: clamp(1.25rem, 3vw, 2rem);
+  padding: clamp(1.3rem, 2.6vw, 1.85rem) 0.35rem;
   color: inherit;
 }
 
@@ -358,93 +342,72 @@
 
 .resumeCardBody {
   display: grid;
-  align-content: center;
+  align-content: start;
   min-width: 0;
-  padding: 1.5rem 0;
+  padding: 0.85rem 0 1.05rem;
 }
 
 .resumeCardBody strong {
   display: -webkit-box;
   overflow: hidden;
-  color: var(--discovery-ink);
-  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
-  font-weight: 730;
-  letter-spacing: -0.045em;
-  line-height: 1.12;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(1.3rem, 2.2vw, 1.65rem);
+  font-weight: 600;
+  line-height: 1.35;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-.resumeCardBody p {
-  display: -webkit-box;
-  overflow: hidden;
-  margin: 0.85rem 0 0;
-  color: var(--discovery-ink-soft);
-  line-height: 1.65;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 2;
 }
 
 .resumeFooter {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   min-width: 0;
-  padding-top: 1rem;
-  border-top: 1px solid var(--discovery-line);
   gap: 1rem;
 }
 
 .resumeFooterFact {
-  color: var(--discovery-ink-muted);
-  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
 }
 
 .resumeAction {
-  color: var(--discovery-blue-deep);
+  color: var(--primary-dark);
   font-size: 0.87rem;
   white-space: nowrap;
+  transition: color var(--duration-fast) var(--ease-out-soft);
 }
+
+.resumeCard:hover .resumeAction {
+  color: var(--primary);
+}
+
+/* ---- 现场生成 ---- */
 
 .generationMain {
   min-width: 0;
-  padding-top: clamp(2rem, 5vw, 4rem);
-}
-
-.generationHeading {
-  display: grid;
-  max-width: 58rem;
-  margin-bottom: clamp(2rem, 5vw, 4rem);
-}
-
-.generationHeading :global(.back-link) {
-  width: fit-content;
-  margin-bottom: 1.75rem;
-  color: var(--discovery-blue-deep);
-}
-
-.generationHeading :global(.back-link:hover) {
-  color: var(--discovery-blue);
+  padding-top: clamp(2rem, 5vw, 3.5rem);
 }
 
 .generationLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(20rem, 0.92fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(20rem, 0.95fr);
+  align-items: stretch;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--discovery-line-strong);
-  border-radius: 1.35rem;
-  background: rgb(255 253 250 / 95%);
-  box-shadow: 0 1.5rem 3rem rgb(20 21 26 / 6%);
+  gap: clamp(1rem, 2.5vw, 1.75rem);
 }
 
 .formPanel,
 .statusPanel {
   min-width: 0;
-  min-height: 34rem;
-  padding: clamp(1.5rem, 5vw, 4rem);
+  min-height: 30rem;
+  padding: clamp(1.5rem, 3.5vw, 2.75rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
 }
 
 .formPanel {
@@ -455,45 +418,50 @@
 .statusPanel {
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--discovery-line);
-  background:
-    linear-gradient(145deg, rgb(138 68 35 / 7%), transparent 55%),
-    var(--discovery-paper-tint);
-  gap: 1.35rem;
+  border-style: dashed;
+  background-color: var(--paper);
+  background-image: linear-gradient(
+    160deg,
+    var(--primary-soft),
+    transparent 42%
+  );
+  gap: 1.25rem;
 }
 
 .panelHeading h2,
 .statusPanel h2 {
   margin: 0;
-  font-size: clamp(1.5rem, 3vw, 2.15rem);
-  letter-spacing: -0.045em;
+  font-size: clamp(1.4rem, 2.4vw, 1.8rem);
 }
 
 .panelHeading p,
 .statusDescription {
   margin: 0.65rem 0 0;
-  color: var(--discovery-ink-soft);
+  color: var(--ink-soft);
 }
 
 .form {
   display: grid;
-  margin-top: 2.25rem;
+  margin-top: 1.75rem;
   gap: 1rem;
 }
 
-.form :global(.field-label) {
-  color: var(--discovery-ink);
-}
-
 .form :global(.field-input.ant-input) {
-  border-color: var(--discovery-line-strong);
-  border-radius: 0.8rem;
-  background: var(--discovery-paper);
+  border-color: var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  transition:
+    border-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
 }
 
-.form :global(.field-input.ant-input:hover),
+.form :global(.field-input.ant-input:hover) {
+  border-color: var(--primary-soft-strong);
+}
+
 .form :global(.field-input.ant-input:focus) {
-  border-color: var(--discovery-blue);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .form :global(.field-textarea.ant-input) {
@@ -503,9 +471,10 @@
 }
 
 .counter {
-  margin-top: -0.65rem;
-  color: var(--discovery-ink-muted);
-  font-size: 0.76rem;
+  margin-top: -0.6rem;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
@@ -513,47 +482,44 @@
   margin: 0;
 }
 
+.privacyNote {
+  margin: auto 0 0;
+  padding-top: 1.5rem;
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+}
+
 .submitButton {
   min-height: 3rem;
-  border-radius: 999px !important;
-  border-color: var(--discovery-blue) !important;
-  background: var(--discovery-blue) !important;
-  font-weight: 720;
+  border-radius: var(--radius) !important;
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  font-weight: 600;
 }
 
 .submitButton:hover {
-  border-color: var(--discovery-blue-deep) !important;
-  background: var(--discovery-blue-deep) !important;
+  border-color: var(--primary-dark) !important;
+  background: var(--primary-dark) !important;
 }
 
 .submitButton:disabled,
 .submitButton:disabled:hover {
-  border-color: #d9e0e8 !important;
-  color: #7f8b99 !important;
-  background: #edf1f5 !important;
+  border-color: var(--line) !important;
+  color: var(--ink-muted) !important;
+  background: var(--paper-deep) !important;
   box-shadow: none !important;
-}
-
-.privacyNote {
-  margin: auto 0 0;
-  padding-top: 2rem;
-  color: var(--discovery-ink-muted);
-  font-size: 0.76rem;
 }
 
 .statusTopline :global(.section-kicker) {
   margin: 0;
-  color: var(--discovery-coral);
-}
-
-.statusTopline :global(.ant-tag) {
-  margin: 0;
-  border-radius: 999px;
+  color: var(--primary);
 }
 
 .statusPanel > :global(.ant-alert) {
   margin: 0;
 }
+
+/* 卷轴进度时间线 */
 
 .timeline {
   display: grid;
@@ -567,15 +533,14 @@
 }
 
 .timelineTopline span:first-child {
-  color: var(--discovery-ink-soft);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
 }
 
 .timelineProgress {
-  color: var(--discovery-ink-muted);
+  color: var(--ink-muted);
   font-size: 0.76rem;
 }
 
@@ -585,11 +550,15 @@
 }
 
 .timeline :global(.ant-progress-inner) {
-  background: rgb(20 21 26 / 9%);
+  background: var(--blue-100);
 }
 
 .timeline :global(.ant-progress-bg) {
-  background: var(--discovery-blue);
+  background: var(--primary);
+}
+
+.timeline :global(.ant-progress-status-success .ant-progress-bg) {
+  background: var(--jade);
 }
 
 .timelineList {
@@ -604,11 +573,11 @@
 
 .timelineList::before {
   position: absolute;
-  top: 0.65rem;
-  bottom: 0.65rem;
-  left: 0.45rem;
-  width: 1px;
-  background: var(--discovery-line-strong);
+  top: 0.7rem;
+  bottom: 0.7rem;
+  left: 0.31rem;
+  width: 0;
+  border-left: 1px dashed var(--line);
   content: "";
 }
 
@@ -618,8 +587,8 @@
   min-width: 0;
   grid-template-columns: 1rem minmax(0, 1fr);
   align-items: start;
-  padding: 0.38rem 0;
-  gap: 0.7rem;
+  padding: 0.42rem 0;
+  gap: 0.75rem;
 }
 
 .timelineMarker {
@@ -627,52 +596,60 @@
   z-index: 1;
   width: 0.65rem;
   height: 0.65rem;
-  margin-top: 0.28rem;
-  border: 2px solid var(--discovery-line-strong);
+  margin-top: 0.3rem;
+  border: 2px solid var(--line);
   border-radius: 50%;
-  background: var(--discovery-paper-tint);
+  background: var(--white);
+  transition:
+    border-color var(--duration-fast) var(--ease-out-soft),
+    background var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
 }
 
 .timelineLabel {
   display: grid;
   min-width: 0;
-  color: var(--discovery-ink-muted);
-  font-size: 0.84rem;
-  line-height: 1.35;
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
   overflow-wrap: anywhere;
+  transition: color var(--duration-fast) var(--ease-out-soft);
 }
 
+/* 已完成：青黛 */
 .timelineItem[data-state="complete"] .timelineMarker {
-  border-color: var(--discovery-blue);
-  background: var(--discovery-blue);
+  border-color: var(--jade);
+  background: var(--jade);
 }
 
 .timelineItem[data-state="complete"] .timelineLabel {
-  color: var(--discovery-ink-soft);
+  color: var(--jade);
 }
 
+/* 当前：赭棕高亮 */
 .timelineItem[data-state="current"] .timelineMarker {
-  border-color: var(--discovery-coral);
-  background: var(--discovery-coral);
-  box-shadow: 0 0 0 0.28rem rgb(240 111 93 / 16%);
+  border-color: var(--primary);
+  background: var(--primary);
+  box-shadow: 0 0 0 0.28rem var(--primary-soft);
 }
 
 .timelineItem[data-state="current"] .timelineLabel {
-  color: var(--discovery-ink);
-  font-weight: 720;
+  color: var(--primary-dark);
+  font-weight: 600;
 }
 
 .timelineItem[data-state="current"] .timelineLabel::after {
-  color: var(--discovery-coral);
+  margin-top: 0.1rem;
+  color: var(--primary);
   content: "当前阶段";
   font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
 
 .timelineUnknown {
   margin: 0;
-  color: var(--discovery-ink-muted);
+  color: var(--ink-muted);
   font-size: 0.78rem;
 }
 
@@ -684,10 +661,11 @@
 }
 
 .statusActions :global(.ant-btn) {
-  border-radius: 999px;
-  font-weight: 680;
+  border-radius: var(--radius);
+  font-weight: 600;
 }
 
+/* 失败：朱砂 */
 .failure {
   display: grid;
   gap: 0.75rem;
@@ -695,63 +673,32 @@
 
 .failure h3 {
   margin: 0;
-  font-size: 1.2rem;
+  color: var(--danger);
+  font-size: 1.15rem;
 }
 
-@media (max-width: 900px) {
-  .heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
+/* ---- 响应式：1100 / 820 / 640 ---- */
 
-  .headingStamp {
-    width: 6.5rem;
-  }
-
-  .cardList :global(.ant-list-items),
-  .resumeList :global(.ant-list-items) {
-    grid-template-columns: 1fr;
-  }
-
+@media (max-width: 1100px) {
   .generationLayout {
     grid-template-columns: 1fr;
   }
 
   .statusPanel {
     min-height: 0;
-    border-top: 1px solid var(--discovery-line);
-    border-left: 0;
   }
 }
 
-@media (max-width: 720px) {
-  .pageMain,
-  .generationMain {
-    padding-top: 2rem;
-  }
-
+@media (max-width: 820px) {
   .heading {
-    padding-bottom: 2rem;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-bottom: 1.75rem;
     gap: 1.5rem;
   }
 
-  .heading h1,
-  .generationHeading h1 {
-    max-width: 100%;
-    font-size: clamp(2.45rem, 12vw, 4rem);
-  }
-
   .headingStamp {
-    width: 5.8rem;
-  }
-
-  .directionCard {
-    min-height: 17rem;
-    padding: 1.25rem;
-  }
-
-  .cardCopy {
-    padding-block: 1.5rem;
+    width: 5.5rem;
   }
 
   .cardFooter,
@@ -760,15 +707,21 @@
     flex-direction: column;
   }
 
-  .cardFooter :global(.ant-btn),
-  .resumeAction {
+  .cardFooter :global(.ant-btn) {
     width: 100%;
     text-align: center;
   }
+}
 
-  .resumeCardLink {
-    min-height: 14rem;
-    padding: 1.25rem;
+@media (max-width: 640px) {
+  .pageMain,
+  .generationMain {
+    padding-top: 1.75rem;
+  }
+
+  .cardList :global(.ant-list-items),
+  .resumeList :global(.ant-list-items) {
+    padding-inline: 0.9rem;
   }
 
   .formPanel,
@@ -778,11 +731,7 @@
   }
 
   .form {
-    margin-top: 1.75rem;
-  }
-
-  .privacyNote {
-    padding-top: 1.5rem;
+    margin-top: 1.5rem;
   }
 
   .pagination {

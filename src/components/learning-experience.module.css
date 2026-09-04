@@ -2,30 +2,31 @@
 .mapCanvasExperience,
 .assessmentExperience,
 .reportExperience {
-  --experience-ink: #101828;
-  --experience-ink-soft: #475467;
-  --experience-ink-muted: #667085;
+  --experience-ink: var(--ink);
+  --experience-ink-soft: var(--ink-soft);
+  --experience-ink-muted: var(--ink-muted);
   --experience-blue: var(--primary);
-  --experience-blue-deep: #0b4fc4;
-  --experience-blue-soft: #e8f1ff;
-  --experience-blue-line: #b9d2ff;
-  --experience-coral: #ef765e;
-  --experience-coral-soft: #fff0eb;
+  --experience-blue-deep: var(--primary-deep);
+  --experience-blue-soft: var(--primary-soft);
+  --experience-blue-line: var(--primary-soft-strong);
+  --experience-coral: var(--danger);
+  --experience-coral-soft: rgb(166 58 47 / 8%);
   --experience-paper: var(--white);
-  --experience-grid: rgb(138 68 35 / 9%);
-  --experience-shadow: 0 18px 50px rgb(16 24 40 / 8%);
+  --experience-grid: rgb(138 68 35 / 8%);
+  --experience-shadow: var(--shadow-card);
 }
 
 .workspaceExperience {
   min-height: 100vh;
   color: var(--experience-ink);
   background:
-    radial-gradient(
-      circle at 92% 10%,
-      rgb(232 241 255 / 76%),
-      transparent 30rem
-    ),
-    linear-gradient(180deg, var(--white) 0%, var(--blue-25) 46%, var(--white) 100%);
+    radial-gradient(circle at 92% 10%, rgb(138 68 35 / 5%), transparent 30rem),
+    linear-gradient(
+      180deg,
+      var(--white) 0%,
+      var(--blue-25) 46%,
+      var(--white) 100%
+    );
 }
 
 .workspaceMain,
@@ -66,7 +67,7 @@
 
 .workspaceHeadingTrail :global(.back-link) {
   margin: 0;
-  color: var(--experience-blue-deep);
+  color: var(--primary-dark);
   font-size: 13px;
   font-weight: 700;
 }
@@ -74,8 +75,8 @@
 .workspaceHeadingTrail :global(.section-kicker) {
   margin: 0;
   padding-left: 12px;
-  border-left: 1px solid var(--experience-blue-line);
-  color: var(--experience-coral);
+  border-left: 1px dashed var(--line);
+  color: var(--cinnabar);
   font-size: 11px;
   letter-spacing: 0.16em;
 }
@@ -85,7 +86,6 @@
   margin: 0 0 8px;
   color: var(--experience-ink);
   font-size: clamp(32px, 4.1vw, 54px);
-  letter-spacing: -0.045em;
 }
 
 .workspaceExperience :global(.workspace-heading p) {
@@ -109,10 +109,10 @@
   max-width: 700px;
   margin-top: 18px;
   padding: 13px 16px 10px;
-  border: 1px solid rgb(138 68 35 / 16%);
+  border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgb(255 255 255 / 82%);
-  box-shadow: 0 8px 24px rgb(138 68 35 / 6%);
+  background: rgb(253 250 243 / 88%);
+  box-shadow: var(--shadow-card);
 }
 
 .workspaceProgressFacts {
@@ -129,6 +129,7 @@
   color: var(--experience-ink);
   font-size: 14px;
   font-weight: 780;
+  font-variant-numeric: tabular-nums;
 }
 
 .workspaceProgress :global(.ant-progress),
@@ -140,7 +141,7 @@
 .workspaceProgress :global(.ant-progress-inner),
 .assessmentProgress :global(.ant-progress-inner),
 .assessmentResult :global(.ant-progress-inner) {
-  background: var(--experience-blue-soft);
+  background: var(--primary-soft);
 }
 
 .workspaceExperience :global(.page-alert) {
@@ -157,17 +158,17 @@
 
 .mapCanvasExperience {
   overflow: hidden;
-  border: 1px solid rgb(138 68 35 / 17%);
-  border-radius: 24px;
-  background: var(--experience-paper);
-  box-shadow: var(--experience-shadow);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper);
+  box-shadow: var(--shadow-card);
 }
 
 .mapCanvasExperience :global(.map-canvas-toolbar) {
-  min-height: 68px;
+  min-height: 64px;
   padding: 12px 18px 12px 22px;
-  border-bottom: 1px solid rgb(138 68 35 / 12%);
-  background: rgb(255 255 255 / 92%);
+  border-bottom: 1px dashed var(--line);
+  background: rgb(253 250 243 / 92%);
 }
 
 .mapCanvasExperience :global(.map-canvas-hint) {
@@ -184,13 +185,13 @@
   min-width: 36px;
   height: 34px;
   border-radius: 10px;
-  color: var(--experience-blue-deep);
-  background: rgb(232 241 255 / 60%);
+  color: var(--primary-dark);
+  background: var(--primary-soft);
 }
 
 .mapCanvasExperience :global(.map-control-button.ant-btn:hover) {
-  color: var(--experience-paper);
-  background: var(--experience-blue);
+  color: var(--white);
+  background: var(--primary);
 }
 
 .mapCanvasExperience :global(.map-control-reset.ant-btn) {
@@ -205,18 +206,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 纸面画布：极淡赭棕点阵 */
 .mapViewport {
   position: relative;
   overflow: hidden;
   height: min(720px, calc(100vh - 228px));
   min-height: 560px;
-  background:
-    radial-gradient(
-      circle at 18% 24%,
-      rgb(232 241 255 / 70%),
-      transparent 20rem
-    ),
-    var(--blue-25);
+  background-color: var(--paper);
+  background-image: radial-gradient(
+    circle,
+    var(--experience-grid) 1px,
+    transparent 1.4px
+  );
+  background-size: 24px 24px;
 }
 
 .mapSvg {
@@ -225,24 +227,27 @@
   height: 100%;
 }
 
+/* 让 CSS 点阵纸面透出，SVG 网格矩形退位 */
 .mapGridRect {
-  opacity: 0.95;
+  fill: none;
 }
 
 .mapGridLine {
-  stroke: rgb(138 68 35 / 12%);
+  stroke: var(--experience-grid);
   stroke-width: 1;
 }
 
+/* 手帐虚线针脚：前置关系的行路痕迹 */
 .mapEdge {
   fill: none;
-  stroke: rgb(138 68 35 / 42%);
-  stroke-width: 3;
+  stroke: rgb(138 68 35 / 36%);
+  stroke-width: 2.5;
   stroke-linecap: round;
+  stroke-dasharray: 1 8;
 }
 
 .mapEdgeArrow {
-  fill: var(--experience-blue);
+  fill: var(--primary);
 }
 
 .mapNode {
@@ -250,53 +255,50 @@
   display: grid;
   width: 100%;
   height: 100%;
-  padding: 22px 20px 18px;
-  border: 1px solid var(--experience-blue-line);
-  border-radius: 18px;
+  padding: 20px 18px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   color: var(--experience-ink);
-  background: rgb(253 250 243 / 94%);
-  box-shadow: 0 10px 28px rgb(16 24 40 / 8%);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
   text-align: left;
   cursor: pointer;
   grid-template-columns: auto 1fr;
   grid-template-rows: auto 1fr auto;
   column-gap: 10px;
   transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+    border-color var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-out-soft);
 }
 
 .mapNode:hover {
-  border-color: var(--experience-blue);
-  background: #fafdff;
-  box-shadow: 0 14px 34px rgb(138 68 35 / 17%);
+  border-color: var(--primary-soft-strong);
+  background: var(--white);
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-2px);
 }
 
 .mapCanvasExperience :global(.map-node.selected) {
-  border-color: var(--experience-blue);
-  background: var(--experience-blue-soft);
+  border-color: var(--primary);
+  background: var(--primary-soft);
   box-shadow:
-    inset 4px 0 0 var(--experience-blue),
-    0 16px 36px rgb(138 68 35 / 18%);
+    inset 3px 0 0 var(--primary),
+    var(--shadow-card-hover);
 }
 
 .mapCanvasExperience :global(.map-node.completed) {
-  border-color: var(--experience-coral);
-  background: linear-gradient(
-    145deg,
-    #fffaf8 0%,
-    var(--experience-coral-soft) 100%
-  );
+  border-color: var(--jade);
+  background: var(--jade-soft);
 }
 
 .mapCanvasExperience :global(.map-node.completed.selected) {
-  border-color: var(--experience-coral);
+  border-color: var(--primary);
+  background: var(--primary-soft);
   box-shadow:
-    inset 4px 0 0 var(--experience-coral),
-    0 16px 36px rgb(239 118 94 / 18%);
+    inset 3px 0 0 var(--primary),
+    var(--shadow-card-hover);
 }
 
 .mapNodeStep {
@@ -306,6 +308,7 @@
   color: var(--experience-ink-muted);
   font-size: 10px;
   font-weight: 750;
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -315,25 +318,27 @@
   width: 25px;
   height: 25px;
   place-items: center;
-  border: 1px solid var(--experience-blue-line);
+  border: 1px solid var(--line);
   border-radius: 50%;
-  color: var(--experience-blue);
-  background: var(--experience-paper);
+  color: var(--experience-ink-muted);
+  background: var(--white);
   font-size: 13px;
   line-height: 1;
 }
 
 .mapCanvasExperience :global(.map-node.completed) .mapNodeStatus {
-  border-color: var(--experience-coral);
-  color: var(--experience-coral);
+  border-color: var(--jade);
+  color: var(--white);
+  background: var(--jade);
 }
 
 .mapNodeTitle {
   overflow: hidden;
   padding-top: 2px;
   color: var(--experience-ink);
+  font-family: var(--font-serif);
   font-size: 15px;
-  font-weight: 780;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -366,17 +371,16 @@
   top: 92px;
   max-height: min(760px, calc(100vh - 116px));
   padding: 30px 28px 26px;
-  border: 1px solid rgb(138 68 35 / 15%);
-  border-radius: 24px;
-  background: rgb(253 250 243 / 94%);
-  box-shadow: var(--experience-shadow);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: var(--shadow-card);
 }
 
 .workspaceExperience :global(.node-panel .panel-heading h2) {
   margin-bottom: 8px;
   color: var(--experience-ink);
   font-size: clamp(25px, 2.3vw, 34px);
-  letter-spacing: -0.04em;
 }
 
 .workspaceExperience :global(.node-panel .panel-heading p) {
@@ -389,8 +393,8 @@
   display: grid;
   margin: 22px 0 0;
   padding: 14px 0;
-  border-top: 1px solid rgb(138 68 35 / 12%);
-  border-bottom: 1px solid rgb(138 68 35 / 12%);
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
@@ -402,7 +406,7 @@
 
 .nodeFacts div + div {
   padding-left: 14px;
-  border-left: 1px solid rgb(138 68 35 / 12%);
+  border-left: 1px dashed var(--line);
 }
 
 .nodeFacts span {
@@ -420,14 +424,26 @@
   margin: 0;
   padding: 15px 0;
   border-top: 0;
-  border-bottom: 1px solid rgb(138 68 35 / 12%);
+  border-bottom: 1px dashed var(--line);
   color: var(--experience-ink-soft);
   font-size: 12px;
 }
 
+.workspaceExperience :global(.node-status-line .ant-tag) {
+  background: var(--primary-soft) !important;
+  border-color: var(--primary-soft-strong) !important;
+  color: var(--primary-deep) !important;
+}
+
+.workspaceExperience :global(.node-status-line .ant-tag-success) {
+  background: var(--jade-soft) !important;
+  border-color: var(--jade) !important;
+  color: var(--jade) !important;
+}
+
 .workspaceExperience :global(.node-panel .panel-section) {
   padding: 22px 0;
-  border-bottom-color: rgb(138 68 35 / 12%);
+  border-bottom: 1px dashed var(--line);
 }
 
 .workspaceExperience :global(.node-panel .panel-section-heading) {
@@ -445,7 +461,7 @@
 
 .workspaceExperience :global(.source-row) {
   padding: 14px 0;
-  border-bottom-color: rgb(138 68 35 / 12%);
+  border-bottom: 1px dashed var(--line-soft);
 }
 
 .workspaceExperience :global(.source-row strong) {
@@ -455,7 +471,7 @@
 
 .workspaceExperience :global(.source-row:hover strong),
 .workspaceExperience :global(.viewpoint-sources a:hover) {
-  color: var(--experience-blue-deep);
+  color: var(--primary-deep);
 }
 
 .workspaceExperience :global(.source-row small),
@@ -465,11 +481,17 @@
 
 .workspaceExperience :global(.viewpoint-card) {
   padding: 18px 0;
-  border-bottom-color: rgb(138 68 35 / 12%);
+  border-bottom: 1px dashed var(--line-soft);
 }
 
 .workspaceExperience :global(.viewpoint-meta) {
   color: var(--experience-ink-muted);
+}
+
+.workspaceExperience :global(.viewpoint-meta .ant-tag) {
+  background: var(--primary-soft) !important;
+  border-color: var(--primary-soft-strong) !important;
+  color: var(--primary-deep) !important;
 }
 
 .workspaceExperience :global(.viewpoint-card > p) {
@@ -490,13 +512,13 @@
   min-height: 48px;
   border: 0;
   border-radius: 13px;
-  color: var(--experience-paper);
-  background: var(--experience-blue);
-  box-shadow: 0 8px 20px rgb(138 68 35 / 18%);
+  color: var(--white);
+  background: var(--primary);
+  box-shadow: 0 8px 20px rgb(138 68 35 / 20%);
 }
 
 .workspaceExperience :global(.panel-action .button-block.ant-btn:hover) {
-  background: var(--experience-blue-deep);
+  background: var(--primary-dark);
 }
 
 .workspaceExperience :global(.panel-action-help) {
@@ -508,15 +530,15 @@
   max-height: min(760px, calc(100vh - 116px));
   overflow-y: auto;
   padding: 30px 28px 28px;
-  border: 1px solid rgb(138 68 35 / 15%);
-  border-radius: 24px;
-  background: rgb(255 255 255 / 97%);
-  box-shadow: var(--experience-shadow);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: var(--shadow-card);
 }
 
 .assessmentExperience :global(.panel-back-link.ant-btn) {
   margin: 0 0 18px -8px;
-  color: var(--experience-blue-deep);
+  color: var(--primary-dark);
   border-radius: 9px;
 }
 
@@ -528,7 +550,6 @@
   margin-bottom: 8px;
   color: var(--experience-ink);
   font-size: clamp(25px, 2.3vw, 34px);
-  letter-spacing: -0.04em;
 }
 
 .assessmentExperience :global(.panel-heading p) {
@@ -540,9 +561,9 @@
 .assessmentProgress {
   margin-top: 20px;
   padding: 13px 15px 10px;
-  border: 1px solid rgb(138 68 35 / 14%);
-  border-radius: 13px;
-  background: var(--blue-25);
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: var(--paper);
 }
 
 .assessmentProgressHeader {
@@ -558,6 +579,7 @@
 .assessmentProgressHeader strong {
   color: var(--experience-ink);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .assessmentExperience :global(.assessment-form) {
@@ -566,7 +588,7 @@
 
 .assessmentExperience :global(.question-block) {
   padding: 25px 0 27px;
-  border-top-color: rgb(138 68 35 / 15%);
+  border-top: 1px dashed var(--line);
 }
 
 .questionBlock {
@@ -574,11 +596,11 @@
 }
 
 .questionCorrect {
-  border-left: 2px solid #1e9b67;
+  border-left: 2px solid var(--jade);
 }
 
 .questionIncorrect {
-  border-left: 2px solid var(--experience-coral);
+  border-left: 2px solid var(--danger);
 }
 
 .assessmentExperience :global(.question-block:first-child) {
@@ -594,10 +616,11 @@
 .questionNumber {
   width: 31px;
   height: 31px;
-  border-radius: 10px;
-  color: var(--experience-paper);
-  background: var(--experience-blue);
+  border-radius: 9px;
+  color: var(--white);
+  background: var(--primary);
   font-weight: 760;
+  font-variant-numeric: tabular-nums;
 }
 
 .questionPrompt {
@@ -614,7 +637,7 @@
 
 .assessmentExperience :global(.question-kind) {
   margin: 0;
-  color: var(--experience-blue-deep);
+  color: var(--primary-deep);
   font-size: 11px;
   font-weight: 780;
   letter-spacing: 0.08em;
@@ -632,25 +655,25 @@
 .optionRow {
   min-height: 49px;
   padding: 13px 14px !important;
-  border: 1px solid rgb(138 68 35 / 17%) !important;
-  border-radius: 12px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 11px !important;
   color: var(--experience-ink) !important;
-  background: var(--experience-paper) !important;
+  background: var(--white) !important;
   transition:
-    border-color 150ms ease,
-    background-color 150ms ease,
-    box-shadow 150ms ease;
+    border-color var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
 }
 
 .optionRow:hover {
-  border-color: var(--experience-blue) !important;
-  background: #fafdff !important;
+  border-color: var(--primary-soft-strong) !important;
+  background: var(--paper) !important;
 }
 
 .assessmentExperience :global(.option-row.checked) {
-  border-color: var(--experience-blue) !important;
-  background: var(--experience-blue-soft) !important;
-  box-shadow: inset 3px 0 0 var(--experience-blue);
+  border-color: var(--primary) !important;
+  background: var(--primary-soft) !important;
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 .assessmentExperience :global(.option-row .ant-checkbox + span),
@@ -660,13 +683,13 @@
 
 .matchingList {
   gap: 0;
-  border-top: 1px solid rgb(138 68 35 / 10%);
+  border-top: 1px dashed var(--line);
 }
 
 .matchingRow {
   min-height: 66px;
   padding: 11px 0;
-  border-bottom-color: rgb(138 68 35 / 12%);
+  border-bottom: 1px dashed var(--line-soft);
   gap: 14px;
 }
 
@@ -683,7 +706,7 @@
 .assessmentExperience :global(.matching-select .ant-select-selector),
 .matchingSelect :global(.ant-select-selector) {
   min-height: 42px;
-  border-color: rgb(138 68 35 / 19%) !important;
+  border-color: var(--line) !important;
   border-radius: 10px !important;
 }
 
@@ -706,22 +729,33 @@
 
 .assessmentExperience :global(.question-sources .ant-tag),
 .assessmentExperience :global(.question-result-sources .ant-tag) {
+  border-color: var(--primary-soft-strong) !important;
+  color: var(--primary-deep) !important;
+  background: var(--primary-soft) !important;
   border-radius: 999px;
 }
 
 .questionResult {
   margin-top: 17px;
-  border-radius: 13px;
+  border-radius: 12px;
 }
 
 .questionResultCorrect {
-  border: 1px solid rgb(30 155 103 / 24%);
-  background: #f1fbf6;
+  border: 1px solid var(--jade) !important;
+  background: var(--jade-soft) !important;
 }
 
 .questionResultIncorrect {
-  border: 1px solid rgb(239 118 94 / 24%);
-  background: #fff6f3;
+  border: 1px solid var(--danger) !important;
+  background: var(--experience-coral-soft) !important;
+}
+
+.questionResultCorrect :global(.ant-alert-icon) {
+  color: var(--jade) !important;
+}
+
+.questionResultIncorrect :global(.ant-alert-icon) {
+  color: var(--danger) !important;
 }
 
 .assessmentExperience :global(.question-result .ant-alert-message) {
@@ -740,26 +774,42 @@
 
 .assessmentExperience :global(.form-message) {
   margin-top: 18px;
-  border-radius: 13px;
+  border-radius: 12px;
 }
 
 .assessmentResult {
   display: grid;
   margin-top: 25px;
   padding: 21px;
-  border: 1px solid rgb(138 68 35 / 17%);
-  border-radius: 16px;
-  background: var(--experience-blue-soft);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
   gap: 14px;
 }
 
 .assessmentResultComplete {
-  border-color: rgb(239 118 94 / 28%);
-  background: linear-gradient(145deg, #fff8f4 0%, #eef7ff 100%);
+  border-color: var(--jade);
+  background: var(--jade-soft);
 }
 
 .assessmentResultPending {
-  background: var(--blue-25);
+  background: var(--paper);
+}
+
+.assessmentResult :global(.ant-progress-rail) {
+  background: var(--primary-soft) !important;
+}
+
+.assessmentResult :global(.ant-progress-track) {
+  background: var(--primary) !important;
+}
+
+.assessmentResultComplete :global(.ant-progress-rail) {
+  background: rgb(74 124 89 / 24%) !important;
+}
+
+.assessmentResultComplete :global(.ant-progress-track) {
+  background: var(--jade) !important;
 }
 
 .assessmentExperience :global(.assessment-result-score) {
@@ -767,9 +817,14 @@
 }
 
 .assessmentExperience :global(.assessment-result-score strong) {
-  color: var(--experience-blue-deep);
+  color: var(--primary-deep);
+  font-family: var(--font-serif);
   font-size: 32px;
   font-variant-numeric: tabular-nums;
+}
+
+.assessmentResultComplete :global(.assessment-result-score strong) {
+  color: var(--jade);
 }
 
 .assessmentExperience :global(.result-label),
@@ -782,8 +837,8 @@
   margin-top: 6px;
   border: 0 !important;
   border-radius: 13px !important;
-  background: var(--experience-blue) !important;
-  box-shadow: 0 8px 20px rgb(138 68 35 / 17%);
+  background: var(--primary) !important;
+  box-shadow: 0 8px 20px rgb(138 68 35 / 20%);
 }
 
 /* Report as a facts-only completion profile */
@@ -791,8 +846,8 @@
   min-height: 100vh;
   color: var(--experience-ink);
   background:
-    radial-gradient(circle at 8% 4%, rgb(255 240 235 / 74%), transparent 26rem),
-    linear-gradient(180deg, var(--white) 0%, #fbfcff 100%);
+    radial-gradient(circle at 8% 4%, rgb(138 68 35 / 5%), transparent 26rem),
+    linear-gradient(180deg, var(--white) 0%, var(--blue-25) 100%);
 }
 
 .reportExperience :global(.report-heading) {
@@ -802,24 +857,24 @@
 
 .reportExperience :global(.report-heading .back-link) {
   margin-bottom: 16px;
-  color: var(--experience-blue-deep);
+  color: var(--primary-dark);
 }
 
 .reportExperience :global(.report-heading h1) {
   margin-bottom: 9px;
   color: var(--experience-ink);
   font-size: clamp(34px, 4.5vw, 58px);
-  letter-spacing: -0.05em;
 }
 
 .reportExperience :global(.report-heading .section-kicker) {
   margin-bottom: 10px;
-  color: var(--experience-coral);
+  color: var(--cinnabar);
 }
 
 .reportExperience :global(.report-heading p) {
   margin-bottom: 4px;
   color: var(--experience-ink-soft);
+  font-variant-numeric: tabular-nums;
 }
 
 .reportHeading {
@@ -834,16 +889,12 @@
   position: relative;
   overflow: hidden;
   padding: clamp(32px, 5vw, 58px);
-  border: 1px solid rgb(138 68 35 / 13%);
-  border-radius: 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
   background:
-    radial-gradient(
-      circle at 98% 0%,
-      rgb(255 240 235 / 90%),
-      transparent 22rem
-    ),
-    linear-gradient(135deg, #eff5ff 0%, var(--white) 72%);
-  box-shadow: var(--experience-shadow);
+    radial-gradient(circle at 98% 0%, rgb(138 68 35 / 6%), transparent 22rem),
+    var(--white);
+  box-shadow: var(--shadow-card);
 }
 
 .reportExperience :global(.report-overview h2) {
@@ -851,7 +902,6 @@
   margin-bottom: 10px;
   color: var(--experience-ink);
   font-size: clamp(27px, 3.5vw, 44px);
-  letter-spacing: -0.045em;
 }
 
 .reportExperience :global(.report-overview p) {
@@ -861,7 +911,7 @@
 .reportProfileKicker {
   display: block;
   margin-bottom: 7px !important;
-  color: var(--experience-coral) !important;
+  color: var(--primary-deep) !important;
   font-size: 11px !important;
   letter-spacing: 0.18em !important;
 }
@@ -871,7 +921,7 @@
   max-width: 560px;
   margin-top: 25px;
   padding-top: 16px;
-  border-top: 1px solid rgb(138 68 35 / 15%);
+  border-top: 1px dashed var(--line);
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
@@ -883,6 +933,7 @@
 
 .reportFactRail strong {
   color: var(--experience-ink);
+  font-family: var(--font-serif);
   font-size: 25px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -897,23 +948,32 @@
   position: relative;
   z-index: 1;
   padding: 19px;
-  border: 1px solid rgb(138 68 35 / 14%);
-  border-radius: 16px;
-  background: rgb(255 255 255 / 75%);
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+
+.completionMeter :global(.ant-progress-track) {
+  background: var(--jade) !important;
+}
+
+.completionMeter :global(.ant-progress-rail) {
+  background: rgb(74 124 89 / 24%) !important;
 }
 
 .reportExperience :global(.completion-meter > strong) {
   display: block;
   margin-bottom: 8px;
-  color: var(--experience-blue-deep);
+  color: var(--jade);
+  font-family: var(--font-serif);
   font-size: clamp(44px, 6vw, 72px);
   font-variant-numeric: tabular-nums;
   text-align: left;
 }
 
 .reportExperience :global(.report-section-grid) {
-  border-top-color: rgb(138 68 35 / 15%);
-  border-bottom-color: rgb(138 68 35 / 15%);
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
 }
 
 .reportExperience :global(.report-section-grid > .report-section) {
@@ -922,7 +982,7 @@
 }
 
 .reportExperience :global(.report-section-grid > .report-section:first-child) {
-  border-right-color: rgb(138 68 35 / 15%);
+  border-right: 1px dashed var(--line);
 }
 
 .reportExperience :global(.report-section-heading) {
@@ -935,18 +995,19 @@
 }
 
 .reportExperience :global(.report-section-heading > span) {
-  color: var(--experience-blue-deep);
+  color: var(--primary-dark);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .reportExperience :global(.report-item-list) {
-  border-top-color: rgb(138 68 35 / 12%);
+  border-top: 1px dashed var(--line-soft);
 }
 
 .reportExperience :global(.report-item) {
   min-height: 78px;
   padding: 14px 3px;
-  border-bottom-color: rgb(138 68 35 / 12%);
+  border-bottom: 1px dashed var(--line-soft);
 }
 
 .reportExperience :global(.report-item strong) {
@@ -959,7 +1020,7 @@
 }
 
 .reportExperience :global(.report-item-link:hover strong) {
-  color: var(--experience-blue-deep);
+  color: var(--primary-deep);
 }
 
 .reportExperience :global(.report-viewpoints),
@@ -969,17 +1030,23 @@
 
 .reportExperience :global(.viewpoint-report-grid),
 .reportExperience :global(.report-source-grid) {
-  border-top-color: rgb(138 68 35 / 15%);
+  border-top: 1px dashed var(--line);
 }
 
 .reportExperience :global(.viewpoint-report-card) {
   padding: 24px 3px;
-  border-bottom-color: rgb(138 68 35 / 12%);
+  border-bottom: 1px dashed var(--line-soft);
 }
 
 .reportExperience :global(.viewpoint-report-card > p) {
   color: var(--experience-ink);
   font-size: 14px;
+}
+
+.reportExperience :global(.viewpoint-report-card .viewpoint-meta .ant-tag) {
+  background: var(--primary-soft) !important;
+  border-color: var(--primary-soft-strong) !important;
+  color: var(--primary-deep) !important;
 }
 
 .reportExperience :global(.viewpoint-report-card .viewpoint-conditions) {
@@ -992,12 +1059,12 @@
 }
 
 .reportExperience :global(.viewpoint-report-card .viewpoint-sources a) {
-  color: var(--experience-blue-deep);
+  color: var(--primary-deep);
 }
 
 .reportExperience :global(.report-source-card) {
   padding: 22px 3px;
-  border-bottom-color: rgb(138 68 35 / 12%);
+  border-bottom: 1px dashed var(--line-soft);
 }
 
 .reportExperience :global(.report-source-card strong) {
@@ -1009,7 +1076,7 @@
 }
 
 .reportExperience :global(.report-source-link) {
-  color: var(--experience-blue-deep) !important;
+  color: var(--primary-dark) !important;
 }
 
 @media (max-width: 1100px) {
@@ -1083,7 +1150,7 @@
   }
 
   .mapCanvasExperience {
-    border-radius: 18px;
+    border-radius: 14px;
   }
 
   .mapCanvasExperience :global(.map-canvas-toolbar) {
@@ -1106,7 +1173,7 @@
   .mobileRoute {
     display: block;
     padding: 20px 16px 22px;
-    border-top: 1px solid rgb(138 68 35 / 13%);
+    border-top: 1px dashed var(--line);
     background: var(--white);
   }
 
@@ -1121,7 +1188,7 @@
   }
 
   .mobileRouteKicker {
-    color: var(--experience-blue-deep);
+    color: var(--primary-deep);
     font-size: 12px;
     font-weight: 780;
     letter-spacing: 0.12em;
@@ -1142,7 +1209,11 @@
     bottom: 20px;
     left: 20px;
     width: 1px;
-    background: var(--experience-blue-line);
+    background: repeating-linear-gradient(
+      180deg,
+      var(--line) 0 6px,
+      transparent 6px 12px
+    );
     content: "";
   }
 
@@ -1158,10 +1229,11 @@
     min-height: 66px;
     align-items: center;
     padding: 10px 11px 10px 8px;
-    border: 1px solid rgb(138 68 35 / 14%);
-    border-radius: 13px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
     color: var(--experience-ink);
     background: var(--white);
+    box-shadow: var(--shadow-card);
     text-align: left;
     grid-template-columns: 26px minmax(0, 1fr) auto;
     gap: 10px;
@@ -1169,12 +1241,13 @@
 
   .mobileRouteNode:hover,
   .mobileRouteNodeSelected {
-    border-color: var(--experience-blue);
-    background: var(--experience-blue-soft);
+    border-color: var(--primary);
+    background: var(--primary-soft);
   }
 
   .mobileRouteItemCompleted .mobileRouteNode {
-    border-color: rgb(239 118 94 / 40%);
+    border-color: var(--jade);
+    background: var(--jade-soft);
   }
 
   .mobileRouteIndex {
@@ -1182,9 +1255,9 @@
     width: 26px;
     height: 26px;
     place-items: center;
-    border: 1px solid var(--experience-blue-line);
+    border: 1px solid var(--line);
     border-radius: 50%;
-    color: var(--experience-blue-deep);
+    color: var(--primary-deep);
     background: var(--white);
     font-size: 10px;
     font-weight: 780;
@@ -1192,8 +1265,9 @@
   }
 
   .mobileRouteItemCompleted .mobileRouteIndex {
-    border-color: var(--experience-coral);
-    color: var(--experience-coral);
+    border-color: var(--jade);
+    color: var(--white);
+    background: var(--jade);
   }
 
   .mobileRouteCopy {
@@ -1204,6 +1278,7 @@
 
   .mobileRouteCopy strong {
     overflow: hidden;
+    font-family: var(--font-serif);
     font-size: 13px;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1224,14 +1299,14 @@
   }
 
   .mobileRouteItemCompleted .mobileRouteState {
-    color: var(--experience-coral);
+    color: var(--jade);
     font-weight: 700;
   }
 
   .workspaceExperience :global(.node-panel),
   .assessmentExperience {
     padding: 24px 18px;
-    border-radius: 18px;
+    border-radius: 14px;
   }
 
   .nodeFacts {

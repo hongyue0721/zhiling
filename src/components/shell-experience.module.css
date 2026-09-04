@@ -1,25 +1,18 @@
-/* The shell owns its visual language so the product can evolve without changing the global map styles. */
+/* The shell owns its visual language so the product can evolve without changing the global map styles.
+   书卷手帐风：暖纸底、细线卡、宋体标题、赭棕主色、朱砂点缀、青黛完成。 */
+
+/* ---------- 顶栏 ---------- */
 
 .appHeader {
-  --shell-ink: var(--ink);
-  --shell-ink-soft: var(--ink-soft);
-  --shell-muted: var(--ink-muted);
-  --shell-line: rgba(43, 36, 28, 0.12);
-  --shell-line-soft: rgba(43, 36, 28, 0.07);
-  --shell-paper: var(--white);
-  --shell-blue: var(--primary);
-  --shell-blue-deep: var(--primary-deep);
-  --shell-blue-pale: var(--blue-50);
-  --shell-coral: var(--cinnabar);
   position: sticky;
   z-index: 50;
   top: 0;
   min-width: 0;
-  border-bottom: 1px solid var(--shell-line-soft);
-  color: var(--shell-ink);
-  background: rgba(253, 250, 243, 0.88);
-  -webkit-backdrop-filter: blur(1.1rem);
-  backdrop-filter: blur(1.1rem);
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--white) 86%, transparent);
+  -webkit-backdrop-filter: blur(1rem);
+  backdrop-filter: blur(1rem);
 }
 
 .appHeaderInner {
@@ -27,7 +20,7 @@
   grid-template-columns: minmax(11rem, 1fr) auto minmax(11rem, 1fr);
   align-items: center;
   width: min(90rem, calc(100% - 4rem));
-  min-height: 4.5rem;
+  min-height: 4.4rem;
   margin: 0 auto;
   gap: 1.5rem;
 }
@@ -37,13 +30,13 @@
   min-width: 0;
   align-items: center;
   width: fit-content;
-  color: var(--shell-ink);
+  color: var(--ink);
   text-decoration: none;
   gap: 0.7rem;
 }
 
 .brandMark:hover {
-  color: var(--shell-blue-deep);
+  color: var(--primary-deep);
 }
 
 .brandSymbol {
@@ -52,10 +45,10 @@
   width: 2.55rem;
   height: 2.55rem;
   place-items: center;
-  border: 1px solid rgba(138, 68, 35, 0.26);
-  border-radius: 0.8rem;
-  background: var(--shell-blue);
-  box-shadow: 0 0.45rem 1rem rgba(138, 68, 35, 0.2);
+  border: 1px solid color-mix(in srgb, var(--primary-deep) 32%, transparent);
+  border-radius: var(--radius);
+  background: var(--primary);
+  box-shadow: var(--shadow-card);
 }
 
 .brandGlyph {
@@ -69,7 +62,7 @@
 }
 
 .brandGlyph circle {
-  fill: var(--shell-coral);
+  fill: var(--cinnabar);
   stroke: var(--white);
   stroke-width: 1.3;
 }
@@ -82,19 +75,20 @@
 .brandName {
   display: block;
   color: inherit;
-  font-size: 1.08rem;
-  font-weight: 780;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.15;
 }
 
 .brandEyebrow {
   display: block;
   overflow: hidden;
-  margin-top: 0.25rem;
-  color: var(--shell-muted);
+  margin-top: 0.28rem;
+  color: var(--ink-muted);
   font-size: 0.65rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -106,9 +100,9 @@
   align-items: center;
   justify-content: center;
   padding: 0.3rem;
-  border: 1px solid var(--shell-line-soft);
+  border: 1px solid var(--line-soft);
   border-radius: 999px;
-  background: rgba(237, 244, 255, 0.72);
+  background: var(--primary-soft);
   gap: 0.15rem;
 }
 
@@ -120,44 +114,42 @@
   justify-content: center;
   padding: 0.48rem 0.82rem;
   border-radius: 999px;
-  color: var(--shell-ink-soft);
+  color: var(--ink-soft);
   font-size: 0.82rem;
-  font-weight: 640;
+  font-weight: 600;
   line-height: 1.2;
   text-decoration: none;
   transition:
-    color 160ms ease,
-    background-color 160ms ease,
-    transform 160ms ease;
+    color var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft);
   white-space: nowrap;
 }
 
 .appNavLink::after {
   position: absolute;
   right: 25%;
-  bottom: 0.2rem;
+  bottom: 0.18rem;
   left: 25%;
   height: 0.12rem;
   border-radius: 999px;
-  background: var(--shell-coral);
+  background: var(--cinnabar);
   content: "";
   opacity: 0;
   transform: scaleX(0.45);
   transition:
-    opacity 160ms ease,
-    transform 160ms ease;
+    opacity var(--duration-fast) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-out-soft);
 }
 
 .appNavLink:hover {
-  color: var(--shell-blue-deep);
-  background: rgba(253, 250, 243, 0.9);
-  transform: translateY(-0.05rem);
+  color: var(--primary-deep);
+  background: color-mix(in srgb, var(--white) 85%, transparent);
 }
 
 .appNavLinkActive {
-  color: var(--shell-blue-deep);
-  background: var(--shell-paper);
-  box-shadow: 0 0.25rem 0.8rem rgba(43, 36, 28, 0.07);
+  color: var(--primary-deep);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
 }
 
 .appNavLinkActive::after {
@@ -176,8 +168,9 @@
 .accountEmail {
   overflow: hidden;
   max-width: 13rem;
-  color: var(--shell-muted);
+  color: var(--ink-muted);
   font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -188,20 +181,20 @@
   padding-inline: 0.65rem;
   border: 1px solid transparent;
   border-radius: 999px;
-  color: var(--shell-ink-soft);
+  color: var(--ink-soft);
   font-size: 0.77rem;
-  font-weight: 650;
+  font-weight: 600;
   transition:
-    color 160ms ease,
-    border-color 160ms ease,
-    background-color 160ms ease;
+    color var(--duration-fast) var(--ease-out-soft),
+    border-color var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft);
 }
 
 :global(.ant-btn).signOutButton:hover,
 :global(.ant-btn).signOutButton:focus-visible {
-  border-color: rgba(138, 68, 35, 0.22);
-  color: var(--shell-blue-deep);
-  background: var(--shell-blue-pale);
+  border-color: color-mix(in srgb, var(--primary) 24%, transparent);
+  color: var(--primary-deep);
+  background: var(--primary-soft);
 }
 
 .headerMessage {
@@ -210,78 +203,70 @@
 }
 
 .headerMessage:global(.ant-alert) {
-  border: 1px solid rgba(194, 94, 68, 0.25);
-  border-radius: 0.8rem;
-  background: #fff5f1;
+  border: 1px solid color-mix(in srgb, var(--danger) 26%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--danger) 6%, var(--white));
 }
 
+/* ---------- 首页 hero ---------- */
+
 .homeMain {
-  --shell-ink: var(--ink);
-  --shell-ink-soft: var(--ink-soft);
-  --shell-muted: var(--ink-muted);
-  --shell-line: rgba(43, 36, 28, 0.12);
-  --shell-line-soft: rgba(43, 36, 28, 0.07);
-  --shell-paper: var(--white);
-  --shell-blue: var(--primary);
-  --shell-blue-deep: var(--primary-deep);
-  --shell-blue-pale: var(--blue-50);
-  --shell-coral: var(--cinnabar);
   width: min(90rem, calc(100% - 4rem));
   min-width: 0;
   margin: 0 auto;
   padding: clamp(1.5rem, 4vw, 3.6rem) 0 5rem;
-  color: var(--shell-ink);
+  color: var(--ink);
   display: grid;
-  gap: clamp(2.75rem, 7vw, 6rem);
+  gap: clamp(2.75rem, 7vw, 5.5rem);
 }
 
 .homeHero {
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(15rem, 0.88fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(15rem, 0.85fr);
   align-items: center;
-  min-height: clamp(35rem, calc(100svh - 8.5rem), 47rem);
+  min-height: clamp(33rem, calc(100svh - 8.5rem), 44rem);
   min-width: 0;
-  padding: clamp(2.1rem, 5vw, 5.25rem);
+  padding: clamp(2.1rem, 5vw, 4.5rem);
   overflow: hidden;
-  border: 1px solid rgba(138, 68, 35, 0.13);
-  border-radius: clamp(1.35rem, 3.5vw, 2.8rem);
-  background:
-    radial-gradient(
-      circle at 89% 17%,
-      rgba(194, 94, 68, 0.15),
-      transparent 18rem
-    ),
-    linear-gradient(135deg, var(--white) 0%, #f7faff 58%, #eaf2ff 100%);
-  box-shadow: 0 1.5rem 4.5rem rgba(35, 76, 132, 0.1);
-  gap: clamp(2rem, 6vw, 6rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, var(--white) 0%, var(--blue-25) 100%);
+  box-shadow: var(--shadow-card);
+  gap: clamp(2rem, 6vw, 5rem);
 }
 
+/* 稿纸格线 */
 .homeHero::before {
   position: absolute;
   z-index: -2;
   inset: 0;
   background-image:
-    linear-gradient(rgba(138, 68, 35, 0.075) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 68, 35, 0.075) 1px, transparent 1px);
-  background-size: 2.4rem 2.4rem;
+    linear-gradient(
+      color-mix(in srgb, var(--line) 52%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--line) 52%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 2.6rem 2.6rem;
   content: "";
-  mask-image: linear-gradient(115deg, rgba(0, 0, 0, 0.74), transparent 73%);
+  mask-image: linear-gradient(115deg, rgba(0, 0, 0, 0.55), transparent 72%);
 }
 
+/* 朱砂虚线圆章 */
 .homeHero::after {
   position: absolute;
   z-index: -1;
-  right: -10rem;
-  bottom: -14rem;
-  width: 31rem;
-  height: 31rem;
-  border: 1px solid rgba(194, 94, 68, 0.16);
+  right: -9rem;
+  bottom: -12rem;
+  width: 26rem;
+  height: 26rem;
+  border: 1px dashed color-mix(in srgb, var(--cinnabar) 32%, transparent);
   border-radius: 50%;
-  box-shadow:
-    0 0 0 2rem rgba(194, 94, 68, 0.04),
-    0 0 0 4rem rgba(194, 94, 68, 0.025);
   content: "";
 }
 
@@ -290,66 +275,69 @@
   z-index: 1;
   min-width: 0;
   max-width: 47rem;
-  animation: shell-rise 560ms cubic-bezier(0.2, 0.7, 0.25, 1) both;
 }
 
 .heroKicker,
 .sectionKicker {
   display: inline-flex;
   align-items: center;
-  color: var(--shell-blue-deep);
-  font-size: 0.7rem;
-  font-weight: 760;
-  letter-spacing: 0.14em;
+  color: var(--primary-deep);
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.32em;
   line-height: 1.2;
-  text-transform: uppercase;
 }
 
 .kickerDot {
   display: inline-block;
-  width: 0.48rem;
-  height: 0.48rem;
-  margin-right: 0.55rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.6rem;
   border-radius: 50%;
-  background: var(--shell-coral);
-  box-shadow: 0 0 0 0.28rem rgba(194, 94, 68, 0.14);
+  background: var(--cinnabar);
+  box-shadow: 0 0 0 0.26rem color-mix(in srgb, var(--cinnabar) 14%, transparent);
 }
 
 .heroContent h1 {
-  max-width: 45rem;
-  margin: 1.25rem 0 1.35rem;
-  color: var(--shell-ink);
-  font-size: clamp(3.2rem, 7.6vw, 7rem);
-  font-weight: 790;
-  letter-spacing: -0.078em;
-  line-height: 0.98;
+  max-width: 42rem;
+  margin: 1.15rem 0 1.2rem;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(2.7rem, 6.2vw, 4.9rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.16;
   text-wrap: balance;
 }
 
 .heroLead {
-  max-width: 35rem;
+  max-width: 34rem;
   margin: 0;
-  color: var(--shell-ink-soft);
-  font-size: clamp(1rem, 1.5vw, 1.2rem);
-  line-height: 1.75;
+  color: var(--ink-soft);
+  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  line-height: 1.9;
 }
 
+/* 题签：标签 + 大输入 + 赭棕主按钮 */
 .topicForm {
   max-width: 44rem;
-  margin-top: clamp(1.8rem, 4vw, 3rem);
-  padding: clamp(1rem, 2.2vw, 1.35rem);
-  border: 1px solid rgba(138, 68, 35, 0.16);
-  border-radius: 1.25rem;
-  background: rgba(253, 250, 243, 0.82);
-  box-shadow: 0 0.8rem 2.2rem rgba(138, 68, 35, 0.08);
+  margin-top: clamp(1.7rem, 3.6vw, 2.6rem);
+  padding: clamp(1.1rem, 2.4vw, 1.5rem) clamp(1.1rem, 2.4vw, 1.6rem);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--white) 72%, transparent);
+  box-shadow: var(--shadow-card);
 }
 
 .topicLabel {
   display: block;
-  margin-bottom: 0.65rem;
-  color: var(--shell-ink);
-  font-size: 0.8rem;
-  font-weight: 720;
+  margin-bottom: 0.7rem;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .topicEntryRow {
@@ -357,31 +345,31 @@
   grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
   align-items: stretch;
-  border: 1px solid rgba(43, 36, 28, 0.14);
-  border-radius: 0.82rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   background: var(--white);
   overflow: hidden;
   gap: 0.45rem;
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
+    border-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
 }
 
 .topicEntryRow:focus-within {
-  border-color: rgba(138, 68, 35, 0.58);
-  box-shadow: 0 0 0 0.2rem rgba(138, 68, 35, 0.12);
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  box-shadow: 0 0 0 0.22rem color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
 :global(.ant-input).topicInput {
   min-width: 0;
   height: 3.2rem;
-  padding: 0.7rem 0.85rem;
+  padding: 0.7rem 0.9rem;
   border: 0;
   border-radius: 0;
-  color: var(--shell-ink);
+  color: var(--ink);
   background: transparent;
   box-shadow: none;
-  font-size: 0.94rem;
+  font-size: 0.98rem;
 }
 
 :global(.ant-input).topicInput:focus,
@@ -391,39 +379,42 @@
 }
 
 :global(.ant-input).topicInput:disabled {
-  color: var(--shell-muted);
-  background: #f5f7fa;
+  color: var(--ink-muted);
+  background: var(--blue-25);
   cursor: not-allowed;
 }
 
 :global(.ant-btn).topicSubmit {
   align-self: center;
   min-height: 2.7rem;
-  margin-right: 0.25rem;
-  padding-inline: 1.15rem;
+  margin-right: 0.3rem;
+  padding-inline: 1.2rem;
   border: 0;
-  border-radius: 0.68rem;
+  border-radius: var(--radius);
   color: var(--white);
-  background: var(--shell-blue);
-  box-shadow: 0 0.45rem 1rem rgba(138, 68, 35, 0.2);
-  font-weight: 720;
+  background: var(--primary);
+  box-shadow: 0 0.35rem 0.9rem
+    color-mix(in srgb, var(--primary) 24%, transparent);
+  font-weight: 600;
+  letter-spacing: 0.06em;
   transition:
-    background-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+    background-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-spring);
 }
 
 :global(.ant-btn).topicSubmit:hover:not(:disabled),
 :global(.ant-btn).topicSubmit:focus-visible:not(:disabled) {
   color: var(--white);
-  background: var(--shell-blue-deep);
-  box-shadow: 0 0.6rem 1.2rem rgba(138, 68, 35, 0.27);
+  background: var(--primary-dark);
+  box-shadow: 0 0.55rem 1.2rem
+    color-mix(in srgb, var(--primary) 30%, transparent);
   transform: translateY(-0.08rem);
 }
 
 :global(.ant-btn).topicSubmit:disabled {
-  color: #95a0ae;
-  background: #dfe5ec;
+  color: var(--ink-muted);
+  background: var(--blue-50);
   box-shadow: none;
 }
 
@@ -432,8 +423,9 @@
   justify-content: space-between;
   min-width: 0;
   margin-top: 0.62rem;
-  color: var(--shell-muted);
-  font-size: 0.7rem;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
   line-height: 1.45;
   gap: 0.8rem;
 }
@@ -449,9 +441,9 @@
 
 .topicError {
   margin: 0.7rem 0 0;
-  color: #c84f43;
-  font-size: 0.78rem;
-  font-weight: 650;
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .demoGuide {
@@ -460,41 +452,41 @@
   align-items: center;
   margin-top: 0.85rem;
   padding-top: 0.8rem;
-  border-top: 1px dashed rgba(194, 94, 68, 0.35);
-  color: var(--shell-ink-soft);
-  font-size: 0.76rem;
+  border-top: 1px dashed var(--line);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
   gap: 0.45rem 0.7rem;
 }
 
 .demoGuideLabel {
-  color: #b94e40;
-  font-weight: 760;
+  color: var(--cinnabar);
+  font-weight: 700;
 }
 
 .demoGuide a {
-  color: var(--shell-blue-deep);
-  font-weight: 720;
+  color: var(--primary-deep);
+  font-weight: 600;
   text-decoration: underline;
-  text-decoration-color: rgba(13, 79, 184, 0.34);
+  text-decoration-color: color-mix(in srgb, var(--primary) 36%, transparent);
   text-underline-offset: 0.2rem;
 }
 
+/* 钤印：虚线环 + 路径小笺 */
 .heroSignature {
   position: relative;
   justify-self: center;
-  width: min(100%, 24rem);
+  width: min(100%, 23rem);
   aspect-ratio: 1;
   min-width: 0;
-  animation: shell-fade 780ms 100ms ease both;
 }
 
 .signatureOrbit {
   position: absolute;
-  inset: 11%;
-  border: 1px solid rgba(138, 68, 35, 0.24);
+  inset: 10%;
+  border: 1.5px dashed color-mix(in srgb, var(--cinnabar) 45%, transparent);
   border-radius: 50%;
   transform: rotate(-12deg);
-  animation: shell-orbit 22s linear infinite;
+  animation: shell-orbit 26s linear infinite;
 }
 
 .signatureOrbit::before,
@@ -502,10 +494,10 @@
   position: absolute;
   width: 0.58rem;
   height: 0.58rem;
-  border: 2px solid var(--shell-paper);
+  border: 2px solid var(--white);
   border-radius: 50%;
-  background: var(--shell-coral);
-  box-shadow: 0 0 0 0.25rem rgba(194, 94, 68, 0.15);
+  background: var(--cinnabar);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--cinnabar) 15%, transparent);
   content: "";
 }
 
@@ -517,14 +509,14 @@
 .signatureOrbit::after {
   bottom: 9%;
   left: 15%;
-  background: var(--shell-blue);
-  box-shadow: 0 0 0 0.25rem rgba(138, 68, 35, 0.13);
+  background: var(--primary);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--primary) 13%, transparent);
 }
 
 .signatureCross {
   position: absolute;
-  inset: 23%;
-  border: 1px dashed rgba(138, 68, 35, 0.19);
+  inset: 22%;
+  border: 1px dashed color-mix(in srgb, var(--line) 85%, transparent);
   border-radius: 50%;
   transform: rotate(29deg) scaleY(0.57);
 }
@@ -536,7 +528,7 @@
   left: -8%;
   width: 116%;
   height: 1px;
-  background: rgba(138, 68, 35, 0.18);
+  background: color-mix(in srgb, var(--line) 90%, transparent);
   content: "";
 }
 
@@ -553,7 +545,7 @@
   margin: auto;
   fill: none;
   overflow: visible;
-  stroke: var(--shell-blue);
+  stroke: var(--primary);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.5;
@@ -566,21 +558,23 @@
 }
 
 .signatureGlyph circle {
-  fill: var(--shell-paper);
-  stroke: var(--shell-coral);
+  fill: var(--white);
+  stroke: var(--cinnabar);
   stroke-width: 2.5;
 }
 
 .signatureWordmark {
   position: absolute;
   z-index: 2;
-  top: 41%;
+  top: 40%;
   right: 0;
   left: 0;
-  color: var(--shell-ink);
-  font-size: clamp(2.4rem, 5vw, 4.3rem);
-  font-weight: 820;
-  letter-spacing: -0.14em;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(2.2rem, 4.6vw, 3.9rem);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
   line-height: 1;
   text-align: center;
 }
@@ -590,16 +584,19 @@
   right: 0;
   bottom: 16%;
   left: 0;
-  color: var(--shell-muted);
+  color: var(--ink-muted);
   font-size: 0.68rem;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
   text-align: center;
 }
+
+/* ---------- 手帐索引卡 ---------- */
 
 .pathNav {
   display: grid;
   min-width: 0;
-  gap: 1.35rem;
+  gap: 1.4rem;
 }
 
 .pathNavHeader {
@@ -612,15 +609,17 @@
 
 .pathNavHeader h2 {
   margin: 0.55rem 0 0;
-  color: var(--shell-ink);
-  font-size: clamp(1.7rem, 3.4vw, 2.75rem);
-  letter-spacing: -0.06em;
-  line-height: 1.1;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
 }
 
 .pathNavHint {
   flex: none;
-  color: var(--shell-muted);
+  color: var(--ink-muted);
   font-size: 0.76rem;
 }
 
@@ -628,64 +627,62 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   min-width: 0;
-  border: 1px solid var(--shell-line);
-  border-radius: 1.2rem;
-  overflow: hidden;
-  background: var(--shell-line);
-  gap: 1px;
+  gap: 1.4rem;
 }
 
 .pathCard {
   position: relative;
   display: flex;
   min-width: 0;
-  min-height: 20rem;
+  min-height: 19rem;
   flex-direction: column;
-  padding: clamp(1.3rem, 3vw, 2.1rem);
-  color: var(--shell-ink);
-  background: var(--shell-paper);
+  padding: clamp(1.4rem, 3vw, 2rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--ink);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
   text-decoration: none;
   transition:
-    background-color 180ms ease,
-    transform 180ms ease;
+    transform var(--duration-normal) var(--ease-out-soft),
+    box-shadow var(--duration-normal) var(--ease-out-soft),
+    border-color var(--duration-normal) var(--ease-out-soft);
 }
 
+/* 卡顶色签 */
 .pathCard::before {
   position: absolute;
-  top: 0;
-  right: 1.4rem;
-  left: 1.4rem;
-  height: 0.22rem;
-  border-radius: 0 0 999px 999px;
-  background: var(--shell-blue);
+  top: -1px;
+  left: 1.7rem;
+  width: 2.9rem;
+  height: 0.3rem;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--primary);
   content: "";
-  opacity: 0;
-  transform: scaleX(0.6);
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
+  transform: scaleX(0.55);
+  transform-origin: left top;
+  transition: transform var(--duration-normal) var(--ease-spring);
 }
 
 .pathCard:nth-child(2)::before {
-  background: var(--shell-coral);
+  background: var(--cinnabar);
 }
 
 .pathCard:nth-child(3)::before {
-  background: #4f9eff;
+  background: var(--jade);
 }
 
 .pathCard:hover,
 .pathCard:focus-visible {
   z-index: 1;
-  color: var(--shell-ink);
-  background: #f7faff;
-  box-shadow: 0 0.9rem 2.6rem rgba(138, 68, 35, 0.12);
-  transform: translateY(-0.18rem);
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--primary) 36%, transparent);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-0.3rem);
 }
 
 .pathCard:hover::before,
 .pathCard:focus-visible::before {
-  opacity: 1;
   transform: scaleX(1);
 }
 
@@ -693,39 +690,53 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: clamp(2.1rem, 5vw, 3.6rem);
+  margin-bottom: clamp(1.9rem, 4.5vw, 3.2rem);
   gap: 0.75rem;
 }
 
 .pathCardIndex {
-  color: var(--shell-coral);
-  font-size: 0.78rem;
-  font-weight: 780;
-  letter-spacing: 0.13em;
+  color: var(--primary);
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.pathCard:nth-child(2) .pathCardIndex {
+  color: var(--cinnabar);
+}
+
+.pathCard:nth-child(3) .pathCardIndex {
+  color: var(--jade);
 }
 
 .pathCardLabel {
-  color: var(--shell-blue-deep);
+  color: var(--ink-muted);
+  font-family: var(--font-serif);
   font-size: 0.7rem;
-  font-weight: 750;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.3em;
 }
 
 .pathCard strong {
   max-width: 15rem;
-  color: var(--shell-ink);
-  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
-  letter-spacing: -0.06em;
-  line-height: 1.18;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(1.28rem, 2.4vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
 }
 
 .pathCardDescription {
   display: block;
   min-height: 3.4rem;
   margin-top: 0.8rem;
-  color: var(--shell-ink-soft);
-  font-size: 0.82rem;
-  line-height: 1.65;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  line-height: 1.8;
 }
 
 .pathFacts {
@@ -736,29 +747,33 @@
 }
 
 .pathFacts span {
-  padding: 0.25rem 0.48rem;
-  border: 1px solid var(--shell-line-soft);
+  padding: 0.24rem 0.55rem;
+  border: 1px dashed var(--line);
   border-radius: 999px;
-  color: var(--shell-muted);
-  font-size: 0.64rem;
-  line-height: 1.3;
+  color: var(--ink-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--paper) 60%, transparent);
 }
 
 .pathCardAction {
   display: flex;
   align-items: center;
   margin-top: auto;
-  padding-top: 1.7rem;
-  color: var(--shell-blue-deep);
-  font-size: 0.78rem;
-  font-weight: 740;
+  padding-top: 1.1rem;
+  border-top: 1px dashed var(--line);
+  color: var(--primary-deep);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   gap: 0.35rem;
 }
 
 .pathCardAction span {
-  color: var(--shell-coral);
+  color: var(--cinnabar);
   font-size: 1rem;
-  transition: transform 160ms ease;
+  transition: transform var(--duration-fast) var(--ease-out-soft);
 }
 
 .pathCard:hover .pathCardAction span,
@@ -766,26 +781,19 @@
   transform: translate(0.15rem, -0.15rem);
 }
 
+/* ---------- 认证页 ---------- */
+
 .authPage {
-  --shell-ink: var(--ink);
-  --shell-ink-soft: var(--ink-soft);
-  --shell-muted: var(--ink-muted);
-  --shell-line: rgba(43, 36, 28, 0.12);
-  --shell-line-soft: rgba(43, 36, 28, 0.07);
-  --shell-paper: var(--white);
-  --shell-blue: var(--primary);
-  --shell-blue-deep: var(--primary-deep);
-  --shell-blue-pale: var(--blue-50);
-  --shell-coral: var(--cinnabar);
   display: grid;
   grid-template-columns: minmax(0, 1.07fr) minmax(27rem, 0.93fr);
   min-height: 100svh;
   min-width: 0;
   overflow: hidden;
-  color: var(--shell-ink);
-  background: var(--shell-paper);
+  color: var(--ink);
+  background: var(--blue-25);
 }
 
+/* 诗笺：大面积纸色 */
 .authAside {
   position: relative;
   isolation: isolate;
@@ -793,51 +801,46 @@
   min-width: 0;
   min-height: 100%;
   align-items: stretch;
-  padding: clamp(2.5rem, 7vw, 7rem);
+  padding: clamp(2.5rem, 7vw, 6.5rem);
   overflow: hidden;
-  color: var(--white);
-  background:
-    radial-gradient(
-      circle at 82% 19%,
-      rgba(194, 94, 68, 0.38),
-      transparent 18rem
-    ),
-    linear-gradient(145deg, #092f75 0%, var(--primary) 63%, #5ca7ff 100%);
+  color: var(--ink);
+  background: var(--paper);
+  border-right: 1px solid var(--line-soft);
 }
 
 .authAside::after {
   position: absolute;
   z-index: -1;
-  right: -12rem;
-  bottom: -13rem;
-  width: 34rem;
-  height: 34rem;
-  border: 1px solid rgba(253, 250, 243, 0.25);
+  right: -11rem;
+  bottom: -12rem;
+  width: 30rem;
+  height: 30rem;
+  border: 1px dashed color-mix(in srgb, var(--cinnabar) 30%, transparent);
   border-radius: 50%;
-  box-shadow:
-    0 0 0 2.3rem rgba(253, 250, 243, 0.06),
-    0 0 0 4.7rem rgba(253, 250, 243, 0.04);
   content: "";
 }
 
+/* 竖排界栏 */
 .authAsideGrid {
   position: absolute;
   z-index: -2;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(253, 250, 243, 0.11) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(253, 250, 243, 0.11) 1px, transparent 1px);
-  background-size: 2.5rem 2.5rem;
-  mask-image: linear-gradient(132deg, rgba(0, 0, 0, 0.9), transparent 79%);
+  background-image: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--line) 42%, transparent) 0,
+    color-mix(in srgb, var(--line) 42%, transparent) 1px,
+    transparent 1px,
+    transparent 3.4rem
+  );
 }
 
 .authAsideContent {
   position: relative;
   z-index: 1;
   display: flex;
-  width: min(100%, 35rem);
+  width: min(100%, 30rem);
   min-width: 0;
-  margin: auto;
+  margin: auto 0;
   flex-direction: column;
 }
 
@@ -853,48 +856,49 @@
   width: 2.65rem;
   height: 2.65rem;
   place-items: center;
-  border: 1px solid rgba(253, 250, 243, 0.7);
-  border-radius: 0.85rem;
-  background: rgba(253, 250, 243, 0.96);
-  box-shadow: 0 0.55rem 1.3rem rgba(5, 35, 89, 0.22);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
 }
 
 .authBrandRoute {
   width: 1.85rem;
   height: 1.85rem;
   fill: none;
-  stroke: var(--shell-blue-deep);
+  stroke: var(--primary);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.6;
 }
 
 .authBrandRoute circle {
-  fill: var(--shell-coral);
-  stroke: var(--shell-blue-deep);
+  fill: var(--cinnabar);
+  stroke: var(--primary);
   stroke-width: 1.2;
 }
 
 .authBrandName {
-  color: var(--white);
-  font-size: 1.35rem;
-  font-weight: 790;
-  letter-spacing: -0.06em;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
 }
 
 .authAsideSignal {
   display: flex;
   align-items: center;
-  margin-top: clamp(3.5rem, 10vw, 8rem);
+  margin-top: clamp(2.5rem, 6vh, 4.5rem);
   gap: 0.5rem;
 }
 
 .authAsideSignal::before {
   display: block;
-  width: clamp(3rem, 9vw, 8rem);
-  height: 1px;
-  margin-right: 0.15rem;
-  background: rgba(253, 250, 243, 0.54);
+  width: clamp(3rem, 8vw, 6.5rem);
+  height: 0;
+  margin-right: 0.35rem;
+  border-top: 1px dashed color-mix(in srgb, var(--ink-muted) 55%, transparent);
   content: "";
 }
 
@@ -902,164 +906,185 @@
   display: block;
   width: 0.5rem;
   height: 0.5rem;
-  border: 1px solid rgba(253, 250, 243, 0.76);
+  border: 1px solid color-mix(in srgb, var(--ink-muted) 60%, transparent);
   border-radius: 50%;
   background: transparent;
 }
 
 .authAsideSignal span:nth-child(2) {
-  border-color: var(--shell-coral);
-  background: var(--shell-coral);
+  border-color: var(--cinnabar);
+  background: var(--cinnabar);
 }
 
+/* 宋体大字引言，桌面竖排如诗笺 */
 .authAsideQuote {
-  max-width: 32rem;
-  margin: 1.6rem 0 2rem;
-  color: var(--white);
-  font-size: clamp(2.15rem, 4.7vw, 4.7rem);
-  font-weight: 790;
-  letter-spacing: -0.09em;
-  line-height: 1.08;
+  margin: 2rem 0 0;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(1.65rem, 2.5vw, 2.3rem);
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  line-height: 1.9;
+  writing-mode: vertical-rl;
+  height: min(52vh, 27rem);
+  max-height: 60vh;
   text-wrap: balance;
+}
+
+.authAsideQuote::before {
+  color: var(--cinnabar);
+  content: "「";
+}
+
+.authAsideQuote::after {
+  color: var(--cinnabar);
+  content: "」";
 }
 
 .authAsidePoints {
   display: flex;
   flex-wrap: wrap;
+  margin-top: 2.4rem;
   gap: 0.55rem;
 }
 
 .authAsidePoints span {
-  padding: 0.34rem 0.72rem;
-  border: 1px solid rgba(253, 250, 243, 0.35);
+  padding: 0.36rem 0.85rem;
+  border: 1px dashed var(--line);
   border-radius: 999px;
-  color: rgba(253, 250, 243, 0.95);
-  font-size: 0.72rem;
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  background: color-mix(in srgb, var(--white) 75%, transparent);
 }
 
+/* 认证卡：纸质卡片 */
 .authCard {
   align-self: center;
-  width: min(34rem, calc(100% - 5rem));
+  width: min(33rem, calc(100% - 5rem));
   min-width: 0;
   margin: clamp(2rem, 5vw, 4rem) auto;
-  padding: clamp(1.6rem, 3.2vw, 2.8rem);
-  border: 1px solid var(--shell-line-soft);
-  border-radius: 1.4rem;
-  background: var(--shell-paper);
-  box-shadow: 0 1.2rem 3.5rem rgba(31, 52, 86, 0.08);
+  padding: clamp(1.7rem, 3.4vw, 2.8rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
 }
 
 .authCardHeading {
-  margin-bottom: 1.7rem;
+  margin-bottom: 1.6rem;
 }
 
 .authKicker {
   display: inline-flex;
   align-items: center;
-  color: var(--shell-blue-deep);
-  font-size: 0.7rem;
-  font-weight: 760;
-  letter-spacing: 0.14em;
+  color: var(--primary-deep);
+  font-family: var(--font-serif);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
 }
 
 .authKicker::before {
   width: 0.42rem;
   height: 0.42rem;
-  margin-right: 0.5rem;
+  margin-right: 0.55rem;
   border-radius: 50%;
-  background: var(--shell-coral);
+  background: var(--cinnabar);
   content: "";
 }
 
 .authCardHeading h1 {
   margin: 0.72rem 0 0.7rem;
-  color: var(--shell-ink);
-  font-size: clamp(2.05rem, 4vw, 3.35rem);
-  font-weight: 790;
-  letter-spacing: -0.08em;
-  line-height: 1.05;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(1.85rem, 3.4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
   text-wrap: balance;
 }
 
 .authCardHeading p {
   margin: 0;
-  color: var(--shell-ink-soft);
-  font-size: 0.88rem;
-  line-height: 1.65;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.8;
 }
 
 :global(.ant-segmented).authTabs {
   width: 100%;
   margin: 0 0 1.35rem;
-  padding: 0.22rem;
-  border: 1px solid var(--shell-line-soft);
-  border-radius: 0.8rem;
-  background: var(--shell-blue-pale);
+  padding: 0.25rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--blue-50);
 }
 
 .authTabs :global(.ant-segmented-item) {
   min-height: 2.4rem;
-  color: var(--shell-ink-soft);
-  font-size: 0.8rem;
-  font-weight: 680;
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .authTabs :global(.ant-segmented-item-selected) {
-  color: var(--shell-blue-deep);
-  box-shadow: 0 0.25rem 0.8rem rgba(138, 68, 35, 0.12);
-  font-weight: 760;
+  color: var(--primary-deep);
+  box-shadow: var(--shadow-card);
+  font-weight: 700;
 }
 
 .authForm {
   display: grid;
   min-width: 0;
-  gap: 1rem;
+  gap: 1.05rem;
 }
 
 .fieldLabel {
   display: grid;
   min-width: 0;
-  color: var(--shell-ink);
-  font-size: 0.79rem;
-  font-weight: 710;
-  gap: 0.45rem;
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+  gap: 0.5rem;
 }
 
 :global(.ant-input).fieldInput {
   width: 100%;
   min-width: 0;
   min-height: 3rem;
-  padding: 0.68rem 0.82rem;
-  border: 1px solid rgba(43, 36, 28, 0.16);
-  border-radius: 0.68rem;
-  color: var(--shell-ink);
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
   background: var(--white);
   box-shadow: none;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
+    border-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft);
 }
 
 :global(.ant-input).fieldInput:hover {
-  border-color: rgba(138, 68, 35, 0.4);
+  border-color: color-mix(in srgb, var(--primary) 42%, transparent);
 }
 
 :global(.ant-input).fieldInput:focus {
-  border-color: rgba(138, 68, 35, 0.72);
-  box-shadow: 0 0 0 0.2rem rgba(138, 68, 35, 0.12);
+  border-color: color-mix(in srgb, var(--primary) 62%, transparent);
+  box-shadow: 0 0 0 0.22rem color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
 :global(.ant-input).fieldInput:disabled {
-  color: var(--shell-muted);
-  background: #f6f8fb;
+  color: var(--ink-muted);
+  background: var(--blue-25);
   cursor: not-allowed;
 }
 
 .fieldHelp {
-  color: var(--shell-muted);
-  font-size: 0.7rem;
-  font-weight: 500;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  font-weight: 400;
 }
 
 .formMessage {
@@ -1068,55 +1093,57 @@
 }
 
 .formMessage:global(.ant-alert) {
-  border-radius: 0.72rem;
-  font-size: 0.77rem;
-  line-height: 1.5;
+  border-radius: var(--radius);
+  font-size: 0.78rem;
+  line-height: 1.55;
 }
 
 :global(.ant-btn).authPrimaryButton,
 :global(.ant-btn).authSecondaryButton {
   width: 100%;
   min-height: 3rem;
-  border-radius: 0.72rem;
-  font-size: 0.86rem;
-  font-weight: 740;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   transition:
-    color 160ms ease,
-    border-color 160ms ease,
-    background-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+    color var(--duration-fast) var(--ease-out-soft),
+    border-color var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-spring);
 }
 
 :global(.ant-btn).authPrimaryButton {
   margin-top: 0.2rem;
-  border-color: var(--shell-blue);
+  border-color: var(--primary);
   color: var(--white);
-  background: var(--shell-blue);
-  box-shadow: 0 0.5rem 1.1rem rgba(138, 68, 35, 0.2);
+  background: var(--primary);
+  box-shadow: 0 0.4rem 1rem color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 :global(.ant-btn).authPrimaryButton:hover,
 :global(.ant-btn).authPrimaryButton:focus-visible {
-  border-color: var(--shell-blue-deep);
+  border-color: var(--primary-dark);
   color: var(--white);
-  background: var(--shell-blue-deep);
-  box-shadow: 0 0.7rem 1.35rem rgba(138, 68, 35, 0.27);
+  background: var(--primary-dark);
+  box-shadow: 0 0.6rem 1.3rem
+    color-mix(in srgb, var(--primary) 30%, transparent);
   transform: translateY(-0.08rem);
 }
 
 :global(.ant-btn).authSecondaryButton {
   margin-top: 0.7rem;
-  border-color: rgba(43, 36, 28, 0.14);
-  color: var(--shell-ink-soft);
+  border-color: var(--line);
+  color: var(--ink-soft);
   background: var(--white);
 }
 
 :global(.ant-btn).authSecondaryButton:hover,
 :global(.ant-btn).authSecondaryButton:focus-visible {
-  border-color: rgba(138, 68, 35, 0.36);
-  color: var(--shell-blue-deep);
-  background: var(--shell-blue-pale);
+  border-color: color-mix(in srgb, var(--primary) 38%, transparent);
+  color: var(--primary-deep);
+  background: var(--primary-soft);
 }
 
 .authCardFooter {
@@ -1126,9 +1153,9 @@
   min-width: 0;
   margin-top: 1.7rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--shell-line-soft);
-  color: var(--shell-muted);
-  font-size: 0.68rem;
+  border-top: 1px dashed var(--line);
+  color: var(--ink-muted);
+  font-size: 0.7rem;
   gap: 0.8rem;
 }
 
@@ -1139,8 +1166,8 @@
 
 .authCardFooter a {
   flex: none;
-  color: var(--shell-blue-deep);
-  font-weight: 700;
+  color: var(--primary-deep);
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -1149,39 +1176,18 @@
   text-underline-offset: 0.2rem;
 }
 
-@keyframes shell-rise {
-  from {
-    opacity: 0;
-    transform: translateY(1rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes shell-fade {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 @keyframes shell-orbit {
   to {
     transform: rotate(348deg);
   }
 }
 
-@media (max-width: 62rem) {
+/* ---------- 响应式：1100 / 820 / 640px ---------- */
+
+@media (max-width: 68.75rem) {
   .appHeaderInner {
-    grid-template-columns: auto 1fr auto;
     width: min(90rem, calc(100% - 2.5rem));
-    gap: 0.9rem;
+    gap: 1rem;
   }
 
   .appNavLink {
@@ -1205,15 +1211,17 @@
   }
 
   .authCard {
-    width: min(32rem, calc(100% - 3rem));
+    width: min(31rem, calc(100% - 3rem));
+  }
+
+  .authAsideQuote {
+    height: min(48vh, 24rem);
+    font-size: clamp(1.5rem, 2.2vw, 1.9rem);
   }
 }
 
-@media (max-width: 45rem) {
+@media (max-width: 51.25rem) {
   .appHeaderInner {
-    grid-template-areas:
-      "brand account"
-      "nav nav";
     grid-template-columns: minmax(0, 1fr) auto;
     width: calc(100% - 2rem);
     min-height: 4.1rem;
@@ -1221,24 +1229,9 @@
     gap: 0.65rem 0.8rem;
   }
 
-  .brandMark {
-    grid-area: brand;
-  }
-
+  /* 导航收进全局抽屉（globals 在 820px 显示汉堡） */
   .appNav {
-    grid-area: nav;
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .appNavLink {
-    flex: 1;
-    padding: 0.48rem 0.25rem;
-    font-size: 0.72rem;
-  }
-
-  .accountArea {
-    grid-area: account;
+    display: none;
   }
 
   .accountEmail {
@@ -1259,35 +1252,33 @@
     width: calc(100% - 2rem);
     padding-top: 1.15rem;
     padding-bottom: 3.5rem;
-    gap: 3.1rem;
+    gap: 3rem;
   }
 
   .homeHero {
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
-    padding: 1.35rem;
-    border-radius: 1.35rem;
-    gap: 1.6rem;
+    padding: 1.6rem 1.35rem;
+    gap: 1.5rem;
   }
 
   .heroSignature {
     order: -1;
-    width: min(54vw, 14.5rem);
+    width: min(52vw, 13.5rem);
   }
 
   .heroContent h1 {
-    margin-top: 0.95rem;
-    font-size: clamp(2.85rem, 13vw, 4.5rem);
+    margin-top: 0.9rem;
+    font-size: clamp(2.3rem, 9.5vw, 3.6rem);
   }
 
   .heroLead {
-    font-size: 0.96rem;
+    font-size: 0.98rem;
   }
 
   .topicForm {
-    margin-top: 1.55rem;
-    padding: 0.82rem;
-    border-radius: 0.95rem;
+    margin-top: 1.5rem;
+    padding: 0.95rem;
   }
 
   .topicEntryRow {
@@ -1300,8 +1291,8 @@
 
   :global(.ant-input).topicInput {
     min-height: 3rem;
-    border: 1px solid rgba(43, 36, 28, 0.14);
-    border-radius: 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
     background: var(--white);
   }
 
@@ -1311,17 +1302,13 @@
   }
 
   .topicFormMeta {
-    font-size: 0.67rem;
+    font-size: 0.68rem;
   }
 
   .pathNavHeader {
     align-items: flex-start;
     flex-direction: column;
-    gap: 0.7rem;
-  }
-
-  .pathNavHint {
-    font-size: 0.7rem;
+    gap: 0.6rem;
   }
 
   .pathGrid {
@@ -1330,21 +1317,14 @@
 
   .pathCard {
     min-height: 0;
-    padding: 1.35rem;
-  }
-
-  .pathCardTopline {
-    margin-bottom: 1.8rem;
+    padding: 1.4rem;
   }
 
   .pathCardDescription {
     min-height: 0;
   }
 
-  .pathCardAction {
-    padding-top: 1.35rem;
-  }
-
+  /* 认证页单列堆叠 */
   .authPage {
     display: block;
     min-height: 100svh;
@@ -1353,8 +1333,10 @@
   }
 
   .authAside {
-    min-height: 17rem;
-    padding: 2.2rem 1.15rem 2.4rem;
+    min-height: 0;
+    padding: 2.4rem 1.15rem 2.6rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
   }
 
   .authAsideContent {
@@ -1362,20 +1344,26 @@
   }
 
   .authAsideSignal {
-    margin-top: 2.4rem;
+    margin-top: 2.2rem;
   }
 
   .authAsideQuote {
-    max-width: 28rem;
-    margin: 1.25rem 0 1.45rem;
-    font-size: clamp(2rem, 9vw, 3.2rem);
+    height: auto;
+    margin: 1.4rem 0 0;
+    font-size: clamp(1.5rem, 7vw, 2rem);
+    letter-spacing: 0.14em;
+    line-height: 1.7;
+    writing-mode: horizontal-tb;
+  }
+
+  .authAsidePoints {
+    margin-top: 2rem;
   }
 
   .authCard {
     width: calc(100% - 2rem);
     margin: 1.25rem auto 3rem;
-    padding: 1.45rem 1.05rem 1.65rem;
-    border-radius: 1.1rem;
+    padding: 1.5rem 1.1rem 1.7rem;
   }
 
   .authCardHeading {
@@ -1383,7 +1371,7 @@
   }
 
   .authCardHeading h1 {
-    font-size: clamp(2rem, 10vw, 3rem);
+    font-size: clamp(1.7rem, 8vw, 2.3rem);
   }
 
   .authCardFooter {
@@ -1393,7 +1381,7 @@
   }
 }
 
-@media (max-width: 24rem) {
+@media (max-width: 40rem) {
   .brandSymbol {
     width: 2.3rem;
     height: 2.3rem;
@@ -1406,10 +1394,6 @@
 
   .brandEyebrow {
     display: none;
-  }
-
-  .appNavLink {
-    font-size: 0.67rem;
   }
 
   .homeMain {

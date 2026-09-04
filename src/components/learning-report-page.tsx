@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Empty, List, Progress, Skeleton, Tag } from "antd";
 
@@ -131,7 +131,6 @@ export function LearningReportPage({
           {report ? (
             <p aria-label="地图版本">版本：{report.map.versionId}</p>
           ) : null}
-          <p>报告仅展示当前学习关系的服务端事实，不含答案与尝试明细。</p>
         </div>
 
         {isLoading ? (
@@ -178,6 +177,8 @@ function ReportContent({ report }: ReportContentProps) {
       <section
         className={`report-overview ${styles.reportOverview}`}
         aria-labelledby="report-overview-title"
+        data-reveal
+        style={{ "--reveal-delay": "0ms" } as CSSProperties}
       >
         <div className="report-overview-copy">
           <span className={`section-kicker ${styles.reportProfileKicker}`}>
@@ -222,6 +223,7 @@ function ReportContent({ report }: ReportContentProps) {
           eyebrow="薄弱节点"
           title="值得再走一遍"
           count={report.weakNodes.length}
+          revealDelay={60}
         >
           {report.weakNodes.length > 0 ? (
             <List
@@ -254,6 +256,7 @@ function ReportContent({ report }: ReportContentProps) {
           eyebrow="下一步"
           title="继续前进"
           count={report.nextSteps.length}
+          revealDelay={120}
         >
           {report.nextSteps.length > 0 ? (
             <List
@@ -289,6 +292,8 @@ function ReportContent({ report }: ReportContentProps) {
       <section
         className="report-section report-viewpoints"
         aria-labelledby="report-viewpoints-title"
+        data-reveal
+        style={{ "--reveal-delay": "180ms" } as CSSProperties}
       >
         <div className="report-section-heading">
           <div>
@@ -356,6 +361,8 @@ function ReportContent({ report }: ReportContentProps) {
       <section
         className="report-section report-sources"
         aria-labelledby="report-sources-title"
+        data-reveal
+        style={{ "--reveal-delay": "240ms" } as CSSProperties}
       >
         <div className="report-section-heading">
           <div>
@@ -392,6 +399,7 @@ type ReportSectionProps = Readonly<{
   eyebrow: string;
   title: string;
   count: number;
+  revealDelay?: number;
   children: ReactNode;
 }>;
 
@@ -399,10 +407,16 @@ function ReportSection({
   eyebrow,
   title,
   count,
+  revealDelay = 0,
   children,
 }: ReportSectionProps) {
   return (
-    <section className="report-section" aria-label={title}>
+    <section
+      className="report-section"
+      aria-label={title}
+      data-reveal
+      style={{ "--reveal-delay": `${revealDelay}ms` } as CSSProperties}
+    >
       <div className="report-section-heading">
         <div>
           <span className="section-kicker">{eyebrow}</span>

@@ -316,7 +316,6 @@ export function AssessmentPanel({
       <div className="panel-heading">
         <span className="section-kicker">节点验证</span>
         <h2 id="assessment-title">完成这组题，确认你真的掌握了</h2>
-        <p>提交后，评分、解释和来源均由服务端返回。</p>
       </div>
       <div
         className={styles.assessmentProgress}

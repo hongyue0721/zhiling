@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Alert, Button } from "antd";
 
 import styles from "./shell-experience.module.css";
@@ -36,6 +37,9 @@ export function AppHeader({ email, eyebrow = "知径" }: AppHeaderProps) {
   const [error, setError] = useState<string | null>(null);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  // 遮罩与抽屉经 portal 挂到 body：顶栏的 backdrop-filter/transform
+  // 会把 position:fixed 后代的包含块劫持到顶栏，导致遮罩只盖住顶栏一条
+  const [isPortalReady, setIsPortalReady] = useState(false);
 
   // 桌面端下滑隐藏顶栏、上滑恢复，长页阅读时不占视线
   useEffect(() => {
@@ -58,6 +62,10 @@ export function AppHeader({ email, eyebrow = "知径" }: AppHeaderProps) {
     document.body.classList.toggle("drawer-scroll-lock", isDrawerOpen);
     return () => document.body.classList.remove("drawer-scroll-lock");
   }, [isDrawerOpen]);
+
+  useEffect(() => {
+    setIsPortalReady(true);
+  }, []);
 
   // 路由变化自动收起抽屉
   useEffect(() => {
@@ -84,7 +92,7 @@ export function AppHeader({ email, eyebrow = "知径" }: AppHeaderProps) {
   return (
     <header
       className={`${styles.appHeader} app-header${
-        isHeaderHidden ? " app-header-hidden" : ""
+        isHeaderHidden ? "app-header-hidden" : ""
       }`}
     >
       <div className={styles.appHeaderInner}>
@@ -158,45 +166,52 @@ export function AppHeader({ email, eyebrow = "知径" }: AppHeaderProps) {
           message={error}
         />
       ) : null}
-      <div
-        className={`app-drawer-backdrop${isDrawerOpen ? " is-open" : ""}`}
-        onClick={() => setIsDrawerOpen(false)}
-        aria-hidden="true"
-      />
-      <nav
-        className={`app-drawer${isDrawerOpen ? " is-open" : ""}`}
-        aria-label="移动端菜单"
-        aria-hidden={!isDrawerOpen}
-      >
-        <div className="app-drawer-nav">
-          {APP_NAV_ITEMS.map((item) => {
-            const isActive = isNavItemActive(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                className={`app-drawer-link${isActive ? " is-active" : ""}`}
-                href={item.href}
-                aria-current={isActive ? "page" : undefined}
+      {isPortalReady
+        ? createPortal(
+            <>
+              <div
+                className={`app-drawer-backdrop${isDrawerOpen ? " is-open" : ""}`}
                 onClick={() => setIsDrawerOpen(false)}
+                aria-hidden="true"
+              />
+              <nav
+                className={`app-drawer${isDrawerOpen ? " is-open" : ""}`}
+                aria-label="移动端菜单"
+                aria-hidden={!isDrawerOpen}
               >
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-        <div className="app-drawer-footer">
-          <span className="app-drawer-email" title={email}>
-            {email}
-          </span>
-          <Button
-            size="small"
-            onClick={() => void signOut()}
-            loading={isSigningOut}
-          >
-            退出登录
-          </Button>
-        </div>
-      </nav>
+                <div className="app-drawer-nav">
+                  {APP_NAV_ITEMS.map((item) => {
+                    const isActive = isNavItemActive(pathname, item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        className={`app-drawer-link${isActive ? "is-active" : ""}`}
+                        href={item.href}
+                        aria-current={isActive ? "page" : undefined}
+                        onClick={() => setIsDrawerOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+                <div className="app-drawer-footer">
+                  <span className="app-drawer-email" title={email}>
+                    {email}
+                  </span>
+                  <Button
+                    size="small"
+                    onClick={() => void signOut()}
+                    loading={isSigningOut}
+                  >
+                    退出登录
+                  </Button>
+                </div>
+              </nav>
+            </>,
+            document.body,
+          )
+        : null}
     </header>
   );
 }

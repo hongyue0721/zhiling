@@ -357,7 +357,9 @@ export function validateGenerationCandidate(
       throw new GenerationCandidateValidationError("question_fields");
     }
     if (question.type === "matching") {
-      const leftOptionIds = correctMatches.map(({ leftOptionId }) => leftOptionId);
+      const leftOptionIds = correctMatches.map(
+        ({ leftOptionId }) => leftOptionId,
+      );
       const rightOptionIds = correctMatches.map(
         ({ rightOptionId }) => rightOptionId,
       );

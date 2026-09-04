@@ -50,7 +50,9 @@ export function PaperParticles() {
       const mobile = innerWidth <= 820;
       const count = Math.min(
         MAX_PARTICLES,
-        Math.round((innerWidth * innerHeight) / AREA_PER_PARTICLE / (mobile ? 2 : 1)),
+        Math.round(
+          (innerWidth * innerHeight) / AREA_PER_PARTICLE / (mobile ? 2 : 1),
+        ),
       );
       particles = Array.from({ length: count }, () => {
         const depth = 0.3 + Math.random() * 0.7;
@@ -128,10 +130,6 @@ export function PaperParticles() {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden="true"
-      className="paper-particles"
-    />
+    <canvas ref={canvasRef} aria-hidden="true" className="paper-particles" />
   );
 }

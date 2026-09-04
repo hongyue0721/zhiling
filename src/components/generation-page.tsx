@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Form, Input, Progress, Tag } from "antd";
 
@@ -657,7 +657,7 @@ export function GenerationPage({
     <div className={`app-frame ${styles.page}`}>
       <AppHeader email={email} eyebrow="现场生成" />
       <main className={`generation-main ${styles.generationMain}`}>
-        <div className={styles.generationHeading}>
+        <div className={styles.generationHeading} data-reveal>
           <Link className="back-link" href="/learning">
             ← 我的学习
           </Link>
@@ -670,7 +670,7 @@ export function GenerationPage({
           className={styles.generationLayout}
           aria-labelledby="generation-form-title"
         >
-          <div className={styles.formPanel}>
+          <div className={styles.formPanel} data-reveal>
             <div className={styles.panelHeading}>
               <h2 id="generation-form-title">你的学习目标</h2>
               <p>写清楚想理解的范围，最多 200 个字符。</p>
@@ -726,14 +726,14 @@ export function GenerationPage({
                 {!generationRequestsEnabled ? "本地演示未启用" : "开始现场生成"}
               </Button>
             </Form>
-            <p className={styles.privacyNote}>
-              {generationRequestsEnabled
-                ? "主题随当前 Session 提交；前端不发送用户 ID，也不接收候选正文或供应方错误详情。"
-                : "当前运行模式不会提交主题，也不会创建生成任务。"}
-            </p>
           </div>
 
-          <section className={styles.statusPanel} aria-label="生成任务状态">
+          <section
+            className={styles.statusPanel}
+            aria-label="生成任务状态"
+            data-reveal
+            style={{ "--reveal-delay": "120ms" } as CSSProperties}
+          >
             <div className={styles.statusTopline}>
               <span className="section-kicker">任务状态</span>
               {taskId ? <Tag color="processing">可恢复</Tag> : null}
@@ -760,6 +760,7 @@ export function GenerationPage({
             ) : state === "failed" ? (
               <section
                 className={styles.failure}
+                data-reveal
                 role="region"
                 aria-labelledby="generation-failure-title"
               >
@@ -800,14 +801,6 @@ export function GenerationPage({
                 >
                   <div className={styles.timelineTopline}>
                     <span>阶段时间线</span>
-                    {Object.prototype.hasOwnProperty.call(
-                      statusProgress,
-                      status,
-                    ) ? (
-                      <span className={styles.timelineProgress}>
-                        服务端状态已更新
-                      </span>
-                    ) : null}
                   </div>
                   {Object.prototype.hasOwnProperty.call(
                     statusProgress,
@@ -824,7 +817,7 @@ export function GenerationPage({
                     </p>
                   )}
                   <ol className={styles.timelineList}>
-                    {generationStages.map((stage) => {
+                    {generationStages.map((stage, index) => {
                       const currentProgress =
                         Object.prototype.hasOwnProperty.call(
                           statusProgress,
@@ -842,6 +835,12 @@ export function GenerationPage({
                         <li
                           className={styles.timelineItem}
                           data-state={stageStatus}
+                          data-reveal
+                          style={
+                            {
+                              "--reveal-delay": `${index * 60}ms`,
+                            } as CSSProperties
+                          }
                           aria-current={
                             stageStatus === "current" ? "step" : undefined
                           }
@@ -858,21 +857,18 @@ export function GenerationPage({
                       );
                     })}
                   </ol>
-                  <span className={styles.timelineUnknown}>
-                    事件来自服务端，断线会自动恢复
-                  </span>
                 </div>
               </>
             )}
             {state === "connection_error" && taskId ? (
-              <div className={styles.statusActions}>
+              <div className={styles.statusActions} data-reveal>
                 <Button type="default" onClick={reconnectTask}>
                   重新连接任务
                 </Button>
               </div>
             ) : null}
             {state === "failed" ? (
-              <div className={styles.statusActions}>
+              <div className={styles.statusActions} data-reveal>
                 <Button
                   type="default"
                   onClick={() => {

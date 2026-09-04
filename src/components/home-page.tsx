@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useState } from "react";
 import { Button, Input } from "antd";
 
@@ -14,6 +14,10 @@ type HomePageProps = Readonly<{
   email: string;
   generationRequestsEnabled: boolean;
 }>;
+
+function revealDelay(delay: number): CSSProperties {
+  return { "--reveal-delay": `${delay}ms` } as CSSProperties;
+}
 
 export function HomePage({ email, generationRequestsEnabled }: HomePageProps) {
   const router = useRouter();
@@ -45,18 +49,22 @@ export function HomePage({ email, generationRequestsEnabled }: HomePageProps) {
       <main className={styles.homeMain}>
         <section className={styles.homeHero} aria-labelledby="home-title">
           <div className={styles.heroContent}>
-            <div className={styles.heroKicker}>
+            <div className={styles.heroKicker} data-reveal>
               <span className={styles.kickerDot} aria-hidden="true" />
               学习工作台
             </div>
-            <h1 id="home-title">继续你的学习路径</h1>
-            <p className={styles.heroLead}>
+            <h1 id="home-title" data-reveal style={revealDelay(60)}>
+              继续你的学习路径
+            </h1>
+            <p className={styles.heroLead} data-reveal style={revealDelay(120)}>
               把知乎上的真实讨论，走成一条学会的路。
             </p>
             <form
               className={styles.topicForm}
               onSubmit={submitTopic}
               noValidate
+              data-reveal
+              style={revealDelay(180)}
             >
               <label className={styles.topicLabel} htmlFor="home-topic">
                 你现在想系统弄懂什么？
@@ -77,7 +85,9 @@ export function HomePage({ email, generationRequestsEnabled }: HomePageProps) {
                       ? "输入一个具体的学习主题"
                       : "现场生成在本地演示中未启用"
                   }
-                  aria-describedby="home-topic-help"
+                  aria-describedby={
+                    generationRequestsEnabled ? undefined : "home-topic-help"
+                  }
                 />
                 <Button
                   className={styles.topicSubmit}
@@ -89,14 +99,13 @@ export function HomePage({ email, generationRequestsEnabled }: HomePageProps) {
                 </Button>
               </div>
               <div className={styles.topicFormMeta}>
-                <span id="home-topic-help">
-                  {generationRequestsEnabled
-                    ? "服务端将检索真实知乎来源，并在校验完成后建立地图。"
-                    : "本地演示未启用现场生成，不会提交主题或创建任务。"}
-                </span>
                 {generationRequestsEnabled ? (
                   <span>{topic.length}/200</span>
-                ) : null}
+                ) : (
+                  <span id="home-topic-help">
+                    本地演示未启用现场生成，不会提交主题或创建任务。
+                  </span>
+                )}
               </div>
               {topicError ? (
                 <p className={styles.topicError} role="alert">
@@ -106,14 +115,17 @@ export function HomePage({ email, generationRequestsEnabled }: HomePageProps) {
               {!generationRequestsEnabled ? (
                 <div className={styles.demoGuide}>
                   <span className={styles.demoGuideLabel}>本地演示未启用</span>
-                  <span>先从已检查、可追溯的精选地图开始。</span>
                   <Link href="/featured">浏览精选地图</Link>
                 </div>
               ) : null}
             </form>
           </div>
-
-          <div className={styles.heroSignature} aria-hidden="true">
+          <div
+            className={styles.heroSignature}
+            aria-hidden="true"
+            data-reveal
+            style={revealDelay(240)}
+          >
             <div className={styles.signatureOrbit} />
             <div className={styles.signatureCross} />
             <svg
@@ -137,17 +149,19 @@ export function HomePage({ email, generationRequestsEnabled }: HomePageProps) {
         </section>
 
         <nav className={styles.pathNav} aria-label="学习工作台导航">
-          <div className={styles.pathNavHeader}>
+          <div className={styles.pathNavHeader} data-reveal>
             <div>
               <span className={styles.sectionKicker}>三条真实路径</span>
               <h2>从你准备好的地方开始</h2>
             </div>
-            <span className={styles.pathNavHint}>
-              每一步都保留来源与节点事实
-            </span>
           </div>
           <div className={styles.pathGrid}>
-            <Link className={styles.pathCard} href="/featured">
+            <Link
+              className={styles.pathCard}
+              href="/featured"
+              data-reveal
+              style={revealDelay(60)}
+            >
               <span className={styles.pathCardTopline}>
                 <span className={styles.pathCardIndex} aria-hidden="true">
                   01
@@ -168,7 +182,12 @@ export function HomePage({ email, generationRequestsEnabled }: HomePageProps) {
               </span>
             </Link>
 
-            <Link className={styles.pathCard} href="/learning">
+            <Link
+              className={styles.pathCard}
+              href="/learning"
+              data-reveal
+              style={revealDelay(120)}
+            >
               <span className={styles.pathCardTopline}>
                 <span className={styles.pathCardIndex} aria-hidden="true">
                   02
@@ -189,7 +208,12 @@ export function HomePage({ email, generationRequestsEnabled }: HomePageProps) {
               </span>
             </Link>
 
-            <Link className={styles.pathCard} href="/generate">
+            <Link
+              className={styles.pathCard}
+              href="/generate"
+              data-reveal
+              style={revealDelay(180)}
+            >
               <span className={styles.pathCardTopline}>
                 <span className={styles.pathCardIndex} aria-hidden="true">
                   03

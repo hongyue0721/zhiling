@@ -419,7 +419,12 @@ h3 {
   justify-content: center;
   padding: clamp(48px, 7vw, 112px);
   color: var(--white);
-  background: linear-gradient(145deg, var(--primary-deep) 0%, var(--primary) 62%, #c99a6a 100%);
+  background: linear-gradient(
+    145deg,
+    var(--primary-deep) 0%,
+    var(--primary) 62%,
+    #c99a6a 100%
+  );
 }
 
 .auth-page-aside .brand-mark-name {
@@ -2011,7 +2016,9 @@ h3 {
   border-radius: 10px;
   color: var(--ink);
   font-size: 16px;
-  transition: background 0.16s ease, color 0.16s ease;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
 }
 
 .app-drawer-link:hover {
