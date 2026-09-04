@@ -365,10 +365,10 @@ describe("Zhihu source search adapter", () => {
 });
 
 describe("Zhihu structured model adapter", () => {
-  it("advertises the v3 model adapter contract for four question types", () => {
+  it("advertises the v4 model adapter contract for compact viewpoint input", () => {
     expect(
       runtimeWith(vi.fn<typeof fetch>()).versions.modelAdapterVersion,
-    ).toBe("zhida-thinking-1p5-json-2026-09-04-v3");
+    ).toBe("zhida-thinking-1p5-json-2026-09-04-v4");
   });
 
   it("normalizes only a complete, unique JSON Markdown fence", () => {
@@ -465,6 +465,40 @@ describe("Zhihu structured model adapter", () => {
       timeoutMs: 500,
     });
     expect(result.nodes[0]?.sourceIds).toEqual([]);
+  });
+
+  it("keeps unsupported viewpoint evidence inside the JSON contract", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify(modelFixture(JSON.stringify({ viewpoints: [] }))),
+        ),
+      );
+
+    const result = await runtimeWith(fetcher).structuredModel.extractViewpoints(
+      {
+        topic: "RAG",
+        map: assessmentMap,
+        sources: [assessmentSource],
+        requestId: "request-viewpoints-empty",
+        timeoutMs: 500,
+      },
+    );
+    expect(result).toEqual({ viewpoints: [] });
+
+    const body = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)) as {
+      messages: readonly [{ content: string }];
+    };
+    const prompt = body.messages[0]?.content ?? "";
+    expect(prompt).toContain(
+      'If no viewpoint is supported, return {"viewpoints":[]} without an explanation.',
+    );
+    expect(prompt).toContain(
+      "conditions must be a non-empty string for disagreement and null for every other kind.",
+    );
+    expect(prompt).not.toContain('"authorName"');
+    expect(prompt).not.toContain('"prerequisites"');
   });
 
   it("states the final per-node assessment cardinality in the model prompt", async () => {

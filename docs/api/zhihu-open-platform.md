@@ -15,7 +15,7 @@
 - 开放平台文档当前记载邀测免费额度为知乎搜索 5,000 次/日、知乎直答 100 次/日；同一账号的 Access Secret 与页面/API 请求共享对应额度池，规则可能变化，最终以个人中心用量统计为准。这些是供应方事实而非知径 SLA；适配器不硬编码本地额度、不伪造额度剩余或本地兜底；
 - 版本常量由 `EXTERNAL_PROVIDER_VERSIONS` 提供：
   - `sourceAdapterVersion = zhihu-http-2026-07-16-v2`；
-  - `modelAdapterVersion = zhida-thinking-1p5-json-2026-09-04-v3`。
+  - `modelAdapterVersion = zhida-thinking-1p5-json-2026-09-04-v4`。
 
 ## 生产 HTTP 请求
 
@@ -91,7 +91,7 @@ type NormalizedSource = {
 
 - `planDirections`：3–4 个 `{ directionId, title, objective, searchQuery }`；
 - `structureMap`：5–7 个节点及 `nodeId`/`prerequisiteNodeId` 先修边；
-- `extractViewpoints`：带 `nodeId`、封闭观点类型和 `sourceIds` 的观点；
+- `extractViewpoints`：只投影节点证据关系及来源标题/摘要，生成带 `nodeId`、封闭观点类型和 `sourceIds` 的观点；材料不能支持观点时返回空 `viewpoints`，不得改用解释性正文；
 - `generateAssessments`：四种题型（`single_choice`、`multiple_choice`、`matching`、`opinion_analysis`），均带选项、解释和 `sourceIds`，并按题型带严格互斥的答案字段。
 
 `generateAssessments` 的题目对象严格按 `type` 选择答案字段：
@@ -110,7 +110,8 @@ type NormalizedSource = {
 - `reasoning_content` 永远不作为结果；
 - URL 字段不是任何模型输出 schema 的成员，出现即失败。
 
-模型内容不是可信输入。适配器只去除首尾空白/一个前导 BOM，或在首尾严格匹配且内容完整唯一时去除一层 `json` Markdown 围栏；普通文本、任意花括号片段、残缺或重复围栏均返回稳定 `protocol_error`，不静默删除字段后继续。
+模型内容不是可信输入。适配器只去除首尾空白/一个前导 BOM，或在首尾严格匹配且内容完整唯一时去除一层 `json` Markdown 围栏；普通文本、拒答文本、任意花括号片段、残缺或重复围栏均返回稳定 `protocol_error`，不静默删除字段后继续。观点提示会把地图与来源标记为不可信数据，并明确使用空数组表达“没有受证据支持的观点”，避免把事实不足转写为协议外说明。
+
 ## 错误和重试语义
 
 应用只接收 `ExternalProviderError`：`provider` 为 `source` 或 `model`，`code` 为以下稳定值，且不携带响应正文：
@@ -126,6 +127,7 @@ type NormalizedSource = {
 | 成功状态但响应结构、必要字段、枚举或模型关系不符 | `protocol_error`          | 否        |
 
 HTTP 状态和供应方业务码都参与映射；状态码优先识别明确的鉴权、限流、配额、超时和 5xx 语义，其余再按业务码解析。可解析的 `Retry-After` 会作为 `retryAfterMs` 返回；不保存响应正文。适配器自身不重试；上层只对瞬时外部失败沿用每阶段最多两次重试，对 `protocol_error` 由任务级生成恢复策略决定（模型阶段最多 3 次总尝试、全任务最多 3 次额外恢复）。
+
 ## 配置
 
 以下变量只在服务端读取，全部必填：
@@ -147,13 +149,13 @@ ZHIHU_MODEL_TIMEOUT_MS=30000
 - 直答请求未发送 Authorization/Timestamp，合法 `model/messages/stream=false`，HTTP 401，错误 `code=invalid_api_key`、`type=authentication_error`；
 - 动态响应头、Cookie、request-id 和任何凭据均未保存。
 
-2026-09-04 的生产诊断已使用受控服务端配置取得成功搜索响应（HTTP 200、`Code=0`、5 条结果），确认线上条目包含已登记的 `AuthorSignature` 附加字段；未保存原始响应、Access Secret 或动态请求信息。成功空结果、限流/配额在线样本和直答成功在线响应仍未取得；契约测试使用脱敏官方 fixtures、兼容夹具与稳定人工构造错误响应，不能替代完整真实生成闭环验收。
+2026-09-04 的生产诊断已使用受控服务端配置取得成功搜索响应（HTTP 200、`Code=0`、5 条结果），确认线上条目包含已登记的 `AuthorSignature` 附加字段；直答诊断观察到一次合法 HTTP 200 envelope 携带短拒答正文，以及一次约 60 秒后的 HTTP 504，二者均不属于结构化成功样本，也未保存原始响应、Access Secret 或动态请求信息。成功空结果、限流/配额在线样本和直答结构化成功响应仍未取得；契约测试使用脱敏官方 fixtures、兼容夹具与稳定人工构造错误响应，不能替代完整真实生成闭环验收。
 
 ## 兼容登记
 
-| 编号   | 边界                                     | 当前支持                                                                                               | 失败方式                                          | 移除/复核条件                      |
-| ------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------- | ---------------------------------- |
-| ZH-001 | 知乎站内搜索 HTTP → `SourceSearchAccess` | 官方 Skill 0.2.1/2026-07-16 字段、封闭枚举及已观察的 `AuthorSignature` 可选附加字段                    | 必要字段、URL、枚举或 HTTP/业务错误不符时显式失败 | 官方字段或端点变化并完成版本迁移   |
-| ZH-002 | 知乎直答 HTTP → `StructuredModelAccess`  | `zhida-thinking-1p5`、`model/messages/stream=false`、JSON-only 提示、四种题型严格答案变体和用途 schema | 非 JSON、未知 ID/URL、关系不闭合或错误映射失败    | 模型版本冻结解除并完成新适配器契约 |
+| 编号   | 边界                                     | 当前支持                                                                                                                            | 失败方式                                          | 移除/复核条件                      |
+| ------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------- |
+| ZH-001 | 知乎站内搜索 HTTP → `SourceSearchAccess` | 官方 Skill 0.2.1/2026-07-16 字段、封闭枚举及已观察的 `AuthorSignature` 可选附加字段                                                 | 必要字段、URL、枚举或 HTTP/业务错误不符时显式失败 | 官方字段或端点变化并完成版本迁移   |
+| ZH-002 | 知乎直答 HTTP → `StructuredModelAccess`  | `zhida-thinking-1p5`、`model/messages/stream=false`、JSON-only 提示、观点紧凑证据投影/空数组语义、四种题型严格答案变体和用途 schema | 非 JSON、未知 ID/URL、关系不闭合或错误映射失败    | 模型版本冻结解除并完成新适配器契约 |
 
 该适配器不实现知乎 OAuth 登录、不读取用户数据接口、不使用 MCP 文本替代结构化 HTTP 来源。
