@@ -40,9 +40,9 @@ describe("identity server environment", () => {
     const source: NodeJS.ProcessEnv = {
       ...validEnvironment,
       EMAIL_VERIFICATION_ENABLED: "false",
+      RESEND_API_KEY: "",
+      AUTH_EMAIL_FROM: "",
     };
-    delete source.RESEND_API_KEY;
-    delete source.AUTH_EMAIL_FROM;
 
     const environment = readIdentityEnvironment(source);
 
