@@ -113,6 +113,9 @@ function stableMapId(normalizedTopic: string): string {
 }
 const STAGE_CHECKPOINT_KEY = "stage";
 const TASK_RECOVERY_CHECKPOINT_KEY = "task:auto-recovery";
+const MODEL_PROTOCOL_RECOVERY_BASE_DELAY_MS = 250;
+const SOURCE_TRANSIENT_RETRY_BASE_DELAY_MS = 250;
+const MODEL_TRANSIENT_RETRY_BASE_DELAY_MS = 5_000;
 
 export class GenerationLeaseLostError extends Error {
   readonly code = "generation_lease_lost" as const;
@@ -2344,7 +2347,8 @@ export class MapGenerationWorker {
           if (attemptCount >= MODEL_MAX_ATTEMPTS) {
             throw new GenerationTaskFailure("model_output_invalid", false);
           }
-          const delay = 250 * 2 ** (attemptCount - 1);
+          const delay =
+            MODEL_PROTOCOL_RECOVERY_BASE_DELAY_MS * 2 ** (attemptCount - 1);
           const remaining =
             asDate(task.deadlineAt).getTime() - this.now().getTime();
           if (remaining <= delay) {
@@ -2367,7 +2371,11 @@ export class MapGenerationWorker {
         if (!failure.retryable || attemptCount >= maxAttempts) {
           throw failure;
         }
-        const exponentialBackoff = 250 * 2 ** (attemptCount - 1);
+        const retryBaseDelay =
+          provider === "model"
+            ? MODEL_TRANSIENT_RETRY_BASE_DELAY_MS
+            : SOURCE_TRANSIENT_RETRY_BASE_DELAY_MS;
+        const exponentialBackoff = retryBaseDelay * 2 ** (attemptCount - 1);
         const delay = Math.max(exponentialBackoff, failure.retryAfterMs ?? 0);
         const remaining =
           asDate(task.deadlineAt).getTime() - this.now().getTime();

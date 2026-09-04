@@ -365,55 +365,71 @@ describe("map generation persistence", () => {
     ).toBe("succeeded");
   });
 
-  it("honors provider Retry-After without crossing the generation deadline", async () => {
-    const delays: number[] = [];
-    let planAttempts = 0;
-    const baseModel = provider();
-    const retryingModel: StructuredModelAccess = {
-      ...baseModel,
-      async planDirections(input) {
-        planAttempts += 1;
-        if (planAttempts < 3) {
-          throw {
-            provider: "model",
-            code: "rate_limited",
-            retryable: true,
-            retryAfterMs: 4_000,
-          };
-        }
-        return baseModel.planDirections(input);
-      },
-    };
-    const generation = createMapGenerationRuntime({
-      database,
-      providerVersions: versions,
-      rateLimit: testRateLimit,
-      idGenerator: () => crypto.randomUUID(),
-    }).generation;
-    const worker = createMapGenerationWorkerRuntime({
-      database,
-      providerVersions: versions,
-      sourceSearch: sourceSearch(),
-      structuredModel: retryingModel,
-      idGenerator: () => crypto.randomUUID(),
-      sleep: async (milliseconds) => {
-        delays.push(milliseconds);
-      },
-    }).worker;
-    const created = await generation.requestGeneration(
-      "user-a",
-      "retry-after topic",
-    );
+  it.each([
+    {
+      name: "uses a meaningful model backoff when Retry-After is absent",
+      code: "temporarily_unavailable" as const,
+      retryAfterMs: undefined,
+      expectedDelays: [5_000, 10_000],
+    },
+    {
+      name: "honors a longer provider Retry-After",
+      code: "rate_limited" as const,
+      retryAfterMs: 12_000,
+      expectedDelays: [12_000, 12_000],
+    },
+  ])(
+    "$name without crossing the generation deadline",
+    async ({ code, retryAfterMs, expectedDelays }) => {
+      const delays: number[] = [];
+      let planAttempts = 0;
+      const baseModel = provider();
+      const retryingModel: StructuredModelAccess = {
+        ...baseModel,
+        async planDirections(input) {
+          planAttempts += 1;
+          if (planAttempts < 3) {
+            throw {
+              provider: "model",
+              code,
+              retryable: true,
+              ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+            };
+          }
+          return baseModel.planDirections(input);
+        },
+      };
+      const generation = createMapGenerationRuntime({
+        database,
+        providerVersions: versions,
+        rateLimit: testRateLimit,
+        idGenerator: () => crypto.randomUUID(),
+      }).generation;
+      const worker = createMapGenerationWorkerRuntime({
+        database,
+        providerVersions: versions,
+        sourceSearch: sourceSearch(),
+        structuredModel: retryingModel,
+        idGenerator: () => crypto.randomUUID(),
+        sleep: async (milliseconds) => {
+          delays.push(milliseconds);
+        },
+      }).worker;
+      const created = await generation.requestGeneration(
+        "user-a",
+        `retry-delay ${code}`,
+      );
 
-    await worker.runOnce("retry-worker");
+      await worker.runOnce("retry-worker");
 
-    expect(planAttempts).toBe(3);
-    expect(delays.slice(0, 2)).toEqual([4_000, 4_000]);
-    expect(
-      (await generation.getGeneration("user-a", created.snapshot.taskId))
-        ?.status,
-    ).toBe("succeeded");
-  });
+      expect(planAttempts).toBe(3);
+      expect(delays.slice(0, 2)).toEqual(expectedDelays);
+      expect(
+        (await generation.getGeneration("user-a", created.snapshot.taskId))
+          ?.status,
+      ).toBe("succeeded");
+    },
+  );
   it("keeps external retry attempts across an expired worker lease", async () => {
     const baseTime = new Date("2026-09-02T00:00:00.000Z");
     let expired = false;
