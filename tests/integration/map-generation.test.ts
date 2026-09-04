@@ -40,7 +40,7 @@ const testRateLimit = {
 } as const;
 
 const sources: readonly GenerationSource[] = Array.from(
-  { length: 5 },
+  { length: 6 },
   (_, index) => ({
     sourceId: `source-${index}`,
     title: `Source ${index}`,
@@ -94,23 +94,29 @@ function provider(): StructuredModelAccess {
         })),
       };
     },
-    async generateAssessments() {
+    async generateAssessments(input) {
+      const targetNodeIds =
+        input.targetNodeIds ??
+        sources.map(({ sourceId }) => sourceId.replace("source-", "node-"));
+      const targetNodeSet = new Set(targetNodeIds);
       return {
-        questions: sources.flatMap((source, index) =>
-          [0, 1].map((questionIndex) => ({
-            questionId: `question-${index}-${questionIndex}`,
-            nodeId: `node-${index}`,
-            type: "single_choice" as const,
-            prompt: `Question ${index}-${questionIndex}`,
-            explanation: `Explanation ${index}-${questionIndex}`,
-            options: [
-              { optionId: "correct", label: "Correct" },
-              { optionId: "wrong", label: "Wrong" },
-            ],
-            correctOptionIds: ["correct"],
-            sourceIds: [source.sourceId],
-          })),
-        ),
+        questions: sources
+          .flatMap((source, index) =>
+            [0, 1].map((questionIndex) => ({
+              questionId: `question-${index}-${questionIndex}`,
+              nodeId: `node-${index}`,
+              type: "single_choice" as const,
+              prompt: `Question ${index}-${questionIndex}`,
+              explanation: `Explanation ${index}-${questionIndex}`,
+              options: [
+                { optionId: "correct", label: "Correct" },
+                { optionId: "wrong", label: "Wrong" },
+              ],
+              correctOptionIds: ["correct"],
+              sourceIds: [source.sourceId],
+            })),
+          )
+          .filter(({ nodeId }) => targetNodeSet.has(nodeId)),
       };
     },
   };
@@ -284,13 +290,14 @@ describe("map generation persistence", () => {
     );
   });
 
-  it("uses one model and source call per normal stage without recovery", async () => {
+  it("uses one model call per assessment batch and source call per normal stage", async () => {
     const modelCalls = {
       planning: 0,
       structuring: 0,
       extracting: 0,
       assessing: 0,
     };
+    const assessmentTargets: string[][] = [];
     const modelTimeouts: number[] = [];
     const sourceTimeouts: number[] = [];
     const baseModel = provider();
@@ -312,6 +319,7 @@ describe("map generation persistence", () => {
       },
       async generateAssessments(input) {
         modelCalls.assessing += 1;
+        assessmentTargets.push([...(input.targetNodeIds ?? [])]);
         modelTimeouts.push(input.timeoutMs);
         return baseModel.generateAssessments(input);
       },
@@ -354,15 +362,234 @@ describe("map generation persistence", () => {
       planning: 1,
       structuring: 1,
       extracting: 1,
-      assessing: 1,
+      assessing: 3,
     });
+    expect(assessmentTargets).toEqual([
+      ["node-0", "node-1"],
+      ["node-2", "node-3"],
+      ["node-4", "node-5"],
+    ]);
+    expect(modelTimeouts).toEqual([
+      56_789, 56_789, 56_789, 56_789, 56_789, 56_789,
+    ]);
+    const assessingStage = await database
+      .select({ output: generationCheckpoint.output })
+      .from(generationCheckpoint)
+      .where(
+        and(
+          eq(generationCheckpoint.taskId, created.snapshot.taskId),
+          eq(generationCheckpoint.stage, "assessing"),
+          eq(generationCheckpoint.operationKey, "stage"),
+        ),
+      );
+    const stageOutput = assessingStage[0]?.output;
+    const assessedQuestionNodeIds =
+      typeof stageOutput === "object" &&
+      stageOutput !== null &&
+      "questions" in stageOutput &&
+      Array.isArray(stageOutput.questions)
+        ? stageOutput.questions.map((question) =>
+            typeof question === "object" &&
+            question !== null &&
+            "nodeId" in question &&
+            typeof question.nodeId === "string"
+              ? question.nodeId
+              : null,
+          )
+        : undefined;
+    expect(assessedQuestionNodeIds).toEqual([
+      "node-0",
+      "node-0",
+      "node-1",
+      "node-1",
+      "node-2",
+      "node-2",
+      "node-3",
+      "node-3",
+      "node-4",
+      "node-4",
+      "node-5",
+      "node-5",
+    ]);
     expect(sourceCalls).toBe(3);
-    expect(modelTimeouts).toEqual([56_789, 56_789, 56_789, 56_789]);
     expect(sourceTimeouts).toEqual([1_234, 1_234, 1_234]);
     expect(
       (await generation.getGeneration("user-a", created.snapshot.taskId))
         ?.status,
     ).toBe("succeeded");
+  });
+  it("resumes assessing from completed batch checkpoints after a lease interruption", async () => {
+    const assessmentTargets: string[][] = [];
+    let interrupted = false;
+    let taskId = "";
+    const baseModel = provider();
+    const interruptingModel: StructuredModelAccess = {
+      ...baseModel,
+      async generateAssessments(input) {
+        const targetNodeIds = [...(input.targetNodeIds ?? [])];
+        assessmentTargets.push(targetNodeIds);
+        if (!interrupted && targetNodeIds[0] === "node-2") {
+          interrupted = true;
+          await pool.query(
+            `UPDATE "generation_task"
+             SET "lease_expires_at" = NOW() - INTERVAL '1 second'
+             WHERE "id" = $1`,
+            [taskId],
+          );
+        }
+        return baseModel.generateAssessments(input);
+      },
+    };
+    const generation = createMapGenerationRuntime({
+      database,
+      providerVersions: versions,
+      rateLimit: testRateLimit,
+      idGenerator: () => crypto.randomUUID(),
+    }).generation;
+    const workerDependencies = {
+      database,
+      providerVersions: versions,
+      sourceSearch: sourceSearch(),
+      structuredModel: interruptingModel,
+      idGenerator: () => crypto.randomUUID(),
+      sleep: async () => undefined,
+      scheduleHeartbeat: () => () => undefined,
+    };
+    const firstWorker =
+      createMapGenerationWorkerRuntime(workerDependencies).worker;
+    const created = await generation.requestGeneration(
+      "user-a",
+      "assessment checkpoint recovery topic",
+    );
+    taskId = created.snapshot.taskId;
+
+    await firstWorker.runOnce("assessment-recovery-worker-1");
+
+    expect(assessmentTargets).toEqual([
+      ["node-0", "node-1"],
+      ["node-2", "node-3"],
+    ]);
+    expect((await generation.getGeneration("user-a", taskId))?.status).toBe(
+      "assessing",
+    );
+    const firstBatch = await database
+      .select({
+        output: generationCheckpoint.output,
+        completedAt: generationCheckpoint.completedAt,
+      })
+      .from(generationCheckpoint)
+      .where(
+        and(
+          eq(generationCheckpoint.taskId, taskId),
+          eq(generationCheckpoint.stage, "assessing"),
+          eq(generationCheckpoint.operationKey, "assessing:batch-0"),
+        ),
+      );
+    expect(firstBatch[0]?.output).toMatchObject({
+      questions: expect.any(Array),
+    });
+    expect(firstBatch[0]?.completedAt).not.toBeNull();
+
+    const secondWorker =
+      createMapGenerationWorkerRuntime(workerDependencies).worker;
+    await secondWorker.runOnce("assessment-recovery-worker-2");
+
+    expect(assessmentTargets).toEqual([
+      ["node-0", "node-1"],
+      ["node-2", "node-3"],
+      ["node-2", "node-3"],
+      ["node-4", "node-5"],
+    ]);
+    expect((await generation.getGeneration("user-a", taskId))?.status).toBe(
+      "succeeded",
+    );
+  });
+
+  it("keeps assessment retry budgets isolated by batch operation key", async () => {
+    const attemptsByBatch = new Map<string, number>();
+    const baseModel = provider();
+    const retryingModel: StructuredModelAccess = {
+      ...baseModel,
+      async generateAssessments(input) {
+        const key = (input.targetNodeIds ?? []).join(",");
+        const attempts = (attemptsByBatch.get(key) ?? 0) + 1;
+        attemptsByBatch.set(key, attempts);
+        if (key === "node-0,node-1" && attempts < 3) {
+          throw {
+            provider: "model",
+            code: "temporarily_unavailable",
+            retryable: true,
+          };
+        }
+        return baseModel.generateAssessments(input);
+      },
+    };
+    const generation = createMapGenerationRuntime({
+      database,
+      providerVersions: versions,
+      rateLimit: testRateLimit,
+      idGenerator: () => crypto.randomUUID(),
+    }).generation;
+    const worker = createMapGenerationWorkerRuntime({
+      database,
+      providerVersions: versions,
+      sourceSearch: sourceSearch(),
+      structuredModel: retryingModel,
+      idGenerator: () => crypto.randomUUID(),
+      sleep: async () => undefined,
+    }).worker;
+    const created = await generation.requestGeneration(
+      "user-a",
+      "assessment batch retry budget topic",
+    );
+
+    await worker.runOnce("assessment-retry-worker");
+
+    expect(attemptsByBatch).toEqual(
+      new Map([
+        ["node-0,node-1", 3],
+        ["node-2,node-3", 1],
+        ["node-4,node-5", 1],
+      ]),
+    );
+    const batchCheckpoints = await database
+      .select({
+        operationKey: generationCheckpoint.operationKey,
+        attemptCount: generationCheckpoint.attemptCount,
+        completedAt: generationCheckpoint.completedAt,
+      })
+      .from(generationCheckpoint)
+      .where(
+        and(
+          eq(generationCheckpoint.taskId, created.snapshot.taskId),
+          eq(generationCheckpoint.stage, "assessing"),
+        ),
+      );
+    expect(
+      batchCheckpoints
+        .filter(({ operationKey }) =>
+          operationKey.startsWith("assessing:batch-"),
+        )
+        .sort((left, right) =>
+          left.operationKey.localeCompare(right.operationKey),
+        ),
+    ).toEqual([
+      {
+        operationKey: "assessing:batch-0",
+        attemptCount: 0,
+        completedAt: expect.any(Date),
+      },
+      {
+        operationKey: "assessing:batch-1",
+        attemptCount: 0,
+        completedAt: expect.any(Date),
+      },
+      {
+        operationKey: "assessing:batch-2",
+        attemptCount: 0,
+        completedAt: expect.any(Date),
+      },
+    ]);
   });
 
   it.each([

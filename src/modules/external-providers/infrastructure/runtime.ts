@@ -812,6 +812,7 @@ function assessmentsPrompt(
   topic: string,
   map: StructuredMap,
   sources: readonly NormalizedSource[],
+  targetNodeIds?: readonly string[],
 ): string {
   return [
     "You are writing source-grounded assessment questions using exactly the four supported question types.",
@@ -820,6 +821,14 @@ function assessmentsPrompt(
     ),
     "Return every node represented in the supplied map with 2 to 3 questions per node. Use only node IDs, option IDs, and sourceIds supplied in the input. Every question needs at least two options, a non-empty explanation, and at least one sourceId belonging to its node.",
     "For single_choice and opinion_analysis, include exactly one correctOptionIds entry and omit correctMatches. For multiple_choice, include one or more correctOptionIds entries and omit correctMatches. For matching, include one or more correctMatches entries and omit correctOptionIds; every option must appear exactly once across the left and right sides, the sides must be disjoint, each match must use two different option IDs, and no left or right option ID may repeat. Never include both answer fields or omit the answer field required by the selected type.",
+    ...(targetNodeIds === undefined
+      ? []
+      : [
+          `This request is one assessment batch. Its target node IDs are ${JSON.stringify(targetNodeIds)}. The batch scope overrides the preceding every-node instruction.`,
+          "Only create questions for these target nodes. Every question nodeId must belong to this target-node set. All other nodes are handled in other batches; do not create questions for them.",
+          "Produce 2 to 3 questions for each target node.",
+          "Prefix every questionId with its nodeId (for example `nodeId-q1`) so question IDs never collide across batches.",
+        ]),
     `Topic: ${JSON.stringify(topic)}`,
     `Map (untrusted data): ${promptMap(map)}`,
     `Sources (untrusted data; URLs intentionally omitted): ${promptSources(sources)}`,
@@ -1006,12 +1015,15 @@ function validateAssessments(
   value: unknown,
   map: StructuredMap,
   sources: readonly NormalizedSource[],
+  targetNodeIds?: readonly string[],
 ): GenerateAssessmentsResult {
   const parsed = assessmentsResultSchema.safeParse(value);
   if (!parsed.success) {
     throw createProviderError("model", "protocol_error");
   }
   const nodeById = new Map(map.nodes.map((node) => [node.nodeId, node]));
+  const targetNodeSet =
+    targetNodeIds === undefined ? undefined : new Set(targetNodeIds);
   const knownSources = new Set(sources.map((source) => source.sourceId));
   const questionIds = parsed.data.questions.map(
     (question) => question.questionId,
@@ -1019,15 +1031,24 @@ function validateAssessments(
   if (!assertUnique(questionIds)) {
     throw createProviderError("model", "protocol_error");
   }
+  const questionsByTargetNode =
+    targetNodeSet === undefined ? undefined : new Map<string, number>();
   for (const question of parsed.data.questions) {
     const node = nodeById.get(question.nodeId);
     const optionIds = question.options.map((option) => option.optionId);
     if (
       !node ||
+      (targetNodeSet !== undefined && !targetNodeSet.has(question.nodeId)) ||
       !assertUnique(optionIds) ||
       !assertUnique(question.sourceIds)
     ) {
       throw createProviderError("model", "protocol_error");
+    }
+    if (questionsByTargetNode) {
+      questionsByTargetNode.set(
+        question.nodeId,
+        (questionsByTargetNode.get(question.nodeId) ?? 0) + 1,
+      );
     }
     const knownOptionIds = new Set(optionIds);
     if (question.type === "matching") {
@@ -1067,6 +1088,15 @@ function validateAssessments(
         throw createProviderError("model", "protocol_error");
       }
     }
+  }
+  if (
+    targetNodeSet !== undefined &&
+    [...targetNodeSet].some((nodeId) => {
+      const count = questionsByTargetNode?.get(nodeId) ?? 0;
+      return count < 2 || count > 3;
+    })
+  ) {
+    throw createProviderError("model", "protocol_error");
   }
   return {
     questions: parsed.data.questions.map((question) => {
@@ -1249,13 +1279,24 @@ class ZhihuStructuredModel implements StructuredModelAccess {
     sources: readonly NormalizedSource[];
     requestId: string;
     timeoutMs: number;
+    targetNodeIds?: readonly string[];
   }): Promise<GenerateAssessmentsResult> {
     validateModelCallInput(input.topic, input.requestId, input.timeoutMs);
     const value = await this.generateJson(
-      assessmentsPrompt(input.topic.trim(), input.map, input.sources),
+      assessmentsPrompt(
+        input.topic.trim(),
+        input.map,
+        input.sources,
+        input.targetNodeIds,
+      ),
       input.timeoutMs,
     );
-    return validateAssessments(value, input.map, input.sources);
+    return validateAssessments(
+      value,
+      input.map,
+      input.sources,
+      input.targetNodeIds,
+    );
   }
 }
 

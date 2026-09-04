@@ -69,6 +69,8 @@ export interface GenerationStructuredModelPort {
       sources: readonly GenerationSourceCandidate[];
       requestId: string;
       timeoutMs: number;
+      /** Restrict this request to questions for one assessment batch. */
+      targetNodeIds?: readonly string[];
     }>,
   ): Promise<
     Readonly<{

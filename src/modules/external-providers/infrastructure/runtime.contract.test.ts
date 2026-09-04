@@ -585,6 +585,157 @@ describe("Zhihu structured model adapter", () => {
       "every option must appear exactly once across the left and right sides",
     );
   });
+  it("scopes a batch prompt and validates cardinality for target nodes", async () => {
+    const targetMap = {
+      ...assessmentMap,
+      nodes: [
+        { ...assessmentMap.nodes[0]!, nodeId: "node-1" },
+        { ...assessmentMap.nodes[0]!, nodeId: "node-2" },
+      ],
+    };
+    const questions = {
+      questions: [0, 1].map((index) => ({
+        questionId: `target-question-${index}`,
+        nodeId: "node-1",
+        type: "single_choice" as const,
+        prompt: `Target prompt ${index}`,
+        explanation: `Target explanation ${index}`,
+        options: [
+          { optionId: `target-correct-${index}`, label: "Correct" },
+          { optionId: `target-wrong-${index}`, label: "Wrong" },
+        ],
+        correctOptionIds: [`target-correct-${index}`],
+        sourceIds: [assessmentSource.sourceId],
+      })),
+    };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(modelFixture(JSON.stringify(questions)))),
+      );
+
+    const result = await runtimeWith(
+      fetcher,
+    ).structuredModel.generateAssessments({
+      topic: "RAG",
+      map: targetMap,
+      sources: [assessmentSource],
+      requestId: "request-assessment-target-node",
+      timeoutMs: 500,
+      targetNodeIds: ["node-1"],
+    });
+
+    expect(result.questions).toHaveLength(2);
+    const body = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)) as {
+      messages: readonly [{ content: string }];
+    };
+    const prompt = body.messages[0]?.content ?? "";
+    expect(prompt).toContain('["node-1"]');
+    expect(prompt).toContain(
+      "The batch scope overrides the preceding every-node instruction.",
+    );
+    expect(prompt).toContain(
+      "Only create questions for these target nodes. Every question nodeId must belong to this target-node set.",
+    );
+    expect(prompt).toContain(
+      "All other nodes are handled in other batches; do not create questions for them.",
+    );
+    expect(prompt).toContain("Produce 2 to 3 questions for each target node.");
+    expect(prompt).toContain(
+      "Prefix every questionId with its nodeId (for example `nodeId-q1`) so question IDs never collide across batches.",
+    );
+  });
+
+  it("rejects assessment questions outside the target node set", async () => {
+    const targetMap = {
+      ...assessmentMap,
+      nodes: [
+        { ...assessmentMap.nodes[0]!, nodeId: "node-1" },
+        { ...assessmentMap.nodes[0]!, nodeId: "node-2" },
+      ],
+    };
+    const outOfRangeQuestion = {
+      questionId: "out-of-range-question",
+      nodeId: "node-2",
+      type: "single_choice" as const,
+      prompt: "Prompt",
+      explanation: "Explanation",
+      options: [
+        { optionId: "correct", label: "Correct" },
+        { optionId: "wrong", label: "Wrong" },
+      ],
+      correctOptionIds: ["correct"],
+      sourceIds: [assessmentSource.sourceId],
+    };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify(
+            modelFixture(JSON.stringify({ questions: [outOfRangeQuestion] })),
+          ),
+        ),
+      );
+
+    await expect(
+      providerError(
+        runtimeWith(fetcher).structuredModel.generateAssessments({
+          topic: "RAG",
+          map: targetMap,
+          sources: [assessmentSource],
+          requestId: "request-assessment-target-node-out-of-range",
+          timeoutMs: 500,
+          targetNodeIds: ["node-1"],
+        }),
+      ),
+    ).resolves.toMatchObject({
+      provider: "model",
+      code: "protocol_error",
+      retryable: false,
+    });
+  });
+
+  it("rejects a target batch that does not meet per-node question cardinality", async () => {
+    const question = {
+      questionId: "incomplete-target-question",
+      nodeId: "node-1",
+      type: "single_choice" as const,
+      prompt: "Prompt",
+      explanation: "Explanation",
+      options: [
+        { optionId: "correct", label: "Correct" },
+        { optionId: "wrong", label: "Wrong" },
+      ],
+      correctOptionIds: ["correct"],
+      sourceIds: [assessmentSource.sourceId],
+    };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify(
+            modelFixture(JSON.stringify({ questions: [question] })),
+          ),
+        ),
+      );
+
+    await expect(
+      providerError(
+        runtimeWith(fetcher).structuredModel.generateAssessments({
+          topic: "RAG",
+          map: assessmentMap,
+          sources: [assessmentSource],
+          requestId: "request-assessment-target-node-incomplete",
+          timeoutMs: 500,
+          targetNodeIds: ["node-1"],
+        }),
+      ),
+    ).resolves.toMatchObject({
+      provider: "model",
+      code: "protocol_error",
+      retryable: false,
+    });
+  });
 
   it("accepts all four assessment types without losing their answer fields", async () => {
     const questions = {

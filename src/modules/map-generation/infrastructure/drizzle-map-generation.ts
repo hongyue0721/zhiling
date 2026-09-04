@@ -6,8 +6,10 @@ import {
   desc,
   eq,
   gt,
+  isNotNull,
   isNull,
   lt,
+  like,
   notInArray,
   or,
   sql,
@@ -60,6 +62,7 @@ import {
   type GenerationCandidate,
   type GenerationDirectionCandidate,
   type GenerationMapCandidate,
+  type GenerationQuestionCandidate,
   type GenerationSourceCandidate,
   type GenerationViewpointCandidate,
   validateGenerationCandidate,
@@ -108,6 +111,9 @@ export const GENERATION_CACHE_TTL_MS = 6 * 60 * 60 * 1_000;
 export const SEARCH_RESULTS_PER_DIRECTION = 8;
 export const SUPPLEMENT_RESULTS_PER_NODE = 6;
 export const MAX_TASK_AUTO_RECOVERIES = 3;
+/** Two nodes keep each model response near six questions and below Zhihu's roughly 70-second processing limit; larger batches reduce requests but make timeouts more likely. */
+export const ASSESSMENT_BATCH_SIZE = 2;
+const ASSESSMENT_BATCH_OPERATION_PREFIX = "assessing:batch-";
 function stableMapId(normalizedTopic: string): string {
   return `map_${createHash("sha256").update(normalizedTopic, "utf8").digest("hex")}`;
 }
@@ -1160,6 +1166,81 @@ export class DrizzleMapGenerationRepository {
       );
     return new Map(rows.map((row) => [row.stage, asCheckpointRow(row)]));
   }
+  async recordBatchCheckpoint(
+    taskId: string,
+    workerId: string,
+    operationKey: string,
+    output: unknown,
+  ): Promise<void> {
+    const now = this.now();
+    await this.database.transaction(async (transaction) => {
+      const owner = await transaction
+        .update(generationTask)
+        .set({
+          leaseExpiresAt: new Date(now.getTime() + GENERATION_LEASE_MS),
+          heartbeatAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(generationTask.id, taskId),
+            eq(generationTask.status, "assessing"),
+            eq(generationTask.leaseOwner, workerId),
+            gt(generationTask.leaseExpiresAt, now),
+          ),
+        )
+        .returning({ id: generationTask.id });
+      if (owner.length === 0) {
+        throw new GenerationLeaseLostError();
+      }
+      await transaction
+        .insert(generationCheckpoint)
+        .values({
+          taskId,
+          stage: "assessing",
+          operationKey,
+          input: null,
+          output,
+          attemptCount: 0,
+          completedAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [
+            generationCheckpoint.taskId,
+            generationCheckpoint.stage,
+            generationCheckpoint.operationKey,
+          ],
+          set: {
+            input: null,
+            output,
+            completedAt: now,
+            updatedAt: now,
+          },
+        });
+    });
+  }
+
+  async getCompletedAssessmentBatches(
+    taskId: string,
+  ): Promise<CheckpointRow[]> {
+    const rows = await this.database
+      .select()
+      .from(generationCheckpoint)
+      .where(
+        and(
+          eq(generationCheckpoint.taskId, taskId),
+          eq(generationCheckpoint.stage, "assessing"),
+          like(
+            generationCheckpoint.operationKey,
+            `${ASSESSMENT_BATCH_OPERATION_PREFIX}%`,
+          ),
+          isNotNull(generationCheckpoint.completedAt),
+        ),
+      )
+      .orderBy(asc(generationCheckpoint.operationKey));
+    return rows.map((row) => asCheckpointRow(row));
+  }
 
   async publishCandidate(
     task: TaskRow,
@@ -2141,40 +2222,136 @@ export class MapGenerationWorker {
             requiredSourceIds,
             sourceIdsByDirection: searched?.sourceIdsByDirection,
           });
-        const assessed = await this.callModel(
-          task,
-          workerId,
-          "assessing",
-          "assessing",
-          (attempt) => {
-            const budget = budgetForAttempt(attempt);
+        const assessmentBatches = Array.from(
+          {
+            length: Math.ceil(
+              extracted.map.nodes.length / ASSESSMENT_BATCH_SIZE,
+            ),
+          },
+          (_, index) => {
+            const start = index * ASSESSMENT_BATCH_SIZE;
             return {
-              map: extracted.map,
-              viewpoints: extracted.viewpoints,
-              sources: budget.sources,
-              contextBudget: {
-                strategy: budget.strategy,
-                attempt: budget.attempt,
-                serializedChars: budget.serializedChars,
-              },
+              index,
+              nodes: extracted.map.nodes.slice(
+                start,
+                start + ASSESSMENT_BATCH_SIZE,
+              ),
+              operationKey: `${ASSESSMENT_BATCH_OPERATION_PREFIX}${index}`,
             };
           },
-          (attempt) => {
-            const contextSources = budgetForAttempt(attempt).sources;
-            return this.structuredModel
-              .generateAssessments({
-                topic: task.topic,
-                map: { ...extracted.map, viewpoints: extracted.viewpoints },
-                sources: contextSources,
-                requestId: `${task.id}:assessing`,
-                timeoutMs: this.externalTimeout(task, "model"),
-              })
-              .then((value) => {
-                assertModelOutputHasNoUrl(value, "assessing");
-                return value;
-              });
-          },
         );
+        const completedBatchRows =
+          await this.repository.getCompletedAssessmentBatches(task.id);
+        const completedBatchQuestions = new Map<
+          number,
+          readonly GenerationQuestionCandidate[]
+        >();
+        for (const row of completedBatchRows) {
+          const match = /^assessing:batch-(\d+)$/u.exec(row.operationKey);
+          if (!match) {
+            continue;
+          }
+          const batchIndex = Number(match[1]);
+          if (
+            !Number.isSafeInteger(batchIndex) ||
+            batchIndex < 0 ||
+            batchIndex >= assessmentBatches.length
+          ) {
+            continue;
+          }
+          const batchOutput = asRecord(row.output);
+          if (!batchOutput || !isArray(batchOutput.questions)) {
+            throw new GenerationTaskFailure("internal_failure", false);
+          }
+          completedBatchQuestions.set(
+            batchIndex,
+            batchOutput.questions as readonly GenerationQuestionCandidate[],
+          );
+        }
+
+        const questionsByNode = new Map<
+          string,
+          GenerationQuestionCandidate[]
+        >();
+        const knownAssessmentNodeIds = new Set(
+          extracted.map.nodes.map((node) => node.nodeId),
+        );
+        let completedBatchCount = 0;
+        for (const batch of assessmentBatches) {
+          let questions: readonly GenerationQuestionCandidate[];
+          const cachedQuestions = completedBatchQuestions.get(batch.index);
+          if (cachedQuestions !== undefined) {
+            questions = cachedQuestions;
+          } else {
+            const assessed = await this.callModel(
+              task,
+              workerId,
+              "assessing",
+              batch.operationKey,
+              (attempt) => {
+                const budget = budgetForAttempt(attempt);
+                return {
+                  map: extracted.map,
+                  viewpoints: extracted.viewpoints,
+                  sources: budget.sources,
+                  contextBudget: {
+                    strategy: budget.strategy,
+                    attempt: budget.attempt,
+                    serializedChars: budget.serializedChars,
+                  },
+                };
+              },
+              (attempt) => {
+                const contextSources = budgetForAttempt(attempt).sources;
+                return this.structuredModel
+                  .generateAssessments({
+                    topic: task.topic,
+                    map: {
+                      ...extracted.map,
+                      viewpoints: extracted.viewpoints,
+                    },
+                    sources: contextSources,
+                    requestId: `${task.id}:assessing:batch-${batch.index}`,
+                    timeoutMs: this.externalTimeout(task, "model"),
+                    targetNodeIds: batch.nodes.map((node) => node.nodeId),
+                  })
+                  .then((value) => {
+                    assertModelOutputHasNoUrl(value, "assessing");
+                    return value;
+                  });
+              },
+            );
+            await this.repository.recordBatchCheckpoint(
+              task.id,
+              workerId,
+              batch.operationKey,
+              assessed,
+            );
+            questions = assessed.questions;
+          }
+          for (const question of questions) {
+            const nodeQuestions = questionsByNode.get(question.nodeId) ?? [];
+            nodeQuestions.push(question);
+            questionsByNode.set(question.nodeId, nodeQuestions);
+          }
+          completedBatchCount += 1;
+          await this.repository.publishProgress(task.id, workerId, {
+            status: "assessing",
+            stage: "assessing",
+            assessment: {
+              completed: completedBatchCount,
+              total: assessmentBatches.length,
+            },
+          });
+        }
+        const assessedQuestions = [
+          ...extracted.map.nodes.flatMap(
+            (node) => questionsByNode.get(node.nodeId) ?? [],
+          ),
+          ...[...questionsByNode.entries()]
+            .filter(([nodeId]) => !knownAssessmentNodeIds.has(nodeId))
+            .flatMap(([, questions]) => questions),
+        ];
         const directions = planned.directions;
         await this.repository.completeStage(
           task.id,
@@ -2187,7 +2364,7 @@ export class MapGenerationWorker {
             directions,
             map: extracted.map,
             viewpoints: extracted.viewpoints,
-            questions: assessed.questions,
+            questions: assessedQuestions,
             sources: extracted.sources,
           },
         );
@@ -2195,7 +2372,7 @@ export class MapGenerationWorker {
           directions,
           map: extracted.map,
           viewpoints: extracted.viewpoints,
-          questions: assessed.questions,
+          questions: assessedQuestions,
           sources: extracted.sources,
         });
         status = "validating";

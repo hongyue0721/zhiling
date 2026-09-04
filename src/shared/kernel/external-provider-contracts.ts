@@ -178,6 +178,8 @@ export type GenerateAssessmentsInput = Readonly<{
   sources: readonly NormalizedSource[];
   requestId: string;
   timeoutMs: number;
+  /** Restrict this request to questions for one assessment batch of node IDs. */
+  targetNodeIds?: readonly string[];
 }>;
 
 export type StructuredModelAccess = Readonly<{

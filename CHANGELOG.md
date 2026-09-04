@@ -54,6 +54,8 @@
 - 结构化阶段只发送来源 ID 与标题的紧凑来源载荷，模型适配版本升级为 `zhida-thinking-1p5-json-2026-09-04-v5`，修复完整来源载荷触发知乎直答输出普通文本拒答的问题。
 - 修复生产容器与知乎平台间歇性 TLS 卡死的根因：为生产 Compose 网络显式设置 MTU `1452`。
 
+- 出题阶段改为按两个节点分批生成并在每批成功后写入批级 checkpoint；修复知乎直答服务端长请求（约 70 秒）处理上限导致的间歇性判死，并支持恢复时只补缺失批次。
+
 ### Verification notes
 
 - Issue #14 的最终定向结果已更新：catalog + assessment integration `17` 项、generation-rate-limit integration `5` 项、map-generation integration `10` 项（生成集成合计 `15` 项）、HTTP contracts `23` 项（其中 map-generation HTTP `7` 项）、provider `17` 项、candidate + assessment unit `16` 项；用户闭环 E2E `6/6`（`28.2s`）。

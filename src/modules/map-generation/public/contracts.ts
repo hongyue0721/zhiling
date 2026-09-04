@@ -224,6 +224,8 @@ export type StructuredModelAccess = Readonly<{
       sources: readonly GenerationSource[];
       requestId: string;
       timeoutMs: number;
+      /** Restrict this request to questions for one assessment batch. */
+      targetNodeIds?: readonly string[];
     }>,
   ): Promise<Readonly<{ questions: readonly StructuredAssessmentQuestion[] }>>;
 }>;
