@@ -11,6 +11,19 @@
 - 防火墙只开放 SSH、80 和 443；禁止开放 5432。PostgreSQL 在
   `compose.production.yaml` 中没有 `ports`，只通过默认 Compose 私有网络供
   `migrate`、`web` 和 `generation-worker` 使用。
+- 生产宿主物理网卡 `eno1` 的 MTU 为 1480（供应商隧道封装）。因此生产 Compose
+  默认网络必须在 `compose.production.yaml` 中显式设置
+  `driver_opts.com.docker.network.driver.mtu: "1452"`：Docker 默认网络 MTU 1500
+  会宣告 MSS 1460，回传大包在 1480 链路上可能被静默丢弃，导致与知乎开发平台的
+  TLS 握手卡死；1452 网络 MTU 使 MSS = 1452 - 40 = 1412，TCP 整包 1452
+  小于宿主链路 MTU。部署后验证：
+  ```bash
+  docker network inspect zhijing-production_default --format '{{index .Options "com.docker.network.driver.mtu"}}'
+  docker exec zhijing-production-web-1 cat /sys/class/net/eth0/mtu
+  ```
+  两条命令输出都应为 `1452`。不得将该网络 MTU 改回 1500 或删除
+  `driver_opts`；迁移到其他宿主机时，必须先确认宿主物理网卡 MTU 再决定该值；
+  仅当宿主 MTU 为标准 1500 且无隧道时才可移除 `driver_opts`。
 - Web 只绑定到 `127.0.0.1:3000`，生产预检强制 `WEB_BIND_PORT=3000`，并额外加入
   external 网络 `zhijing-proxy` 供已配置的反向代理访问；数据库和 Worker 不加入该
   网络。不要把端口改成 `0.0.0.0`；Nginx 示例配置见

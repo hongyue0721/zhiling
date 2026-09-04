@@ -110,6 +110,14 @@ volumes:
     external: true
 
 networks:
+  # 生产宿主物理网卡 eno1 的 MTU 为 1480（供应商隧道封装开销 20 字节）。
+  # Docker 默认网络 MTU=1500 会宣告 MSS=1460；该出站大包可能在 1480
+  # 链路上被静默丢弃且 ICMP 分片通知不可靠，导致知乎开发平台 TLS 握手
+  # 间歇性卡死。将容器网络设为 1452，使 MSS 降至 1412、整包 1452 低于
+  # 链路 MTU。
+  default:
+    driver_opts:
+      com.docker.network.driver.mtu: "1452"
   reverse_proxy:
     name: zhijing-proxy
     external: true

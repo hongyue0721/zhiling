@@ -52,6 +52,7 @@
 - 知乎直答连接失败或瞬时不可用且未返回 `Retry-After` 时，不再用 250/500 毫秒耗尽三次模型尝试，改为 5/10 秒退避；来源搜索和模型协议恢复仍使用短退避。
 - 生成管线身份升级为 `generation-pipeline-v2` 与 `zhida-thinking-1p5-json-2026-09-04-v4`，并追加数据库迁移 `0007_generation_model_output`。
 - 结构化阶段只发送来源 ID 与标题的紧凑来源载荷，模型适配版本升级为 `zhida-thinking-1p5-json-2026-09-04-v5`，修复完整来源载荷触发知乎直答输出普通文本拒答的问题。
+- 修复生产容器与知乎平台间歇性 TLS 卡死的根因：为生产 Compose 网络显式设置 MTU `1452`。
 
 ### Verification notes
 
