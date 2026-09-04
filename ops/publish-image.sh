@@ -87,6 +87,7 @@ if docker manifest inspect "$image" >/dev/null 2>&1; then
   printf '镜像 tag 已存在，拒绝覆盖：%s\n' "$image" >&2
   exit 1
 fi
+cd -- "$REPOSITORY_ROOT"
 
 docker build \
   --pull \
