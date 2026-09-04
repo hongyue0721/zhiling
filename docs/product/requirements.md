@@ -43,7 +43,7 @@
 
 ## 已确认认证策略
 
-邮箱与会话按 [ADR-0010](../architecture/decisions/0010-email-verification-and-session-policy.md)执行：一期强制邮箱验证、使用 Resend 发信、不提供密码恢复；Session 存入 PostgreSQL，有效期 7 天并按 1 天窗口滑动续期。
+邮箱与会话按 [ADR-0010](../architecture/decisions/0010-email-verification-and-session-policy.md) 执行：默认启用邮箱验证、生产可通过 `EMAIL_VERIFICATION_ENABLED=false` 明确关闭；启用时使用 Resend 发信，关闭时不配置邮件供应商；两种模式都不提供密码恢复。Session 存入 PostgreSQL，有效期 7 天并按 1 天窗口滑动续期。
 
 ## 已冻结的外部契约
 

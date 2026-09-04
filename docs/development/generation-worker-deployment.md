@@ -21,6 +21,8 @@ BETTER_AUTH_SECRET=至少 32 字符
 BETTER_AUTH_URL=https://example.com
 BETTER_AUTH_TRUSTED_ORIGINS=https://example.com
 BETTER_AUTH_TRUSTED_PROXIES=...
+EMAIL_VERIFICATION_ENABLED=true
+# 仅在 EMAIL_VERIFICATION_ENABLED=true 时需要：
 RESEND_API_KEY=...
 AUTH_EMAIL_FROM=...
 ZHIHU_ACCESS_SECRET=...
@@ -29,6 +31,10 @@ ZHIHU_SOURCE_TIMEOUT_MS=30000
 ZHIHU_MODEL_TIMEOUT_MS=60000
 GENERATION_WORKER_ID=generation-worker-1
 ```
+
+`EMAIL_VERIFICATION_ENABLED` 必须显式使用 `true` 或 `false`。启用时 Web 需要
+真实 Resend 配置；关闭时 Web 不初始化邮件发送器，用户可以直接登录但正式身份
+保留 `emailVerified=false`。这项策略不影响 Worker 的知乎凭据要求。
 
 `ZHIHU_MODEL` 只接受冻结的 `zhida-thinking-1p5`。Worker 启动会严格校验 Access Secret、模型和超时配置；缺失或错误配置会使进程安全失败，不会把密钥写入日志、数据库、HTTP 或 SSE。Web 组合根只读取静态适配器版本，因而不会因 Worker 密钥缺失而阻断精选接口。
 

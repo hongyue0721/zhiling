@@ -147,8 +147,7 @@ production_preflight() {
     BETTER_AUTH_URL \
     BETTER_AUTH_TRUSTED_ORIGINS \
     BETTER_AUTH_TRUSTED_PROXIES \
-    RESEND_API_KEY \
-    AUTH_EMAIL_FROM \
+    EMAIL_VERIFICATION_ENABLED \
     GENERATION_RATE_LIMIT_WINDOW_SECONDS \
     GENERATION_RATE_LIMIT_MAX_REQUESTS \
     ZHIHU_ACCESS_SECRET \
@@ -206,12 +205,22 @@ production_preflight() {
   [[ "$BETTER_AUTH_TRUSTED_PROXIES" != *'0.0.0.0/0'* && "$BETTER_AUTH_TRUSTED_PROXIES" != *'::/0'* ]] ||
     production_die 'BETTER_AUTH_TRUSTED_PROXIES 不得信任全网段。'
 
-  [[ "$AUTH_EMAIL_FROM" != *$'\n'* && "$AUTH_EMAIL_FROM" != *$'\r'* ]] ||
-    production_die 'AUTH_EMAIL_FROM 不得包含换行。'
-  local email_pattern='^([^[:space:]<>]+@[^[:space:]<>]+|.+<[^[:space:]<>]+@[^[:space:]<>]+>)$'
-  [[ "$AUTH_EMAIL_FROM" =~ $email_pattern ]] ||
-    production_die 'AUTH_EMAIL_FROM 必须是邮箱或显示名加邮箱。'
-  production_reject_placeholder RESEND_API_KEY "$RESEND_API_KEY"
+  case "$EMAIL_VERIFICATION_ENABLED" in
+    true)
+      production_require_env RESEND_API_KEY AUTH_EMAIL_FROM
+      [[ "$AUTH_EMAIL_FROM" != *$'\n'* && "$AUTH_EMAIL_FROM" != *$'\r'* ]] ||
+        production_die 'AUTH_EMAIL_FROM 不得包含换行。'
+      local email_pattern='^([^[:space:]<>]+@[^[:space:]<>]+|.+<[^[:space:]<>]+@[^[:space:]<>]+>)$'
+      [[ "$AUTH_EMAIL_FROM" =~ $email_pattern ]] ||
+        production_die 'AUTH_EMAIL_FROM 必须是邮箱或显示名加邮箱。'
+      production_reject_placeholder RESEND_API_KEY "$RESEND_API_KEY"
+      ;;
+    false)
+      ;;
+    *)
+      production_die 'EMAIL_VERIFICATION_ENABLED 必须是 true 或 false。'
+      ;;
+  esac
 
   [[ "$ZHIHU_MODEL" == 'zhida-thinking-1p5' ]] ||
     production_die 'ZHIHU_MODEL 必须是冻结的 zhida-thinking-1p5。'

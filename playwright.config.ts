@@ -38,6 +38,7 @@ export default defineConfig({
       BETTER_AUTH_URL: baseURL,
       BETTER_AUTH_TRUSTED_ORIGINS: baseURL,
       BETTER_AUTH_TRUSTED_PROXIES: "127.0.0.1/32",
+      EMAIL_VERIFICATION_ENABLED: "true",
       RESEND_API_KEY: process.env.E2E_RESEND_API_KEY ?? "e2e-no-mail",
       AUTH_EMAIL_FROM:
         process.env.E2E_AUTH_EMAIL_FROM ?? "E2E <e2e@example.invalid>",

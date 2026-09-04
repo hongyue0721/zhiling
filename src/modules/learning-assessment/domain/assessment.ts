@@ -174,16 +174,15 @@ function normalizeQuestion(
     rightOptionId: match.rightOptionId,
   }));
   const knownOptionIds = new Set(optionIds);
-  const matchingSideByOptionId = new Map<
-    string,
-    AssessmentMatchingSide
-  >();
+  const matchingSideByOptionId = new Map<string, AssessmentMatchingSide>();
 
   if (question.type === "matching") {
     if (correctOptionIds.length > 0 || correctMatches.length === 0) {
       throw new LearningAssessmentInvariantError("invalid_matching_answer");
     }
-    const leftOptionIds = correctMatches.map(({ leftOptionId }) => leftOptionId);
+    const leftOptionIds = correctMatches.map(
+      ({ leftOptionId }) => leftOptionId,
+    );
     const rightOptionIds = correctMatches.map(
       ({ rightOptionId }) => rightOptionId,
     );

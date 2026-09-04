@@ -12,6 +12,7 @@ const MIN_PASSWORD_LENGTH = 12;
 type AuthMode = "sign-in" | "sign-up" | "verify";
 
 type AuthFormProps = Readonly<{
+  emailVerificationEnabled: boolean;
   initialMode?: AuthMode;
   verified?: boolean;
   nextPath?: string;
@@ -48,19 +49,24 @@ function safeEmail(value: string): string {
 }
 
 export function AuthForm({
+  emailVerificationEnabled,
   initialMode = "sign-in",
   verified = false,
   nextPath = "/",
 }: AuthFormProps) {
   const router = useRouter();
+  const verificationMessageVisible = emailVerificationEnabled && verified;
   const [mode, setMode] = useState<AuthMode>(
-    verified ? "sign-in" : initialMode,
+    verificationMessageVisible ||
+      (!emailVerificationEnabled && initialMode === "verify")
+      ? "sign-in"
+      : initialMode,
   );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(
-    verified ? "邮箱已验证，请使用密码登录。" : null,
+    verificationMessageVisible ? "邮箱已验证，请使用密码登录。" : null,
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -87,7 +93,7 @@ export function AuthForm({
     setError(null);
     setMessage(null);
 
-    if (mode === "verify") {
+    if (emailVerificationEnabled && mode === "verify") {
       await resendVerification();
       return;
     }
@@ -104,31 +110,38 @@ export function AuthForm({
 
     setIsPending(true);
     try {
-      const body =
-        mode === "sign-up"
-          ? {
-              name: name.trim(),
-              email: safeEmail(email),
-              password,
-              callbackURL: `${window.location.origin}/auth?verified=1`,
-            }
-          : {
-              email: safeEmail(email),
-              password,
-              callbackURL: nextPath,
-            };
-      const endpoint =
-        mode === "sign-up"
-          ? "/api/auth/sign-up/email"
-          : "/api/auth/sign-in/email";
+      const isSignUp = mode === "sign-up";
+      const body = isSignUp
+        ? {
+            name: name.trim(),
+            email: safeEmail(email),
+            password,
+            ...(emailVerificationEnabled
+              ? {
+                  callbackURL: `${window.location.origin}/auth?verified=1`,
+                }
+              : {}),
+          }
+        : {
+            email: safeEmail(email),
+            password,
+            callbackURL: nextPath,
+          };
+      const endpoint = isSignUp
+        ? "/api/auth/sign-up/email"
+        : "/api/auth/sign-in/email";
       await postAuth(endpoint, body);
 
-      if (mode === "sign-up") {
+      if (isSignUp && emailVerificationEnabled) {
         setPassword("");
         setMode("verify");
         setMessage(
           "注册请求已受理。请检查邮箱中的验证链接；邮件未必即时送达，未收到时可以重新发送。",
         );
+      } else if (isSignUp) {
+        setPassword("");
+        setMode("sign-in");
+        setMessage("注册成功，请使用密码登录。");
       } else {
         router.replace(nextPath);
         router.refresh();
@@ -164,12 +177,14 @@ export function AuthForm({
   }
 
   const isSignUp = mode === "sign-up";
-  const isVerify = mode === "verify";
+  const isVerify = emailVerificationEnabled && mode === "verify";
 
   return (
     <section className="auth-card" aria-labelledby="auth-title">
       <div className="auth-card-heading">
-        <span className="section-kicker">邮箱身份</span>
+        <span className="section-kicker">
+          {emailVerificationEnabled ? "邮箱身份" : "账户身份"}
+        </span>
         <h1 id="auth-title">
           {isVerify
             ? "验证你的邮箱"
@@ -278,7 +293,9 @@ export function AuthForm({
             : isVerify
               ? "重新发送验证邮件"
               : isSignUp
-                ? "注册并验证邮箱"
+                ? emailVerificationEnabled
+                  ? "注册并验证邮箱"
+                  : "注册"
                 : "登录知径"}
         </button>
       </form>

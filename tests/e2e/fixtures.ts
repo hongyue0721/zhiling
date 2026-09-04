@@ -7,10 +7,15 @@ import {
   request as playwrightRequest,
   test as base,
   type APIRequestContext,
+  type BrowserContextOptions,
   type Page,
-  type StorageState,
 } from "@playwright/test";
 export { expect };
+
+type StorageState = Exclude<
+  NonNullable<BrowserContextOptions["storageState"]>,
+  string
+>;
 
 import { PublishFeaturedLearningMap } from "../../src/modules/learning-catalog/application/learning-catalog";
 import type { LearningMapPublication } from "../../src/modules/learning-catalog/domain/learning-map";
@@ -596,6 +601,7 @@ type E2EScenario = Readonly<{
     taskId: string,
     learningRelationshipId: string,
   ): Promise<void>;
+  close(): Promise<void>;
 }>;
 
 type E2EWorkerState = Readonly<{
@@ -623,7 +629,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     },
     { scope: "worker", auto: true },
   ],
-  scenario: async ({ browser, e2eDatabase }, use) => {
+  scenario: async ({ browser, e2eDatabase }, provideScenario) => {
     await truncateTables(DOMAIN_TABLES, false);
     await publishLearningContent();
 
@@ -698,7 +704,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     };
 
     try {
-      await use(scenario);
+      await provideScenario(scenario);
     } finally {
       await scenario.close();
     }

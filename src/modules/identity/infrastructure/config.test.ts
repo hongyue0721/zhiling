@@ -11,6 +11,7 @@ const validEnvironment: NodeJS.ProcessEnv = {
   BETTER_AUTH_TRUSTED_ORIGINS:
     "http://localhost:3000,https://preview.example.com",
   BETTER_AUTH_TRUSTED_PROXIES: "127.0.0.1,10.0.0.0/24",
+  EMAIL_VERIFICATION_ENABLED: "true",
   RESEND_API_KEY: "re_private",
   AUTH_EMAIL_FROM: "知径 <auth@example.com>",
   NODE_ENV: "production",
@@ -23,6 +24,7 @@ describe("identity server environment", () => {
     "BETTER_AUTH_URL",
     "BETTER_AUTH_TRUSTED_ORIGINS",
     "BETTER_AUTH_TRUSTED_PROXIES",
+    "EMAIL_VERIFICATION_ENABLED",
     "RESEND_API_KEY",
     "AUTH_EMAIL_FROM",
   ] as const)("fails explicitly when %s is absent", (key) => {
@@ -32,6 +34,21 @@ describe("identity server environment", () => {
     expect(() => readIdentityEnvironment(source)).toThrowError(
       EnvironmentConfigurationError,
     );
+  });
+
+  it("allows disabled email verification without Resend configuration", () => {
+    const source: NodeJS.ProcessEnv = {
+      ...validEnvironment,
+      EMAIL_VERIFICATION_ENABLED: "false",
+    };
+    delete source.RESEND_API_KEY;
+    delete source.AUTH_EMAIL_FROM;
+
+    const environment = readIdentityEnvironment(source);
+
+    expect(environment.emailVerificationEnabled).toBe(false);
+    expect(environment.resendApiKey).toBeUndefined();
+    expect(environment.emailFrom).toBeUndefined();
   });
 
   it("rejects non-PostgreSQL databases and non-origin trust entries", () => {
@@ -45,6 +62,7 @@ describe("identity server environment", () => {
   });
 
   it.each([
+    { EMAIL_VERIFICATION_ENABLED: "yes" },
     { BETTER_AUTH_URL: "https://example.com/application" },
     { AUTH_EMAIL_FROM: "not-an-email@" },
     { AUTH_EMAIL_FROM: "知径 <not-an-email>" },
@@ -52,7 +70,7 @@ describe("identity server environment", () => {
     { BETTER_AUTH_TRUSTED_PROXIES: "not-an-ip" },
     { BETTER_AUTH_TRUSTED_PROXIES: "10.0.0.0/33" },
   ])(
-    "rejects malformed base URLs, sender addresses, and proxies",
+    "rejects malformed base URLs, sender addresses, policies, and proxies",
     (override) => {
       expect(() =>
         readIdentityEnvironment({
@@ -71,6 +89,7 @@ describe("identity server environment", () => {
       "https://preview.example.com",
     ]);
     expect(environment.trustedProxies).toEqual(["127.0.0.1", "10.0.0.0/24"]);
+    expect(environment.emailVerificationEnabled).toBe(true);
     expect(environment.secureCookies).toBe(true);
   });
 

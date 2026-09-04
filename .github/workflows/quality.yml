@@ -30,6 +30,7 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3000
       BETTER_AUTH_TRUSTED_ORIGINS: http://localhost:3000
       BETTER_AUTH_TRUSTED_PROXIES: 127.0.0.1
+      EMAIL_VERIFICATION_ENABLED: "true"
       RESEND_API_KEY: ci-not-used
       AUTH_EMAIL_FROM: auth@example.com
     services:

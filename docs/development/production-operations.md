@@ -12,7 +12,7 @@
   `compose.production.yaml` 中没有 `ports`，只通过 Compose 私有网络供
   `migrate`、`web` 和 `generation-worker` 使用。
 - Web 只绑定到 `127.0.0.1:3000`，生产预检强制 `WEB_BIND_PORT=3000`，
-  公网请求必须经过本机 Nginx。不要把这个端口改成 `0.0.0.0`；Nginx 配置见
+  公网请求必须经过本机反向代理。不要把这个端口改成 `0.0.0.0`；Nginx 示例配置见
   [`ops/nginx/zhijing.conf`](../../ops/nginx/zhijing.conf)。
 - 运维健康检查脚本加载 env 文件后，会把其中的
   `ZHIJING_ENVIRONMENT` 显式传给 `production_preflight`；只接受以下两组
@@ -36,7 +36,8 @@
 以 root 或专用部署用户创建 `/etc/zhijing/production.env`，权限必须是
 `0600`，然后填写下面所有变量。脚本不提供生产口令、空密钥或 `latest`
 默认值，变量缺失、占位值、弱口令和不安全的 origin 都会在容器启动前
-失败。
+失败。`EMAIL_VERIFICATION_ENABLED` 必须显式选择；关闭时不需要 Resend 变量，
+但会降低邮箱所有权和反滥用保证。
 
 ```dotenv
 ZHIJING_ENVIRONMENT=production
@@ -52,7 +53,9 @@ WEB_BIND_PORT=3000
 BETTER_AUTH_SECRET='<至少32字符的随机值>'
 BETTER_AUTH_URL=https://learn.example.com
 BETTER_AUTH_TRUSTED_ORIGINS=https://learn.example.com
-BETTER_AUTH_TRUSTED_PROXIES='<Nginx连接进入容器的实际IP或CIDR>'
+BETTER_AUTH_TRUSTED_PROXIES='<反向代理连接进入容器的实际IP或CIDR>'
+EMAIL_VERIFICATION_ENABLED=true
+# 仅在 EMAIL_VERIFICATION_ENABLED=true 时必填：
 RESEND_API_KEY='<真实Resend密钥>'
 AUTH_EMAIL_FROM='知径 <auth@example.com>'
 GENERATION_RATE_LIMIT_WINDOW_SECONDS=60
@@ -63,6 +66,10 @@ ZHIHU_MODEL=zhida-thinking-1p5
 ZHIHU_SOURCE_TIMEOUT_MS=30000
 ZHIHU_MODEL_TIMEOUT_MS=60000
 ```
+
+生产若明确关闭邮箱验证，使用 `EMAIL_VERIFICATION_ENABLED=false` 并删除
+`RESEND_API_KEY`、`AUTH_EMAIL_FROM` 两行；不要写空的假密钥。此模式允许正确密码
+直接建立登录 Session，但正式身份仍保留 `emailVerified=false`，且验证/重发端点不导出。
 
 `<...>` 只是字段说明，不能原样保存。用密码管理器生成随机值，例如：
 

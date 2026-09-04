@@ -42,6 +42,7 @@ export const generation = mapGenerationRuntime.generation;
 
 export const identity = identityRuntime.identity;
 export const authHandlers = identityRuntime.authHandlers;
+export const emailVerificationEnabled = environment.emailVerificationEnabled;
 export const learningCatalog = learningCatalogRuntime.catalog;
 export const learningAssessment = learningAssessmentRuntime.assessment;
 export const learningProgress = learningProgressRuntime.progress;

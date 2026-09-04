@@ -222,7 +222,7 @@ async function streamGeneration(
           signal,
         },
       );
-    } catch (error) {
+    } catch {
       if (signal.aborted) {
         return;
       }
@@ -344,19 +344,19 @@ async function waitBeforeReconnect(
   const delay = Math.min(8_000, 500 * 2 ** Math.max(0, attempt - 1));
   await new Promise<void>((resolve) => {
     let settled = false;
-    let timer: number | undefined;
+    const timeout: { id?: number } = {};
     const finish = () => {
       if (settled) {
         return;
       }
       settled = true;
-      if (timer !== undefined) {
-        window.clearTimeout(timer);
+      if (timeout.id !== undefined) {
+        window.clearTimeout(timeout.id);
       }
       signal.removeEventListener("abort", finish);
       resolve();
     };
-    timer = window.setTimeout(finish, delay);
+    timeout.id = window.setTimeout(finish, delay);
     signal.addEventListener("abort", finish, { once: true });
   });
 }

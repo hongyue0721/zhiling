@@ -28,7 +28,7 @@
 
 | 来源                                                  | 决策结果                                                      | 落地证据             |
 | ----------------------------------------------------- | ------------------------------------------------------------- | -------------------- |
-| [#4](https://github.com/hongyue0721/zhiling/issues/4) | 强制邮箱验证、数据库 Session、Resend 发信、一期不提供密码恢复 | ADR-0010、工作包 C1  |
+| [#4](https://github.com/hongyue0721/zhiling/issues/4) | 默认启用邮箱验证、可显式关闭、数据库 Session、Resend 发信、一期不提供密码恢复 | ADR-0010、工作包 C1  |
 | C2 地图版本评审                                       | 稳定地图身份、不可变版本、精选指针、既有学习关系绑定原版本    | ADR-0011、工作包 C2a |
 | [#1](https://github.com/hongyue0721/zhiling/issues/1) | 一期不实现分享，结课报告仅所属账户可读                        | ADR-0012             |
 | [#2](https://github.com/hongyue0721/zhiling/issues/2) | 自管 VPS Docker、数据库租约 Worker、可恢复 SSE 与原子发布     | ADR-0004             |

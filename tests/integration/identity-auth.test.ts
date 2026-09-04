@@ -10,7 +10,10 @@ import {
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 import { IdentityService } from "@/modules/identity/application/identity-service";
-import { limitAuthRoutes } from "@/modules/identity/infrastructure/auth-route-handlers";
+import {
+  type AuthRouteHandlers,
+  limitAuthRoutes,
+} from "@/modules/identity/infrastructure/auth-route-handlers";
 import { ResendVerificationEmailSender } from "@/modules/identity/infrastructure/resend-verification-email-sender";
 import { BetterAuthSessionReader } from "@/modules/identity/infrastructure/better-auth-session-reader";
 import { createIdentityAuth } from "@/modules/identity/infrastructure/identity-auth";
@@ -40,27 +43,57 @@ const recorder = new RecordingVerificationEmailSender();
 const auth = createIdentityAuth({
   database,
   emailSender: recorder,
+  emailVerificationEnabled: true,
   secret: "integration-secret-that-is-at-least-32-characters",
   baseUrl,
   trustedOrigins: [baseUrl],
   trustedProxies: ["127.0.0.1"],
   secureCookies: false,
 });
-const authRouteHandlers = limitAuthRoutes({
-  GET: auth.handler,
-  POST: auth.handler,
+const disabledAuth = createIdentityAuth({
+  database,
+  emailVerificationEnabled: false,
+  secret: "integration-secret-that-is-at-least-32-characters",
+  baseUrl,
+  trustedOrigins: [baseUrl],
+  trustedProxies: ["127.0.0.1"],
+  secureCookies: false,
 });
+const authRouteHandlers = limitAuthRoutes(
+  {
+    GET: auth.handler,
+    POST: auth.handler,
+  },
+  { emailVerificationEnabled: true },
+);
+const disabledAuthRouteHandlers = limitAuthRoutes(
+  {
+    GET: disabledAuth.handler,
+    POST: disabledAuth.handler,
+  },
+  { emailVerificationEnabled: false },
+);
 const identity = new IdentityService(
   new BetterAuthSessionReader((headers) => auth.api.getSession({ headers })),
+  { emailVerificationEnabled: true },
+);
+const disabledIdentity = new IdentityService(
+  new BetterAuthSessionReader((headers) =>
+    disabledAuth.api.getSession({ headers }),
+  ),
+  { emailVerificationEnabled: false },
 );
 
-async function managedRequest(
+type ManagedRequestOptions = {
+  method?: "GET" | "POST";
+  body?: Record<string, unknown>;
+  cookie?: string;
+};
+
+async function requestWithHandlers(
+  handlers: AuthRouteHandlers,
   path: string,
-  options: {
-    method?: "GET" | "POST";
-    body?: Record<string, unknown>;
-    cookie?: string;
-  } = {},
+  options: ManagedRequestOptions = {},
 ) {
   const method = options.method ?? "GET";
   const headers = new Headers();
@@ -72,9 +105,7 @@ async function managedRequest(
     headers.set("content-type", "application/json");
   }
 
-  const handler =
-    method === "GET" ? authRouteHandlers.GET : authRouteHandlers.POST;
-
+  const handler = method === "GET" ? handlers.GET : handlers.POST;
   return handler(
     new Request(`${baseUrl}/api/auth${path}`, {
       method,
@@ -82,6 +113,20 @@ async function managedRequest(
       body: options.body ? JSON.stringify(options.body) : undefined,
     }),
   );
+}
+
+async function managedRequest(
+  path: string,
+  options: ManagedRequestOptions = {},
+) {
+  return requestWithHandlers(authRouteHandlers, path, options);
+}
+
+async function disabledManagedRequest(
+  path: string,
+  options: ManagedRequestOptions = {},
+) {
+  return requestWithHandlers(disabledAuthRouteHandlers, path, options);
 }
 
 async function registerAndVerify(email: string) {
@@ -207,6 +252,50 @@ describe("identity authentication with PostgreSQL", () => {
     });
     expect(signOut.status).toBe(200);
     await expect(identity.resolve(requestHeaders)).resolves.toBeNull();
+  });
+
+  it("allows unverified accounts to sign in when verification is disabled", async () => {
+    const email = "disabled@example.com";
+    const signUp = await disabledManagedRequest("/sign-up/email", {
+      method: "POST",
+      body: {
+        name: "Disabled Verification User",
+        email,
+        password: "correct horse battery staple",
+      },
+    });
+
+    expect(signUp.status).toBe(200);
+    expect(signUp.headers.get("set-cookie")).toBeNull();
+    expect(recorder.messages).toHaveLength(0);
+
+    const verifyRoute = await disabledAuthRouteHandlers.GET(
+      new Request(`${baseUrl}/api/auth/verify-email?token=unused`),
+    );
+    expect(verifyRoute.status).toBe(404);
+
+    const signInResponse = await disabledManagedRequest("/sign-in/email", {
+      method: "POST",
+      body: {
+        email,
+        password: "correct horse battery staple",
+      },
+    });
+    expect(signInResponse.status).toBe(200);
+    const cookie = signInResponse.headers.get("set-cookie");
+    if (!cookie) {
+      throw new Error("Expected a session cookie after disabled-policy login");
+    }
+
+    await expect(
+      disabledIdentity.require(
+        new Headers({ cookie: cookie.split(";", 1)[0] }),
+      ),
+    ).resolves.toEqual({
+      userId: expect.any(String),
+      email,
+      emailVerified: false,
+    });
   });
 
   it("invalidates revoked and expired sessions on the next request", async () => {
@@ -368,6 +457,7 @@ describe("identity authentication with PostgreSQL", () => {
         "知径 <auth@example.com>",
         request,
       ),
+      emailVerificationEnabled: true,
       secret: "integration-secret-that-is-at-least-32-characters",
       baseUrl,
       trustedOrigins: [baseUrl],

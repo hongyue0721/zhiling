@@ -104,6 +104,8 @@ export type {
   StructuredViewpoint,
 } from "./contracts";
 
+export type { GenerationProviderVersionInput } from "../infrastructure/drizzle-map-generation";
+
 export {
   readGenerationEnvironment,
   type GenerationEnvironment,

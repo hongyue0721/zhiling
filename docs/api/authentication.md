@@ -12,11 +12,27 @@ Next.js Route Handler 挂载在 `/api/auth/[...all]`，只转交 `GET`、`POST` 
 {
   userId: string;
   email: string; // 去除首尾空白并转为小写
-  emailVerified: true;
+  emailVerified: boolean;
 }
 ```
 
-无有效数据库 Session 或邮箱尚未验证时，`resolve` 返回 `null`，`require` 抛出稳定的 `FORMAL_IDENTITY_REQUIRED` 错误。数据库用户行、Session Token、Cookie 与 Better Auth 内部对象不得跨出身份模块。
+`EMAIL_VERIFICATION_ENABLED` 是服务端必须显式提供的 `true`/`false` 策略。
+启用时，只有 `emailVerified=true` 的有效 Session 才能成为正式身份；关闭时，
+未验证用户也可以成为正式身份，但身份对象仍保留 `emailVerified=false` 事实。
+数据库用户行、Session Token、Cookie 与 Better Auth 内部对象不得跨出身份模块。
+
+## 邮箱验证策略
+
+- `.env.example` 默认启用邮箱验证，保持当前安全基线；
+- `EMAIL_VERIFICATION_ENABLED=true` 时必须配置真实 `RESEND_API_KEY` 和合法
+  `AUTH_EMAIL_FROM`，注册发送验证邮件，未验证账户不能登录；
+- `EMAIL_VERIFICATION_ENABLED=false` 时不创建邮件发送器，不读取 Resend 配置，
+  注册后仍不自动建立 Session，但账户可以直接显式登录；验证与重发端点不导出；
+- 关闭验证会降低邮箱所有权和反滥用保证，只能作为明确的部署策略，不能用空值、
+  假邮件成功或万能 Token 代替真实配置。
+
+无有效数据库 Session 或（启用邮箱验证且邮箱尚未验证）时，`resolve` 返回
+`null`，`require` 抛出稳定的 `FORMAL_IDENTITY_REQUIRED` 错误。
 
 ## 一期托管端点
 
@@ -24,10 +40,10 @@ Route Handler 只允许下表中的方法与路径进入 Better Auth `1.7.2`；�
 
 | 方法与路径 | 一期用途 | 已验证约束 |
 | --- | --- | --- |
-| `POST /api/auth/sign-up/email` | 创建邮箱账户 | `name`、`email`、`password`；密码 12–128；创建后不建立 Session；触发验证邮件 |
-| `POST /api/auth/sign-in/email` | 显式登录 | 正确密码但邮箱未验证时返回 `403 EMAIL_NOT_VERIFIED`；账户或密码无效时返回 `401 INVALID_EMAIL_OR_PASSWORD`；成功后设置不透明 Session Cookie |
-| `POST /api/auth/send-verification-email` | 显式重发验证邮件 | 允许未登录调用；受数据库限流保护 |
-| `GET /api/auth/verify-email` | 消费一次性验证链接 | Token 1 小时有效；成功后不自动登录 |
+| `POST /api/auth/sign-up/email` | 创建邮箱账户 | `name`、`email`、`password`；密码 12–128；创建后不建立 Session；启用验证时触发验证邮件 |
+| `POST /api/auth/sign-in/email` | 显式登录 | 启用验证时，正确密码但邮箱未验证返回 `403 EMAIL_NOT_VERIFIED`；关闭验证时允许登录；账户或密码无效时返回 `401 INVALID_EMAIL_OR_PASSWORD`；成功后设置不透明 Session Cookie |
+| `POST /api/auth/send-verification-email` | 显式重发验证邮件 | 仅启用邮箱验证时导出；允许未登录调用；受数据库限流保护 |
+| `GET /api/auth/verify-email` | 消费一次性验证链接 | 仅启用邮箱验证时导出；Token 1 小时有效；成功后不自动登录 |
 | `GET /api/auth/get-session` | 读取当前框架 Session | 业务代码不得把返回对象直接作为跨模块身份 |
 | `POST /api/auth/sign-out` | 撤销当前 Session | 下一次身份解析立即失效 |
 | `GET /api/auth/list-sessions` | 列出当前账户 Session | 只供当前已登录账户查看自己的 Session |
@@ -37,11 +53,18 @@ Route Handler 只允许下表中的方法与路径进入 Better Auth `1.7.2`；�
 
 ## 邮箱验证与投递语义
 
-- 注册时发送验证邮件；未验证账户不能登录成为正式身份；
-- 验证链接只包含 Better Auth 生成的一次性 Token 与回调地址；验证后仍需显式登录；
+- 启用邮箱验证时，注册发送验证邮件；未验证账户不能登录成为正式身份；
+- 启用邮箱验证时，验证链接只包含 Better Auth 生成的一次性 Token 与回调地址；
+  验证后仍需显式登录；
 - Resend 适配器直接调用 `POST https://api.resend.com/emails`，不引入 Resend SDK；
-- 适配器不读取或透传 Resend 失败正文，把失败收敛为 `VERIFICATION_EMAIL_DELIVERY_FAILED`；API Key、Token 和完整验证 URL 不得进入响应或日志；
-- Better Auth `1.7.2` 把账户创建与邮件投递视为两个结果：邮件回调异常会被框架记录，已成功创建的未验证账户及注册成功响应不会回滚。该成功只表示账户请求已受理，不证明邮件已送达；用户通过显式重发端点恢复。前端不得展示“已送达”，只能提示检查邮箱或重试发送。
+- 适配器不读取或透传 Resend 失败正文，把失败收敛为
+  `VERIFICATION_EMAIL_DELIVERY_FAILED`；API Key、Token 和完整验证 URL 不得进入
+  响应或日志；
+- Better Auth `1.7.2` 把账户创建与邮件投递视为两个结果：邮件回调异常会被框架
+  记录，已成功创建的未验证账户及注册成功响应不会回滚。该成功只表示账户请求已
+  受理，不证明邮件已送达；启用验证时用户通过显式重发端点恢复。前端不得展示
+  “已送达”，只能提示检查邮箱或重试发送；
+- 关闭邮箱验证时不调用 Resend，也不暴露验证 Token、验证端点或验证邮件；
 - 重复注册与已知/未知邮箱的登录失败保持相同外部状态和错误码，响应不得用于枚举账户。
 
 ## Session、Cookie 与防护
@@ -61,7 +84,7 @@ Route Handler 只允许下表中的方法与路径进入 Better Auth `1.7.2`；�
 - 通用认证路径：每个框架识别的客户端地址每 60 秒最多 100 次；
 - `/sign-in/email`：每 10 秒最多 3 次；
 - `/sign-up/email`：每 60 秒最多 3 次；
-- `/send-verification-email`：每 60 秒最多 3 次。
+- `/send-verification-email`：仅启用邮箱验证时每 60 秒最多 3 次。
 
 服务端直接调用 `auth.api` 不经过受管 HTTP 端点的全部限流边界，不得封装成对外公共代理。
 

@@ -5,6 +5,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import { databaseSchema } from "@/platform/database/schema";
 
+import type { VerificationEmailSender } from "../application/ports";
 import { IdentityService } from "../application/identity-service";
 import { type AuthRouteHandlers, limitAuthRoutes } from "./auth-route-handlers";
 import { BetterAuthSessionReader } from "./better-auth-session-reader";
@@ -22,31 +23,46 @@ export type IdentityRuntimeDependencies = Readonly<{
   environment: IdentityEnvironment;
 }>;
 
+function createEmailSender(
+  environment: IdentityEnvironment,
+): VerificationEmailSender | undefined {
+  if (!environment.emailVerificationEnabled) {
+    return undefined;
+  }
+  if (!environment.resendApiKey || !environment.emailFrom) {
+    throw new Error("Email verification environment is incomplete");
+  }
+  return new ResendVerificationEmailSender(
+    environment.resendApiKey,
+    environment.emailFrom,
+  );
+}
+
 export function createIdentityRuntime({
   database,
   environment,
 }: IdentityRuntimeDependencies): IdentityRuntime {
-  const emailSender = new ResendVerificationEmailSender(
-    environment.resendApiKey,
-    environment.emailFrom,
-  );
   const auth = createIdentityAuth({
     database,
-    emailSender,
+    emailSender: createEmailSender(environment),
+    emailVerificationEnabled: environment.emailVerificationEnabled,
     secret: environment.secret,
     baseUrl: environment.baseUrl,
     trustedOrigins: environment.trustedOrigins,
     trustedProxies: environment.trustedProxies,
     secureCookies: environment.secureCookies,
   });
+  const sessionReader = new BetterAuthSessionReader((headers) =>
+    auth.api.getSession({ headers }),
+  );
 
   return {
-    identity: new IdentityService(
-      new BetterAuthSessionReader((headers) =>
-        auth.api.getSession({ headers }),
-      ),
-    ),
-    authHandlers: limitAuthRoutes(toNextJsHandler(auth)),
+    identity: new IdentityService(sessionReader, {
+      emailVerificationEnabled: environment.emailVerificationEnabled,
+    }),
+    authHandlers: limitAuthRoutes(toNextJsHandler(auth), {
+      emailVerificationEnabled: environment.emailVerificationEnabled,
+    }),
   };
 }
 

@@ -27,10 +27,12 @@
 
 ## 已落地的身份持久化
 
-- `user` 以 Better Auth 生成的 ID 为稳定身份，邮箱唯一；只有有效 Session 对应的 `emailVerified=true` 用户才能转换为正式身份；
+- `user` 以 Better Auth 生成的 ID 为稳定身份，邮箱唯一；启用
+  `EMAIL_VERIFICATION_ENABLED` 时，只有有效 Session 对应的 `emailVerified=true`
+  用户才能转换为正式身份；关闭时允许未验证用户转换，但不伪造验证事实；
 - `account` 保存 credential 账户及密码哈希，`issuer + accountId` 唯一；删除用户时账户级联删除；
-- `session` 保存不透明唯一 Token、到期时间和账户关系；删除用户时级联删除，不启用客户端 Session 缓存；
-- `verification` 保存一次性验证值及到期时间，按标识建立查询索引；
+- `session` 保存不透明唯一 Token、到期时间和账户关系；删除用户时账户级联删除，不启用客户端 Session 缓存；
+- `verification` 仅在启用邮箱验证时由认证流程使用，保存一次性验证值及到期时间，按标识建立查询索引；
 - `rateLimit` 以唯一 Key 保存窗口计数与最后请求时间，使多实例限流共享同一事实；
 - 首版模式由 `drizzle/0000_identity_auth.sql` 建立。应用不得直接读取密码哈希、验证值或 Session Token 形成业务 DTO。
 

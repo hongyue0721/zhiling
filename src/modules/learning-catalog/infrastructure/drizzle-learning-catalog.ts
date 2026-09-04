@@ -403,10 +403,7 @@ export class DrizzleLearningCatalogRepository
         .leftJoin(
           learningAssessmentQuestion,
           and(
-            eq(
-              learningAssessmentQuestion.questionSetId,
-              questionSetId,
-            ),
+            eq(learningAssessmentQuestion.questionSetId, questionSetId),
             eq(learningAssessmentQuestion.versionId, version.versionId),
             eq(learningAssessmentQuestion.nodeId, learningMapNode.nodeId),
           ),

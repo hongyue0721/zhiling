@@ -154,6 +154,7 @@ describe("generation rate-limit environment", () => {
       readGenerationEnvironment({
         GENERATION_RATE_LIMIT_WINDOW_SECONDS: "3600",
         GENERATION_RATE_LIMIT_MAX_REQUESTS: "5",
+        NODE_ENV: "test",
       }),
     ).toEqual({ rateLimit: { windowSeconds: 3_600, maxRequests: 5 } });
   });
@@ -163,6 +164,7 @@ describe("generation rate-limit environment", () => {
       readGenerationEnvironment({
         GENERATION_RATE_LIMIT_WINDOW_SECONDS: "9007199254740992",
         GENERATION_RATE_LIMIT_MAX_REQUESTS: "5",
+        NODE_ENV: "test",
       }),
     ).toThrow();
   });

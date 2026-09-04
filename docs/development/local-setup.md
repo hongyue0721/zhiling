@@ -24,7 +24,12 @@ pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-`.env.local` 中必须配置 `BETTER_AUTH_SECRET`。实际发送验证邮件前，还必须配置真实 `RESEND_API_KEY` 与已在 Resend 验证域名下的 `AUTH_EMAIL_FROM`；运行现场地图生成 Worker 前必须配置真实知乎供应方凭据。项目不提供万能密钥、假发信成功、假供应方成功或生产默认值。
+`.env.local` 中必须配置 `BETTER_AUTH_SECRET` 和显式的
+`EMAIL_VERIFICATION_ENABLED=true|false`。默认推荐启用验证；启用并实际发送验证邮件
+前，还必须配置真实 `RESEND_API_KEY` 与已在 Resend 验证域名下的 `AUTH_EMAIL_FROM`。
+关闭验证时可以省略这两个变量，注册后仍需显式登录，但未验证账户会被视为正式身份，
+因此不适用于需要证明邮箱所有权的场景。运行现场地图生成 Worker 前必须配置真实
+知乎供应方凭据。项目不提供万能密钥、假发信成功、假供应方成功或生产默认值。
 
 ## 数据库与迁移
 

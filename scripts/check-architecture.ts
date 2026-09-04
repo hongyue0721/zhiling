@@ -283,6 +283,7 @@ function isAllowedLocalDependency(
     return (
       isWithin(targetPath, "src/app") ||
       isWithin(targetPath, "src/bootstrap") ||
+      isWithin(targetPath, "src/components") ||
       isWithin(targetPath, "src/shared/ui") ||
       isWithin(targetPath, "src/generated") ||
       Boolean(targetModule && isModulePublicEntry(targetModule))

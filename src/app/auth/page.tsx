@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/components/auth-form";
-import { identity } from "@/bootstrap/server";
+import { emailVerificationEnabled, identity } from "@/bootstrap/server";
 
 export const dynamic = "force-dynamic";
 
@@ -45,8 +45,9 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
         </div>
       </div>
       <AuthForm
+        emailVerificationEnabled={emailVerificationEnabled}
         initialMode={initialMode}
-        verified={query.verified === "1"}
+        verified={emailVerificationEnabled && query.verified === "1"}
         nextPath={nextPath}
       />
     </main>

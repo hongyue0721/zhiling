@@ -11,6 +11,16 @@ const { database, pool } = createPostgresDatabase(
 const auth = createIdentityAuth({
   database,
   emailSender: new RecordingVerificationEmailSender(),
+  emailVerificationEnabled: true,
+  secret: "contract-secret-that-is-at-least-32-characters",
+  baseUrl: "http://localhost:3000",
+  trustedOrigins: ["http://localhost:3000"],
+  trustedProxies: ["127.0.0.1", "10.0.0.0/24"],
+  secureCookies: false,
+});
+const authWithoutEmailVerification = createIdentityAuth({
+  database,
+  emailVerificationEnabled: false,
   secret: "contract-secret-that-is-at-least-32-characters",
   baseUrl: "http://localhost:3000",
   trustedOrigins: ["http://localhost:3000"],
@@ -40,6 +50,24 @@ describe("Better Auth identity policy", () => {
       autoSignInAfterVerification: false,
       expiresIn: 3600,
     });
+  });
+
+  it("disables email verification without configuring an email sender", () => {
+    expect(authWithoutEmailVerification.options.emailAndPassword).toMatchObject(
+      {
+        enabled: true,
+        requireEmailVerification: false,
+        autoSignIn: false,
+        minPasswordLength: 12,
+        maxPasswordLength: 128,
+      },
+    );
+    expect(authWithoutEmailVerification.options).not.toHaveProperty(
+      "emailVerification",
+    );
+    expect(
+      authWithoutEmailVerification.options.rateLimit?.customRules,
+    ).not.toHaveProperty("/send-verification-email");
   });
 
   it("uses durable seven-day sessions without cookie caching", () => {

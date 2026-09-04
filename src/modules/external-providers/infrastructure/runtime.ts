@@ -1001,9 +1001,7 @@ function validateAssessments(
     if (question.type === "matching") {
       const correctMatches = question.correctMatches;
       const leftOptionIds = correctMatches.map((match) => match.leftOptionId);
-      const rightOptionIds = correctMatches.map(
-        (match) => match.rightOptionId,
-      );
+      const rightOptionIds = correctMatches.map((match) => match.rightOptionId);
       const rightOptionIdSet = new Set(rightOptionIds);
       if (
         !assertUnique(leftOptionIds) ||

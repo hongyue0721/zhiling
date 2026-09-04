@@ -15,7 +15,8 @@ const SEVEN_DAYS_SECONDS = 7 * ONE_DAY_SECONDS;
 
 export type IdentityAuthOptions = Readonly<{
   database: NodePgDatabase<typeof databaseSchema>;
-  emailSender: VerificationEmailSender;
+  emailSender?: VerificationEmailSender;
+  emailVerificationEnabled: boolean;
   secret: string;
   baseUrl: string;
   trustedOrigins: readonly string[];
@@ -23,7 +24,38 @@ export type IdentityAuthOptions = Readonly<{
   secureCookies: boolean;
 }>;
 
+function createEmailVerificationOptions(
+  emailSender: VerificationEmailSender | undefined,
+) {
+  if (!emailSender) {
+    throw new Error("Email verification requires an email sender");
+  }
+
+  return {
+    sendOnSignUp: true,
+    sendOnSignIn: false,
+    autoSignInAfterVerification: false,
+    expiresIn: ONE_HOUR_SECONDS,
+    sendVerificationEmail: async ({
+      user,
+      url,
+    }: {
+      user: { email: string };
+      url: string;
+    }) => {
+      await emailSender.sendVerificationEmail({
+        recipient: user.email,
+        verificationUrl: url,
+      });
+    },
+  };
+}
+
 export function createIdentityAuth(options: IdentityAuthOptions) {
+  const emailVerification = options.emailVerificationEnabled
+    ? createEmailVerificationOptions(options.emailSender)
+    : undefined;
+
   return betterAuth({
     appName: "知径",
     database: drizzleAdapter(options.database, {
@@ -37,23 +69,12 @@ export function createIdentityAuth(options: IdentityAuthOptions) {
     trustedOrigins: [...options.trustedOrigins],
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      requireEmailVerification: options.emailVerificationEnabled,
       autoSignIn: false,
       minPasswordLength: 12,
       maxPasswordLength: 128,
     },
-    emailVerification: {
-      sendOnSignUp: true,
-      sendOnSignIn: false,
-      autoSignInAfterVerification: false,
-      expiresIn: ONE_HOUR_SECONDS,
-      sendVerificationEmail: async ({ user, url }) => {
-        await options.emailSender.sendVerificationEmail({
-          recipient: user.email,
-          verificationUrl: url,
-        });
-      },
-    },
+    ...(emailVerification ? { emailVerification } : {}),
     session: {
       expiresIn: SEVEN_DAYS_SECONDS,
       updateAge: ONE_DAY_SECONDS,
@@ -70,7 +91,9 @@ export function createIdentityAuth(options: IdentityAuthOptions) {
       customRules: {
         "/sign-in/email": { window: 10, max: 3 },
         "/sign-up/email": { window: 60, max: 3 },
-        "/send-verification-email": { window: 60, max: 3 },
+        ...(options.emailVerificationEnabled
+          ? { "/send-verification-email": { window: 60, max: 3 } }
+          : {}),
       },
     },
     advanced: {

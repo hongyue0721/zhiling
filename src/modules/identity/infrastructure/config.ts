@@ -4,7 +4,7 @@ import { isIP } from "node:net";
 
 import { z } from "zod";
 
-import { readServerEnvironment } from "@/platform/config/server";
+import { parseEnvironment } from "@/platform/config/environment";
 
 const httpOrigin = z
   .url()
@@ -46,6 +46,16 @@ const emailFrom = z
       emailAddress.safeParse(address).success
     );
   });
+
+const optionalEmailFrom = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  emailFrom.optional(),
+);
+
+const optionalResendApiKey = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(1).optional(),
+);
 
 const originList = z
   .string()
@@ -104,30 +114,52 @@ export type IdentityEnvironment = Readonly<{
   baseUrl: string;
   trustedOrigins: string[];
   trustedProxies: string[];
-  resendApiKey: string;
-  emailFrom: string;
+  emailVerificationEnabled: boolean;
+  resendApiKey?: string;
+  emailFrom?: string;
   secureCookies: boolean;
 }>;
+
+const identityEnvironmentSchema = z
+  .object({
+    DATABASE_URL: z
+      .url()
+      .refine((value) =>
+        ["postgres:", "postgresql:"].includes(new URL(value).protocol),
+      ),
+    BETTER_AUTH_SECRET: z.string().min(32),
+    BETTER_AUTH_URL: httpOrigin,
+    BETTER_AUTH_TRUSTED_ORIGINS: originList,
+    BETTER_AUTH_TRUSTED_PROXIES: trustedProxyList,
+    EMAIL_VERIFICATION_ENABLED: z.enum(["true", "false"]),
+    RESEND_API_KEY: optionalResendApiKey,
+    AUTH_EMAIL_FROM: optionalEmailFrom,
+  })
+  .superRefine((values, context) => {
+    if (values.EMAIL_VERIFICATION_ENABLED !== "true") {
+      return;
+    }
+
+    if (!values.RESEND_API_KEY) {
+      context.addIssue({
+        code: "custom",
+        path: ["RESEND_API_KEY"],
+        message: "required when email verification is enabled",
+      });
+    }
+    if (!values.AUTH_EMAIL_FROM) {
+      context.addIssue({
+        code: "custom",
+        path: ["AUTH_EMAIL_FROM"],
+        message: "required when email verification is enabled",
+      });
+    }
+  });
 
 export function readIdentityEnvironment(
   source: NodeJS.ProcessEnv = process.env,
 ): IdentityEnvironment {
-  const values = readServerEnvironment(
-    {
-      DATABASE_URL: z
-        .url()
-        .refine((value) =>
-          ["postgres:", "postgresql:"].includes(new URL(value).protocol),
-        ),
-      BETTER_AUTH_SECRET: z.string().min(32),
-      BETTER_AUTH_URL: httpOrigin,
-      BETTER_AUTH_TRUSTED_ORIGINS: originList,
-      BETTER_AUTH_TRUSTED_PROXIES: trustedProxyList,
-      RESEND_API_KEY: z.string().min(1),
-      AUTH_EMAIL_FROM: emailFrom,
-    },
-    source,
-  );
+  const values = parseEnvironment("server", identityEnvironmentSchema, source);
 
   return {
     databaseUrl: values.DATABASE_URL,
@@ -135,6 +167,7 @@ export function readIdentityEnvironment(
     baseUrl: values.BETTER_AUTH_URL,
     trustedOrigins: values.BETTER_AUTH_TRUSTED_ORIGINS,
     trustedProxies: values.BETTER_AUTH_TRUSTED_PROXIES,
+    emailVerificationEnabled: values.EMAIL_VERIFICATION_ENABLED === "true",
     resendApiKey: values.RESEND_API_KEY,
     emailFrom: values.AUTH_EMAIL_FROM,
     secureCookies: source.NODE_ENV === "production",

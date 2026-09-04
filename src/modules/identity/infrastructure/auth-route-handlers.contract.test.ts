@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { type AuthRouteHandlers, limitAuthRoutes } from "./auth-route-handlers";
 
-function createHandlers() {
+function createHandlers(emailVerificationEnabled = true) {
   const GET = vi.fn<AuthRouteHandlers["GET"]>(async () =>
     Promise.resolve(new Response("delegated", { status: 200 })),
   );
@@ -10,7 +10,11 @@ function createHandlers() {
     Promise.resolve(new Response("delegated", { status: 200 })),
   );
 
-  return { handlers: limitAuthRoutes({ GET, POST }), GET, POST };
+  return {
+    handlers: limitAuthRoutes({ GET, POST }, { emailVerificationEnabled }),
+    GET,
+    POST,
+  };
 }
 
 describe("authentication route boundary", () => {
@@ -34,6 +38,24 @@ describe("authentication route boundary", () => {
     expect(GET).not.toHaveBeenCalled();
     expect(POST).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["GET", "/api/auth/verify-email"],
+    ["POST", "/api/auth/send-verification-email"],
+  ] as const)(
+    "does not expose disabled verification route %s %s",
+    async (method, path) => {
+      const { handlers, GET, POST } = createHandlers(false);
+
+      const response = await handlers[method](
+        new Request(`http://localhost:3000${path}`, { method }),
+      );
+
+      expect(response.status).toBe(404);
+      expect(GET).not.toHaveBeenCalled();
+      expect(POST).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     ["GET", "/api/auth/get-session"],

@@ -12,7 +12,6 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import {
   learningAssessmentQuestion,
@@ -33,7 +32,6 @@ import {
   learningViewpoint,
   learningViewpointSource,
 } from "@/platform/database/catalog-schema";
-import { databaseSchema } from "@/platform/database/schema";
 import {
   generationCache,
   generationCheckpoint,
@@ -41,6 +39,7 @@ import {
   generationParticipant,
   generationTask,
 } from "@/platform/database/generation-schema";
+import type { PostgresDatabase } from "@/platform/database/postgres";
 
 import {
   assertGenerationTransition,
@@ -70,7 +69,7 @@ import type {
   GenerationStructuredModelPort,
 } from "../application/ports";
 
-export type MapGenerationDatabase = NodePgDatabase<typeof databaseSchema>;
+export type MapGenerationDatabase = PostgresDatabase;
 export type GenerationIdGenerator = () => string;
 export type GenerationClock = () => Date;
 export type GenerationSleeper = (milliseconds: number) => Promise<void>;
