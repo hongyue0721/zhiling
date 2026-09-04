@@ -9,11 +9,15 @@
 ## 0. 网络与主机边界
 
 - 防火墙只开放 SSH、80 和 443；禁止开放 5432。PostgreSQL 在
-  `compose.production.yaml` 中没有 `ports`，只通过 Compose 私有网络供
+  `compose.production.yaml` 中没有 `ports`，只通过默认 Compose 私有网络供
   `migrate`、`web` 和 `generation-worker` 使用。
-- Web 只绑定到 `127.0.0.1:3000`，生产预检强制 `WEB_BIND_PORT=3000`，
-  公网请求必须经过本机反向代理。不要把这个端口改成 `0.0.0.0`；Nginx 示例配置见
+- Web 只绑定到 `127.0.0.1:3000`，生产预检强制 `WEB_BIND_PORT=3000`，并额外加入
+  external 网络 `zhijing-proxy` 供已配置的反向代理访问；数据库和 Worker 不加入该
+  网络。不要把端口改成 `0.0.0.0`；Nginx 示例配置见
   [`ops/nginx/zhijing.conf`](../../ops/nginx/zhijing.conf)。
+- 容器化 Caddy/Nginx 必须以只读代理身份加入 `zhijing-proxy`，反代
+  `${COMPOSE_PROJECT_NAME}-web:3000`；`BETTER_AUTH_TRUSTED_PROXIES` 只填写该代理
+  在此网络中的稳定 IP/CIDR，不能信任全网段。
 - 运维健康检查脚本加载 env 文件后，会把其中的
   `ZHIJING_ENVIRONMENT` 显式传给 `production_preflight`；只接受以下两组
   严格三元组。环境名、Compose 项目名或 external volume 名任一错配，都会

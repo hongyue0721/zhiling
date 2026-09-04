@@ -78,6 +78,11 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+    networks:
+      default:
+      reverse_proxy:
+        aliases:
+          - ${COMPOSE_PROJECT_NAME}-web
 
   generation-worker:
     image: ${IMAGE_REPOSITORY:?IMAGE_REPOSITORY is required}:${IMAGE_TAG:?IMAGE_TAG is required}
@@ -102,4 +107,9 @@ services:
 volumes:
   zhijing-postgres-production:
     name: ${POSTGRES_VOLUME_NAME:?POSTGRES_VOLUME_NAME is required}
+    external: true
+
+networks:
+  reverse_proxy:
+    name: zhijing-proxy
     external: true
