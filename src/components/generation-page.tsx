@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import { Signature, BookThemeToggle, AnonBookmark } from "@/components/shittim-immersive/bookish-chrome";
+import {
+  Signature,
+  BookThemeToggle,
+  AnonBookmark,
+} from "@/components/shittim-immersive/bookish-chrome";
 import { Scene } from "@/components/shittim-immersive/scene";
 import { Overlay } from "@/components/shittim-immersive/dialog";
 import s from "@/components/shittim-immersive/scenes.module.css";
@@ -817,15 +821,29 @@ export function GenerationPage({
 
   return (
     <main className={s.viewport} data-screen="generation">
-      <Scene mode={idle ? "ambient" : ready ? "success" : state === "failed" ? "ambient" : "generating"} />
+      <Scene
+        mode={
+          idle
+            ? "ambient"
+            : ready
+              ? "success"
+              : state === "failed"
+                ? "ambient"
+                : "generating"
+        }
+      />
       <header className={s.topbar}>
         <Link href="/" className={s.brand}>
-          <span className={s.brandMark} aria-hidden="true">什</span>
+          <span className={s.brandMark} aria-hidden="true">
+            什
+          </span>
           <Signature />
         </Link>
         <div className={s.topActions}>
           <BookThemeToggle />
-          <Link href="/" className={s.quietButton} title={email}>我的地图 ↗</Link>
+          <Link href="/" className={s.quietButton} title={email}>
+            我的地图 ↗
+          </Link>
         </div>
       </header>
 
@@ -834,7 +852,9 @@ export function GenerationPage({
           <Signature word="Zhijing" large />
           <h1>从一个问题，建立一张可验证的地图。</h1>
           <form className={s.topicForm} onSubmit={submitGeneration} noValidate>
-            <label htmlFor="generation-topic" className={s.srOnly}>学习主题</label>
+            <label htmlFor="generation-topic" className={s.srOnly}>
+              学习主题
+            </label>
             <input
               id="generation-topic"
               value={topic}
@@ -845,12 +865,18 @@ export function GenerationPage({
               maxLength={200}
               placeholder="今天，想弄明白什么？"
             />
-            <button className={s.primary} type="submit">生成地图 <span aria-hidden="true">↗</span></button>
+            <button className={s.primary} type="submit">
+              生成地图 <span aria-hidden="true">↗</span>
+            </button>
           </form>
           {error ? (
-            <p className={s.error} role="alert">{error}</p>
+            <p className={s.error} role="alert">
+              {error}
+            </p>
           ) : null}
-          <p className={s.muted}>任务只在服务端使用真实来源与受控模型；连接中断后可在原任务上恢复。</p>
+          <p className={s.muted}>
+            任务只在服务端使用真实来源与受控模型；连接中断后可在原任务上恢复。
+          </p>
         </section>
       ) : (
         <section className={s.generationCenter}>
@@ -858,39 +884,78 @@ export function GenerationPage({
             <Signature word="Between the lines" large />
             <h1 title={topic}>{topic || "你的学习主题"}</h1>
           </div>
-          <button type="button" className={s.orbitTouch} aria-label="轻拂书页墨尘" onClick={() => setState((current) => current)}>
-            <span className={s.orbits} aria-hidden="true"><i /><i /><i /></span>
+          <button
+            type="button"
+            className={s.orbitTouch}
+            aria-label="轻拂书页墨尘"
+            onClick={() => setState((current) => current)}
+          >
+            <span className={s.orbits} aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
           </button>
           <div className={s.generationStatus}>
             {state === "reconnecting" ? (
-              <p className={s.status} role="status"><i data-active aria-hidden="true" />重新连接中（第 {reconnectAttempt} 次）</p>
+              <p className={s.status} role="status">
+                <i data-active aria-hidden="true" />
+                重新连接中（第 {reconnectAttempt} 次）
+              </p>
             ) : state === "connection_error" ? (
               <>
-                <p className={s.status} role="alert"><i data-active aria-hidden="true" />连接已中断</p>
-                <p className={s.error} role="alert">{error ?? "进度连接暂时不可用。"}</p>
+                <p className={s.status} role="alert">
+                  <i data-active aria-hidden="true" />
+                  连接已中断
+                </p>
+                <p className={s.error} role="alert">
+                  {error ?? "进度连接暂时不可用。"}
+                </p>
                 {taskId ? (
-                  <button className={s.primary} type="button" onClick={reconnectTask}>重新连接 ↻</button>
+                  <button
+                    className={s.primary}
+                    type="button"
+                    onClick={reconnectTask}
+                  >
+                    重新连接 ↻
+                  </button>
                 ) : null}
               </>
             ) : state === "failed" ? (
               <>
-                <p className={s.status} role="alert"><i data-active aria-hidden="true" />生成未完成</p>
-                <p className={s.error} role="alert">{failureLabel}</p>
-                <button className={s.primary} type="button" onClick={() => {
-                  setState("idle");
-                  setFailure(null);
-                  setError(null);
-                  setTaskId(null);
-                  setStatus("idle");
-                  setProgress(null);
-                  setStartedAt(null);
-                }}>重新提交主题 ↻</button>
+                <p className={s.status} role="alert">
+                  <i data-active aria-hidden="true" />
+                  生成未完成
+                </p>
+                <p className={s.error} role="alert">
+                  {failureLabel}
+                </p>
+                <button
+                  className={s.primary}
+                  type="button"
+                  onClick={() => {
+                    setState("idle");
+                    setFailure(null);
+                    setError(null);
+                    setTaskId(null);
+                    setStatus("idle");
+                    setProgress(null);
+                    setStartedAt(null);
+                  }}
+                >
+                  重新提交主题 ↻
+                </button>
               </>
             ) : (
-              <p className={s.status} role="status"><i data-active={isBusy} aria-hidden="true" />{statusLabel}</p>
+              <p className={s.status} role="status">
+                <i data-active={isBusy} aria-hidden="true" />
+                {statusLabel}
+              </p>
             )}
             {state === "succeeded" ? (
-              <Link className={s.primary} href="/">返回我的地图 ↗</Link>
+              <Link className={s.primary} href="/">
+                返回我的地图 ↗
+              </Link>
             ) : null}
             {recoveryProgress ? (
               <p className={s.error}>
@@ -904,12 +969,21 @@ export function GenerationPage({
       )}
 
       {!idle ? (
-        <button className={s.edgeTab} onClick={() => setDrawerOpen(true)} aria-expanded={drawerOpen}>
+        <button
+          className={s.edgeTab}
+          onClick={() => setDrawerOpen(true)}
+          aria-expanded={drawerOpen}
+        >
           <span aria-hidden="true">☷</span> 进度
         </button>
       ) : null}
       <AnonBookmark />
-      <Overlay open={drawerOpen} drawer title="生成进度" onClose={() => setDrawerOpen(false)}>
+      <Overlay
+        open={drawerOpen}
+        drawer
+        title="生成进度"
+        onClose={() => setDrawerOpen(false)}
+      >
         <div className={s.drawerBody}>
           <span className={s.eyebrow}>本次探索</span>
           <h2>生成进度</h2>
@@ -919,7 +993,8 @@ export function GenerationPage({
           <ol className={s.stageList}>
             {generationStages.map((stage, index) => {
               const reused = reusedStages.includes(stage);
-              const complete = reused || (currentStageIndex >= 0 && index < currentStageIndex);
+              const complete =
+                reused || (currentStageIndex >= 0 && index < currentStageIndex);
               const active = status === stage;
               return (
                 <li key={stage} data-current={active}>
@@ -931,9 +1006,22 @@ export function GenerationPage({
             })}
           </ol>
           <div className={s.muted}>
-            {modelProgress ? <p>模型尝试 {modelProgress.attempt}/{modelProgress.maxAttempts}</p> : null}
-            {searchProgress ? <p>搜索方向 {searchProgress.completed}/{searchProgress.total}</p> : null}
-            {supplementProgress ? <p>补充材料 {supplementProgress.completed}/{supplementProgress.total}</p> : null}
+            {modelProgress ? (
+              <p>
+                模型尝试 {modelProgress.attempt}/{modelProgress.maxAttempts}
+              </p>
+            ) : null}
+            {searchProgress ? (
+              <p>
+                搜索方向 {searchProgress.completed}/{searchProgress.total}
+              </p>
+            ) : null}
+            {supplementProgress ? (
+              <p>
+                补充材料 {supplementProgress.completed}/
+                {supplementProgress.total}
+              </p>
+            ) : null}
           </div>
           {taskId ? (
             <details className={s.details}>

@@ -10,7 +10,11 @@ import type {
   LearningProgressSummary,
   LearningAssessmentSubmissionResult,
 } from "@/components/contracts";
-import { Signature, BookThemeToggle, AnonBookmark } from "./shittim-immersive/bookish-chrome";
+import {
+  Signature,
+  BookThemeToggle,
+  AnonBookmark,
+} from "./shittim-immersive/bookish-chrome";
 import { Scene, Scanner } from "./shittim-immersive/scene";
 import { ImmersiveAtlas } from "./shittim-immersive/immersive-atlas";
 import { QuestionSession } from "./shittim-immersive/question-session";
@@ -48,7 +52,9 @@ export function LearningWorkspace({
   const router = useRouter();
   const screen = useRef<HTMLElement>(null);
   const [map, setMap] = useState<LearningMapDetail | null>(null);
-  const [progress, setProgress] = useState<LearningProgressSummary | null>(null);
+  const [progress, setProgress] = useState<LearningProgressSummary | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [progressError, setProgressError] = useState("");
@@ -65,7 +71,9 @@ export function LearningWorkspace({
   const handleAuth = useCallback(
     (value: unknown) => {
       if (isApiRequestError(value) && value.status === 401) {
-        router.replace(`/auth?next=${encodeURIComponent(`/learn/${relationshipId}`)}`);
+        router.replace(
+          `/auth?next=${encodeURIComponent(`/learn/${relationshipId}`)}`,
+        );
         return true;
       }
       return false;
@@ -84,7 +92,10 @@ export function LearningWorkspace({
         `/api/learning-relationships/${encodeURIComponent(relationshipId)}/progress`,
         { signal: controller.signal },
       );
-      if (progressRequest.current === controller && !controller.signal.aborted) {
+      if (
+        progressRequest.current === controller &&
+        !controller.signal.aborted
+      ) {
         setProgress(value);
       }
     } catch (value) {
@@ -116,13 +127,17 @@ export function LearningWorkspace({
       .then((value) => {
         if (!active) return;
         setMap(value);
-        if (initialNodeId && value.nodes.some((n) => n.nodeId === initialNodeId)) {
+        if (
+          initialNodeId &&
+          value.nodes.some((n) => n.nodeId === initialNodeId)
+        ) {
           setSelected(initialNodeId);
           setQuestionOpen(true);
         }
       })
       .catch((value) => {
-        if (active && !handleAuth(value)) setError(workspaceErrorMessage(value));
+        if (active && !handleAuth(value))
+          setError(workspaceErrorMessage(value));
       })
       .finally(() => {
         clearTimeout(timeout);
@@ -138,7 +153,10 @@ export function LearningWorkspace({
   }, [relationshipId, initialNodeId, reload, handleAuth, refreshProgress]);
 
   const completed = useMemo(
-    () => new Set((progress?.nodes ?? []).filter((n) => n.completed).map((n) => n.nodeId)),
+    () =>
+      new Set(
+        (progress?.nodes ?? []).filter((n) => n.completed).map((n) => n.nodeId),
+      ),
     [progress],
   );
   const count = map?.nodes.filter((n) => completed.has(n.nodeId)).length ?? 0;
@@ -158,7 +176,11 @@ export function LearningWorkspace({
               ...current,
               nodes: current.nodes.map((n) =>
                 n.nodeId === result.nodeId
-                  ? { ...n, completed: true, bestScore: Math.max(n.bestScore, result.bestScore) }
+                  ? {
+                      ...n,
+                      completed: true,
+                      bestScore: Math.max(n.bestScore, result.bestScore),
+                    }
                   : n,
               ),
             }
@@ -171,7 +193,8 @@ export function LearningWorkspace({
   async function fullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
-      else if (screen.current?.requestFullscreen) await screen.current.requestFullscreen();
+      else if (screen.current?.requestFullscreen)
+        await screen.current.requestFullscreen();
       else setNotice("浏览器暂不支持全屏。");
     } catch {
       setNotice("浏览器暂不支持全屏。");
@@ -185,11 +208,22 @@ export function LearningWorkspace({
   }, [notice]);
 
   return (
-    <main ref={screen} className={s.viewport} data-screen="map" data-paused={paused}>
-      <Scene mode={checking ? "checking" : "map"} paused={paused} pulse={pulse} />
+    <main
+      ref={screen}
+      className={s.viewport}
+      data-screen="map"
+      data-paused={paused}
+    >
+      <Scene
+        mode={checking ? "checking" : "map"}
+        paused={paused}
+        pulse={pulse}
+      />
       <header className={s.topbar}>
         <Link href="/" className={s.brand}>
-          <span className={s.brandMark} aria-hidden="true">什</span>
+          <span className={s.brandMark} aria-hidden="true">
+            什
+          </span>
           <Signature />
         </Link>
         <div className={s.topActions}>
@@ -205,7 +239,11 @@ export function LearningWorkspace({
             <span aria-hidden="true">{paused ? "▷" : "Ⅱ"}</span>
             <span className={s.motionText}>动效</span>
           </button>
-          <button type="button" className={`${s.tool} ${s.fullScreenButton}`} onClick={() => void fullscreen()}>
+          <button
+            type="button"
+            className={`${s.tool} ${s.fullScreenButton}`}
+            onClick={() => void fullscreen()}
+          >
             ⛶ 全屏
           </button>
           <Link className={s.quietButton} href="/" title={email}>
@@ -227,7 +265,9 @@ export function LearningWorkspace({
           <button className={s.primary} onClick={() => setReload((r) => r + 1)}>
             重新加载 ↻
           </button>
-          <Link className={s.secondary} href="/">返回首页</Link>
+          <Link className={s.secondary} href="/">
+            返回首页
+          </Link>
         </section>
       ) : (
         <>
@@ -242,7 +282,11 @@ export function LearningWorkspace({
             onSelect={choose}
             pulse={pulse}
           />
-          <button className={s.edgeTab} onClick={() => setDrawer(true)} aria-expanded={drawer}>
+          <button
+            className={s.edgeTab}
+            onClick={() => setDrawer(true)}
+            aria-expanded={drawer}
+          >
             <span aria-hidden="true">☷</span> 进度
           </button>
         </>
@@ -250,7 +294,9 @@ export function LearningWorkspace({
 
       <AnonBookmark />
       {notice ? (
-        <p className={s.notice} role="status">{notice}</p>
+        <p className={s.notice} role="status">
+          {notice}
+        </p>
       ) : null}
 
       <Overlay
@@ -280,15 +326,22 @@ export function LearningWorkspace({
               </div>
             </>
           ) : progressError ? (
-            <p className={s.error} role="alert">{progressError}</p>
+            <p className={s.error} role="alert">
+              {progressError}
+            </p>
           ) : (
             <Scanner compact label="同步进度" />
           )}
           {progressError && progress ? (
-            <p className={s.error} role="alert">{progressError}</p>
+            <p className={s.error} role="alert">
+              {progressError}
+            </p>
           ) : null}
           {progressError ? (
-            <button className={s.secondary} onClick={() => void refreshProgress()}>
+            <button
+              className={s.secondary}
+              onClick={() => void refreshProgress()}
+            >
               重新同步 ↻
             </button>
           ) : null}
@@ -297,14 +350,21 @@ export function LearningWorkspace({
               <li key={node.nodeId}>
                 <button onClick={() => choose(node.nodeId)}>
                   {node.title}
-                  <span aria-label={completed.has(node.nodeId) ? "已完成" : "未完成"}>
+                  <span
+                    aria-label={
+                      completed.has(node.nodeId) ? "已完成" : "未完成"
+                    }
+                  >
                     {completed.has(node.nodeId) ? "✓" : "↗"}
                   </span>
                 </button>
               </li>
             ))}
           </ul>
-          <Link className={s.primary} href={`/learn/${encodeURIComponent(relationshipId)}/report`}>
+          <Link
+            className={s.primary}
+            href={`/learn/${encodeURIComponent(relationshipId)}/report`}
+          >
             查看报告 ↗
           </Link>
         </div>
