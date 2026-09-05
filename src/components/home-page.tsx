@@ -6,6 +6,7 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
+import { Signature } from "@/components/shittim-immersive/bookish-chrome";
 import { apiRequest, isApiRequestError } from "@/shared/ui/api-client";
 import type {
   FeaturedLearningMapSummary,
@@ -155,6 +156,9 @@ export function HomePage({ email }: HomePageProps) {
         <section className="home-hero" aria-labelledby="home-title">
           <div className="home-hero-copy">
             <span className="section-kicker">你的学习工作台</span>
+            <div className="home-book-signature" aria-hidden="true">
+              <Signature word="Between the lines" large />
+            </div>
             <h1 id="home-title">把零散讨论，走成一条学会的路。</h1>
             <p>
               从经过检查的精选地图开始，或输入主题现场生成。每个节点都连接到真实知乎来源，并用服务端验证留下你的学习进度。

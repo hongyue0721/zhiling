@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { apiRequest } from "@/shared/ui/api-client";
+import { Signature, BookThemeToggle } from "./shittim-immersive/bookish-chrome";
 
 type AppHeaderProps = Readonly<{
   email: string;
@@ -35,10 +36,10 @@ export function AppHeader({ email, eyebrow = "知径" }: AppHeaderProps) {
       <div className="app-header-inner">
         <Link className="brand-mark" href="/" aria-label="返回知径首页">
           <span className="brand-mark-symbol" aria-hidden="true">
-            Z
+            什
           </span>
-          <span>
-            <span className="brand-mark-name">知径</span>
+          <span className="brand-mark-word">
+            <Signature word="Zhijing" />
             <span className="brand-mark-eyebrow">{eyebrow}</span>
           </span>
         </Link>
@@ -50,6 +51,7 @@ export function AppHeader({ email, eyebrow = "知径" }: AppHeaderProps) {
           <span className="account-email" title={email}>
             {email}
           </span>
+          <BookThemeToggle />
           <button
             type="button"
             className="button button-quiet button-small"
