@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import { AppHeader } from "@/components/app-header";
+import { Signature, BookThemeToggle, AnonBookmark } from "@/components/shittim-immersive/bookish-chrome";
+import { Scene } from "@/components/shittim-immersive/scene";
+import { Overlay } from "@/components/shittim-immersive/dialog";
+import s from "@/components/shittim-immersive/scenes.module.css";
 import {
   ApiRequestError,
   apiRequest,
@@ -514,6 +517,7 @@ export function GenerationPage({
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -808,202 +812,71 @@ export function GenerationPage({
   const recoveryProgress = progress?.recovery;
   const isBusy =
     state === "submitting" || state === "streaming" || state === "reconnecting";
+  const idle = state === "idle";
+  const ready = state === "succeeded";
 
   return (
-    <div className="app-frame">
-      <AppHeader email={email} eyebrow="现场生成" />
-      <main className="generation-main">
-        <div className="generation-heading">
-          <Link className="back-link" href="/">
-            ← 我的学习
-          </Link>
-          <span className="section-kicker">现场生成</span>
-          <h1>从一个问题，建立一张可验证的地图。</h1>
-          <p>
-            生成任务只在服务端使用真实来源和受控模型。未经校验的内容不会提前展示，任务可以在连接中断后恢复。
-          </p>
+    <main className={s.viewport} data-screen="generation">
+      <Scene mode={idle ? "ambient" : ready ? "success" : state === "failed" ? "ambient" : "generating"} />
+      <header className={s.topbar}>
+        <Link href="/" className={s.brand}>
+          <span className={s.brandMark} aria-hidden="true">什</span>
+          <Signature />
+        </Link>
+        <div className={s.topActions}>
+          <BookThemeToggle />
+          <Link href="/" className={s.quietButton} title={email}>我的地图 ↗</Link>
         </div>
+      </header>
 
-        <section
-          className="generation-layout"
-          aria-labelledby="generation-form-title"
-        >
-          <div className="generation-form-card">
-            <div className="panel-heading">
-              <h2 id="generation-form-title">你的学习目标</h2>
-              <p>尽量写清楚你想理解的范围，最多 200 个字符。</p>
-            </div>
-            <form
-              className="generation-form"
-              onSubmit={submitGeneration}
-              noValidate
-            >
-              <label className="field-label" htmlFor="generation-topic">
-                学习主题
-                <textarea
-                  id="generation-topic"
-                  className="field-input field-textarea"
-                  value={topic}
-                  onChange={(event) => {
-                    setTopic(event.target.value);
-                    if (error) setError(null);
-                  }}
-                  maxLength={200}
-                  rows={4}
-                  placeholder="例如：如何为高流量网站设计可靠的缓存系统"
-                  disabled={isBusy}
-                />
-              </label>
-              <div className="field-counter" aria-live="polite">
-                {topic.length}/200
-              </div>
-              {error ? (
-                <p className="form-message form-message-error" role="alert">
-                  {error}
-                </p>
-              ) : null}
-              <button
-                className="button button-primary button-block"
-                type="submit"
-                disabled={isBusy}
-              >
-                {isBusy ? "任务进行中…" : "开始现场生成"}
-              </button>
-            </form>
-            <p className="privacy-note">
-              你的主题会随当前正式 Session 提交；前端不会发送用户
-              ID，也不会接收候选正文或供应方错误详情。
-            </p>
+      {idle ? (
+        <section className={s.landing}>
+          <Signature word="Zhijing" large />
+          <h1>从一个问题，建立一张可验证的地图。</h1>
+          <form className={s.topicForm} onSubmit={submitGeneration} noValidate>
+            <label htmlFor="generation-topic" className={s.srOnly}>学习主题</label>
+            <input
+              id="generation-topic"
+              value={topic}
+              onChange={(event) => {
+                setTopic(event.target.value);
+                if (error) setError(null);
+              }}
+              maxLength={200}
+              placeholder="今天，想弄明白什么？"
+            />
+            <button className={s.primary} type="submit">生成地图 <span aria-hidden="true">↗</span></button>
+          </form>
+          {error ? (
+            <p className={s.error} role="alert">{error}</p>
+          ) : null}
+          <p className={s.muted}>任务只在服务端使用真实来源与受控模型；连接中断后可在原任务上恢复。</p>
+        </section>
+      ) : (
+        <section className={s.generationCenter}>
+          <div className={s.generationTitle}>
+            <Signature word="Between the lines" large />
+            <h1 title={topic}>{topic || "你的学习主题"}</h1>
           </div>
-
-          <section
-            className="generation-status-card"
-            aria-labelledby="generation-status-title"
-          >
-            <div className="status-card-topline">
-              <span className="section-kicker">任务状态</span>
-              {taskId ? <span className="status-live">可恢复</span> : null}
-            </div>
-            <h2 id="generation-status-title">
-              {state === "idle" ? "准备开始" : statusLabel}
-            </h2>
-            {state === "idle" ? (
-              <p className="status-card-description">
-                提交后，这里会按服务端事件显示规范化、检索、结构化和校验进度。
-              </p>
-            ) : state === "reconnecting" ? (
-              <p className="status-card-description" role="status">
-                连接暂时中断，正在用 Last-Event-ID 恢复进度（第{" "}
-                {reconnectAttempt} 次尝试）。
-              </p>
+          <button type="button" className={s.orbitTouch} aria-label="轻拂书页墨尘" onClick={() => setState((current) => current)}>
+            <span className={s.orbits} aria-hidden="true"><i /><i /><i /></span>
+          </button>
+          <div className={s.generationStatus}>
+            {state === "reconnecting" ? (
+              <p className={s.status} role="status"><i data-active aria-hidden="true" />重新连接中（第 {reconnectAttempt} 次）</p>
             ) : state === "connection_error" ? (
-              <p className="status-card-description" role="alert">
-                {error ?? "进度连接暂时不可用。"}
-              </p>
+              <>
+                <p className={s.status} role="alert"><i data-active aria-hidden="true" />连接已中断</p>
+                <p className={s.error} role="alert">{error ?? "进度连接暂时不可用。"}</p>
+                {taskId ? (
+                  <button className={s.primary} type="button" onClick={reconnectTask}>重新连接 ↻</button>
+                ) : null}
+              </>
             ) : state === "failed" ? (
-              <div className="generation-failure" role="alert">
-                <strong>{failureLabel}</strong>
-                <p>
-                  {failure?.retryable === true
-                    ? "该失败标记为可重试，你可以重新提交主题。"
-                    : failure?.retryable === false
-                      ? "任务已安全终止，未发布不完整的学习地图；诊断日志已记录。"
-                      : "失败原因尚未确认，请稍后重新提交主题。"}
-                </p>
-              </div>
-            ) : (
-              <div className="generation-progress">
-                <div className="progress-track">
-                  <span className="progress-indicator" />
-                </div>
-                <div
-                  className="generation-progress-live"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <p>{statusLabel}</p>
-                  {recoveryProgress ? (
-                    <p className="progress-recovery">
-                      {recoveryProgress.state === "started"
-                        ? `将执行第 ${recoveryProgress.attempt}/${recoveryProgress.maxAttempts} 次模型尝试（全局恢复预算 ${recoveryProgress.used}/${recoveryProgress.limit}）`
-                        : "自动恢复预算已耗尽，未发布不完整地图"}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="generation-stage-list" aria-label="生成阶段">
-                  {generationStages.map((stage, index) => {
-                    const reused = reusedStages.includes(stage);
-                    const complete =
-                      reused ||
-                      (currentStageIndex >= 0 && index < currentStageIndex);
-                    const active = status === stage;
-                    return (
-                      <span
-                        className={`generation-stage ${
-                          complete
-                            ? "generation-stage-complete"
-                            : active
-                              ? "generation-stage-active"
-                              : ""
-                        }`}
-                        key={stage}
-                      >
-                        <span aria-hidden="true">
-                          {complete ? "✓" : index + 1}
-                        </span>
-                        {statusLabels[stage]}
-                      </span>
-                    );
-                  })}
-                </div>
-                <div className="generation-progress-facts">
-                  <span>已用时 {formatElapsed(elapsedMs)}</span>
-                  {modelProgress ? (
-                    <span>
-                      模型尝试 {modelProgress.attempt}/
-                      {modelProgress.maxAttempts}
-                    </span>
-                  ) : null}
-                  {searchProgress ? (
-                    <span>
-                      搜索方向 {searchProgress.completed}/{searchProgress.total}
-                    </span>
-                  ) : null}
-                  {supplementProgress ? (
-                    <span>
-                      补充材料 {supplementProgress.completed}/
-                      {supplementProgress.total}
-                    </span>
-                  ) : null}
-                </div>
-                {reusedStages.length > 0 ? (
-                  <span className="progress-caption">
-                    已复用阶段结果：
-                    {reusedStages
-                      .map((stage) => statusLabels[stage])
-                      .join("、")}
-                  </span>
-                ) : (
-                  <span className="progress-caption">
-                    事件来自服务端，断线会自动恢复
-                  </span>
-                )}
-              </div>
-            )}
-            {state === "connection_error" && taskId ? (
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={reconnectTask}
-              >
-                重新连接任务
-              </button>
-            ) : null}
-            {state === "failed" ? (
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={() => {
+              <>
+                <p className={s.status} role="alert"><i data-active aria-hidden="true" />生成未完成</p>
+                <p className={s.error} role="alert">{failureLabel}</p>
+                <button className={s.primary} type="button" onClick={() => {
                   setState("idle");
                   setFailure(null);
                   setError(null);
@@ -1011,14 +884,65 @@ export function GenerationPage({
                   setStatus("idle");
                   setProgress(null);
                   setStartedAt(null);
-                }}
-              >
-                重新提交主题
-              </button>
+                }}>重新提交主题 ↻</button>
+              </>
+            ) : (
+              <p className={s.status} role="status"><i data-active={isBusy} aria-hidden="true" />{statusLabel}</p>
+            )}
+            {state === "succeeded" ? (
+              <Link className={s.primary} href="/">返回我的地图 ↗</Link>
             ) : null}
-          </section>
+            {recoveryProgress ? (
+              <p className={s.error}>
+                {recoveryProgress.state === "started"
+                  ? `将执行第 ${recoveryProgress.attempt}/${recoveryProgress.maxAttempts} 次模型尝试（全局恢复预算 ${recoveryProgress.used}/${recoveryProgress.limit}）`
+                  : "自动恢复预算已耗尽，未发布不完整地图"}
+              </p>
+            ) : null}
+          </div>
         </section>
-      </main>
-    </div>
+      )}
+
+      {!idle ? (
+        <button className={s.edgeTab} onClick={() => setDrawerOpen(true)} aria-expanded={drawerOpen}>
+          <span aria-hidden="true">☷</span> 进度
+        </button>
+      ) : null}
+      <AnonBookmark />
+      <Overlay open={drawerOpen} drawer title="生成进度" onClose={() => setDrawerOpen(false)}>
+        <div className={s.drawerBody}>
+          <span className={s.eyebrow}>本次探索</span>
+          <h2>生成进度</h2>
+          <p className={s.drawerTopic}>{topic}</p>
+          <strong className={s.elapsed}>{formatElapsed(elapsedMs)}</strong>
+          <span className={s.muted}>已等待</span>
+          <ol className={s.stageList}>
+            {generationStages.map((stage, index) => {
+              const reused = reusedStages.includes(stage);
+              const complete = reused || (currentStageIndex >= 0 && index < currentStageIndex);
+              const active = status === stage;
+              return (
+                <li key={stage} data-current={active}>
+                  <i aria-hidden="true" />
+                  <span>{statusLabels[stage]}</span>
+                  {complete ? <small aria-label="已完成">✓</small> : null}
+                </li>
+              );
+            })}
+          </ol>
+          <div className={s.muted}>
+            {modelProgress ? <p>模型尝试 {modelProgress.attempt}/{modelProgress.maxAttempts}</p> : null}
+            {searchProgress ? <p>搜索方向 {searchProgress.completed}/{searchProgress.total}</p> : null}
+            {supplementProgress ? <p>补充材料 {supplementProgress.completed}/{supplementProgress.total}</p> : null}
+          </div>
+          {taskId ? (
+            <details className={s.details}>
+              <summary>任务编号</summary>
+              <code>{taskId}</code>
+            </details>
+          ) : null}
+        </div>
+      </Overlay>
+    </main>
   );
 }

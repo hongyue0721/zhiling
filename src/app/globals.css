@@ -1,25 +1,44 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #152c30;
-  --ink-soft: #4d6261;
-  --ink-muted: #7e8f8b;
-  --paper: #f7f5ef;
-  --paper-deep: #eeece4;
-  --white: #ffffff;
-  --line: #d8ded8;
-  --line-strong: #b9c8c0;
-  --teal: #0a766f;
-  --teal-dark: #075852;
-  --teal-pale: #dff0e9;
-  --amber: #d88a42;
-  --amber-pale: #faead8;
-  --red: #b55047;
-  --red-pale: #f8e3df;
-  --shadow: 0 18px 48px rgba(21, 44, 48, 0.08);
-  --radius-lg: 24px;
-  --radius-md: 14px;
-  --radius-sm: 9px;
+  --ink: #25201b;
+  --ink-soft: #4a4239;
+  --ink-muted: #7a6f60;
+  --paper: #f6f1e6;
+  --paper-deep: #ece3d2;
+  --white: #fbf6ec;
+  --line: #d9cfb9;
+  --line-strong: #c3b69b;
+  --teal: #8a4423;
+  --teal-dark: #6e3519;
+  --teal-pale: #f1e2d2;
+  --amber: #a17a42;
+  --amber-pale: #f3e7d3;
+  --red: #a84a3c;
+  --red-pale: #f6e0da;
+  --shadow: 0 18px 48px rgba(62, 40, 21, 0.12);
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+}
+
+:root[data-shittim-tone="dark"] {
+  --ink: #f4f0e3;
+  --ink-soft: #c8c1ae;
+  --ink-muted: #9b927e;
+  --paper: #131110;
+  --paper-deep: #221e19;
+  --white: #1a1715;
+  --line: #443b31;
+  --line-strong: #5c5142;
+  --teal: #c89761;
+  --teal-dark: #e0b987;
+  --teal-pale: #2c241c;
+  --amber: #cfa46f;
+  --amber-pale: #2c241c;
+  --red: #d08a7c;
+  --red-pale: #33201b;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -33,16 +52,9 @@ html {
 body {
   margin: 0;
   color: var(--ink);
-  background:
-    radial-gradient(
-      circle at 90% -10%,
-      rgba(188, 223, 207, 0.34),
-      transparent 32rem
-    ),
-    var(--paper);
+  background: var(--paper);
   font-family:
-    "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-    sans-serif;
+    "LXGW WenKai Screen", "Kaiti SC", "KaiTi", "PingFang SC", serif;
   font-size: 15px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
@@ -70,7 +82,7 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 [role="button"]:focus-visible {
-  outline: 3px solid rgba(10, 118, 111, 0.3);
+  outline: 3px solid rgba(138, 68, 35, 0.32);
   outline-offset: 3px;
 }
 
@@ -87,8 +99,8 @@ button:disabled {
   position: sticky;
   z-index: 10;
   top: 0;
-  border-bottom: 1px solid rgba(185, 200, 192, 0.72);
-  background: rgba(247, 245, 239, 0.9);
+  border-bottom: 1px solid color-mix(in srgb, var(--line-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
   backdrop-filter: blur(16px);
 }
 
@@ -119,14 +131,14 @@ button:disabled {
   border-radius: 10px 10px 10px 3px;
   color: var(--white);
   background: var(--teal);
-  font-family: Georgia, serif;
+  font-family: "Cormorant Garamond", "EB Garamond", Georgia, serif;
   font-size: 20px;
   font-weight: 700;
 }
 
 .brand-mark-name {
   display: block;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 19px;
   font-weight: 700;
   letter-spacing: 0.07em;
@@ -140,6 +152,26 @@ button:disabled {
   font-size: 10px;
   letter-spacing: 0.12em;
   line-height: 1.2;
+}
+
+.brand-mark-word {
+  display: grid;
+  gap: 1px;
+}
+
+.brand-mark-word .signature {
+  font: italic 500 26px/1 var(--bk-logo, "Fraunces", Georgia, serif);
+  color: var(--ink);
+  letter-spacing: -0.2px;
+}
+
+.brand-mark-word .signature > span > span {
+  display: inline-block;
+  animation: none;
+}
+
+.brand-mark:hover .brand-mark-word .signature {
+  color: var(--teal);
 }
 
 .app-nav {
@@ -208,7 +240,7 @@ button:disabled {
 .button-primary {
   color: var(--white);
   background: var(--teal);
-  box-shadow: 0 7px 15px rgba(10, 118, 111, 0.18);
+  box-shadow: 0 7px 15px rgba(138, 68, 35, 0.22);
 }
 
 .button-primary:hover:not(:disabled) {
@@ -218,7 +250,7 @@ button:disabled {
 .button-secondary {
   color: var(--teal-dark);
   border-color: var(--line-strong);
-  background: rgba(255, 255, 255, 0.52);
+  background: color-mix(in srgb, var(--white) 0.52, transparent);
 }
 
 .button-secondary:hover:not(:disabled) {
@@ -293,6 +325,22 @@ button:disabled {
   max-width: 735px;
 }
 
+.home-book-signature {
+  display: block;
+  margin: 10px 0 -2px;
+}
+
+.home-book-signature .largeSignature {
+  font: 400 clamp(52px, 6.4vw, 82px)/1.05 var(--bk-script, "Allura", cursive);
+  color: var(--teal);
+  letter-spacing: -0.5px;
+}
+
+.home-book-signature .largeSignature > span > span {
+  display: inline-block;
+  animation: none;
+}
+
 .home-hero h1,
 .generation-heading h1,
 .workspace-heading h1,
@@ -300,7 +348,7 @@ button:disabled {
   max-width: 790px;
   margin: 14px 0 17px;
   color: var(--ink);
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: clamp(35px, 5vw, 63px);
   font-weight: 500;
   letter-spacing: -0.045em;
@@ -332,7 +380,7 @@ button:disabled {
 .hero-note-number {
   margin-bottom: 7px;
   color: var(--amber);
-  font-family: Georgia, serif;
+  font-family: "Cormorant Garamond", "EB Garamond", Georgia, serif;
   font-size: 28px;
   line-height: 1;
 }
@@ -356,7 +404,7 @@ button:disabled {
 .generation-form-card h2,
 .generation-status-card h2 {
   margin: 7px 0 0;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 27px;
   font-weight: 500;
   letter-spacing: -0.025em;
@@ -382,7 +430,7 @@ button:disabled {
   padding: 23px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.7);
+  background: color-mix(in srgb, var(--white) 0.7, transparent);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -410,7 +458,7 @@ button:disabled {
 
 .card-index {
   color: var(--amber);
-  font-family: Georgia, serif;
+  font-family: "Cormorant Garamond", "EB Garamond", Georgia, serif;
   font-size: 25px;
   line-height: 1;
 }
@@ -423,7 +471,7 @@ button:disabled {
 
 .learning-card h3 {
   margin: 35px 0 10px;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 22px;
   font-weight: 500;
   line-height: 1.3;
@@ -450,7 +498,7 @@ button:disabled {
   padding: 40px 24px;
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.35);
+  background: color-mix(in srgb, var(--white) 0.35, transparent);
   text-align: center;
 }
 
@@ -469,7 +517,7 @@ button:disabled {
   border-radius: 50%;
   color: var(--teal);
   background: var(--teal-pale);
-  font-family: Georgia, serif;
+  font-family: "Cormorant Garamond", "EB Garamond", Georgia, serif;
   font-size: 18px;
   font-weight: 700;
 }
@@ -478,7 +526,7 @@ button:disabled {
 .empty-panel h2,
 .empty-panel h3 {
   margin: 0;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 23px;
   font-weight: 500;
 }
@@ -532,7 +580,7 @@ button:disabled {
 }
 
 .relationship-row-copy strong {
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 18px;
   font-weight: 500;
 }
@@ -558,13 +606,13 @@ button:disabled {
   border-radius: var(--radius-lg);
   color: var(--white);
   background:
-    linear-gradient(135deg, rgba(5, 88, 82, 0.98), rgba(10, 118, 111, 0.91)),
+    linear-gradient(135deg, rgba(110, 53, 25, 0.98), rgba(138, 68, 35, 0.91)),
     var(--teal);
-  box-shadow: 0 23px 48px rgba(7, 88, 82, 0.2);
+  box-shadow: 0 23px 48px rgba(138, 68, 35, 0.22);
 }
 
 .generator-callout .section-kicker {
-  color: #9bd5c4;
+  color: #e5c193;
 }
 
 .generator-callout h2 {
@@ -576,20 +624,20 @@ button:disabled {
 .generator-callout p {
   max-width: 480px;
   margin: 14px 0 0;
-  color: rgba(255, 255, 255, 0.75);
+  color: color-mix(in srgb, var(--white) 0.75, transparent);
   font-size: 13px;
 }
 
 .topic-form {
   align-self: center;
   padding: 23px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid color-mix(in srgb, var(--white) 0.22, transparent);
   border-radius: var(--radius-md);
-  background: rgba(2, 51, 47, 0.2);
+  background: rgba(110, 53, 25, 0.16);
 }
 
 .topic-form .field-label {
-  color: rgba(255, 255, 255, 0.86);
+  color: color-mix(in srgb, var(--white) 0.86, transparent);
 }
 
 .topic-form-row {
@@ -600,24 +648,24 @@ button:disabled {
 
 .topic-form-row .field-input {
   min-width: 0;
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: color-mix(in srgb, var(--white) 0.25, transparent);
   color: var(--white);
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--white) 0.12, transparent);
 }
 
 .topic-form-row .field-input::placeholder {
-  color: rgba(255, 255, 255, 0.48);
+  color: color-mix(in srgb, var(--white) 0.48, transparent);
 }
 
 .topic-form-row .button {
   flex: 0 0 auto;
   color: var(--teal-dark);
-  background: #f3d19f;
+  background: #f4e0c2;
   box-shadow: none;
 }
 
 .topic-form .form-message-error {
-  color: #ffcabf;
+  color: #f2c6b6;
 }
 
 .page-alert {
@@ -627,7 +675,7 @@ button:disabled {
   gap: 18px;
   margin: -20px 0 30px;
   padding: 13px 17px;
-  border: 1px solid #e7bbb4;
+  border: 1px solid #dcc4ac;
   border-radius: var(--radius-sm);
   color: var(--red);
   background: var(--red-pale);
@@ -639,7 +687,7 @@ button:disabled {
 .relationship-loading {
   display: block;
   border-radius: var(--radius-sm);
-  background: linear-gradient(100deg, #e7e7de 15%, #f5f4ed 35%, #e7e7de 55%);
+  background: linear-gradient(100deg, #e7dcc6 15%, #f4ecdc 35%, #e7dcc6 55%);
   background-size: 200% 100%;
   animation: loading-shimmer 1.5s ease-in-out infinite;
 }
@@ -696,15 +744,15 @@ button:disabled {
   background:
     radial-gradient(
       circle at 20% 16%,
-      rgba(156, 219, 199, 0.2),
+      rgba(226, 193, 147, 0.18),
       transparent 19rem
     ),
-    linear-gradient(150deg, #075852, #103f43);
+    linear-gradient(150deg, #4a2a16, #2e2016);
 }
 
 .auth-page-aside .brand-mark-symbol {
   color: var(--teal-dark);
-  background: #a9d8c7;
+  background: #e5c193;
 }
 
 .auth-page-aside .brand-mark-name {
@@ -714,7 +762,7 @@ button:disabled {
 .auth-aside-quote {
   max-width: 355px;
   margin: auto 0;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: clamp(34px, 4.4vw, 58px);
   letter-spacing: -0.05em;
   line-height: 1.12;
@@ -724,7 +772,7 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 11px 22px;
-  color: rgba(255, 255, 255, 0.62);
+  color: color-mix(in srgb, var(--white) 0.62, transparent);
   font-size: 12px;
 }
 
@@ -734,7 +782,7 @@ button:disabled {
   height: 5px;
   margin: 0 8px 2px 0;
   border-radius: 50%;
-  background: #a9d8c7;
+  background: #e5c193;
   content: "";
 }
 
@@ -751,7 +799,7 @@ button:disabled {
 
 .auth-card-heading h1 {
   margin: 12px 0 12px;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: clamp(31px, 4vw, 45px);
   font-weight: 500;
   letter-spacing: -0.04em;
@@ -789,7 +837,7 @@ button:disabled {
 .auth-tab.active {
   color: var(--ink);
   background: var(--white);
-  box-shadow: 0 3px 12px rgba(21, 44, 48, 0.08);
+  box-shadow: 0 3px 12px rgba(62, 40, 21, 0.12);
 }
 
 .auth-form,
@@ -814,19 +862,19 @@ button:disabled {
   border-radius: var(--radius-sm);
   color: var(--ink);
   outline: none;
-  background: rgba(255, 255, 255, 0.62);
+  background: color-mix(in srgb, var(--white) 0.62, transparent);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease;
 }
 
 .field-input:hover {
-  border-color: #92ada4;
+  border-color: #bfa483;
 }
 
 .field-input:focus {
   border-color: var(--teal);
-  box-shadow: 0 0 0 4px rgba(10, 118, 111, 0.1);
+  box-shadow: 0 0 0 4px rgba(138, 68, 35, 0.14);
 }
 
 .field-textarea {
@@ -899,7 +947,7 @@ button:disabled {
   padding: 33px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.62);
+  background: color-mix(in srgb, var(--white) 0.62, transparent);
   box-shadow: var(--shadow);
 }
 
@@ -922,10 +970,10 @@ button:disabled {
   background:
     radial-gradient(
       circle at 100% 0,
-      rgba(188, 223, 207, 0.54),
+      rgba(226, 193, 147, 0.4),
       transparent 18rem
     ),
-    rgba(255, 255, 255, 0.62);
+    color-mix(in srgb, var(--white) 0.62, transparent);
 }
 
 .generation-status-card .status-card-topline {
@@ -1064,7 +1112,7 @@ button:disabled {
   max-width: 390px;
   margin: 13px 0 24px;
   padding: 17px;
-  border: 1px solid #ebc0b8;
+  border: 1px solid #dcc4ac;
   border-radius: var(--radius-sm);
   color: var(--red);
   background: var(--red-pale);
@@ -1073,7 +1121,7 @@ button:disabled {
 
 .generation-failure p {
   margin: 7px 0 0;
-  color: #8f4f48;
+  color: #9c5c45;
   font-size: 12px;
 }
 
@@ -1120,7 +1168,7 @@ button:disabled {
   min-height: 610px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: #f2f2eb;
+  background: #efe6d3;
   box-shadow: var(--shadow);
 }
 
@@ -1131,7 +1179,7 @@ button:disabled {
   gap: 16px;
   padding: 13px 17px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.58);
+  background: color-mix(in srgb, var(--white) 0.58, transparent);
 }
 
 .map-canvas-hint {
@@ -1195,18 +1243,18 @@ button:disabled {
 }
 
 .map-grid-line {
-  stroke: #dfe3dd;
+  stroke: #e3d7c2;
   stroke-width: 1;
 }
 
 .map-edge {
   fill: none;
-  stroke: #9ab7ad;
+  stroke: #c0a67e;
   stroke-width: 2;
 }
 
 .map-edge-arrow {
-  fill: #9ab7ad;
+  fill: #c0a67e;
 }
 
 .map-node {
@@ -1217,13 +1265,13 @@ button:disabled {
   align-items: flex-start;
   padding: 16px 16px 12px 19px;
   overflow: hidden;
-  border: 1px solid #c5d3cb;
+  border: 1px solid #cfbea4;
   border-radius: 13px;
   color: var(--ink);
   cursor: pointer;
   text-align: left;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 9px 19px rgba(21, 44, 48, 0.1);
+  background: color-mix(in srgb, var(--white) 0.96, transparent);
+  box-shadow: 0 9px 19px rgba(62, 40, 21, 0.14);
   transition:
     border-color 150ms ease,
     box-shadow 150ms ease,
@@ -1233,7 +1281,7 @@ button:disabled {
 .map-node:hover,
 .map-node.selected {
   border-color: var(--teal);
-  box-shadow: 0 9px 24px rgba(10, 118, 111, 0.19);
+  box-shadow: 0 9px 24px rgba(138, 68, 35, 0.24);
   transform: translateY(-2px);
 }
 
@@ -1241,7 +1289,7 @@ button:disabled {
   background: linear-gradient(
     145deg,
     rgba(223, 240, 233, 0.9),
-    rgba(255, 255, 255, 0.96)
+    color-mix(in srgb, var(--white) 0.96, transparent)
   );
 }
 
@@ -1267,7 +1315,7 @@ button:disabled {
 .map-node-title {
   width: 100%;
   overflow: hidden;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 16px;
   font-weight: 600;
   line-height: 1.25;
@@ -1299,7 +1347,7 @@ button:disabled {
   padding: 28px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--white) 0.72, transparent);
   box-shadow: var(--shadow);
 }
 
@@ -1310,7 +1358,7 @@ button:disabled {
 
 .panel-heading h2 {
   margin: 8px 0 7px;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 29px;
   font-weight: 500;
   letter-spacing: -0.025em;
@@ -1389,7 +1437,7 @@ button:disabled {
   border-radius: var(--radius-sm);
   color: var(--ink);
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.55);
+  background: color-mix(in srgb, var(--white) 0.55, transparent);
 }
 
 .source-row:hover {
@@ -1439,7 +1487,7 @@ button:disabled {
   padding: 13px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.5);
+  background: color-mix(in srgb, var(--white) 0.5, transparent);
 }
 
 .viewpoint-meta {
@@ -1604,7 +1652,7 @@ button:disabled {
 
 .option-row:hover,
 .option-row.checked {
-  border-color: #9bc2b5;
+  border-color: #d2b48c;
   color: var(--teal-dark);
   background: var(--teal-pale);
 }
@@ -1700,7 +1748,7 @@ button:disabled {
 }
 
 .assessment-result strong {
-  font-family: Georgia, serif;
+  font-family: "Cormorant Garamond", "EB Garamond", Georgia, serif;
   font-size: 30px;
   font-weight: 500;
 }
@@ -1725,14 +1773,14 @@ button:disabled {
 .inline-error h2 {
   margin: 0;
   color: var(--red);
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 22px;
   font-weight: 500;
 }
 
 .inline-error p {
   margin: 7px 0 0;
-  color: #8f4f48;
+  color: #9c5c45;
   font-size: 12px;
 }
 
@@ -1778,23 +1826,23 @@ button:disabled {
   border-radius: var(--radius-lg);
   color: var(--white);
   background: var(--teal);
-  box-shadow: 0 19px 38px rgba(7, 88, 82, 0.17);
+  box-shadow: 0 19px 38px rgba(138, 68, 35, 0.2);
 }
 
 .report-overview .section-kicker {
-  color: #9bd5c4;
+  color: #e5c193;
 }
 
 .report-overview h2 {
   margin: 8px 0 6px;
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 25px;
   font-weight: 500;
 }
 
 .report-overview p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.72);
+  color: color-mix(in srgb, var(--white) 0.72, transparent);
   font-size: 12px;
 }
 
@@ -1805,21 +1853,21 @@ button:disabled {
 }
 
 .completion-meter strong {
-  font-family: Georgia, serif;
+  font-family: "Cormorant Garamond", "EB Garamond", Georgia, serif;
   font-size: 40px;
   font-weight: 500;
   text-align: right;
 }
 
 .completion-track {
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--white) 0.2, transparent);
 }
 
 .completion-track span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #a9d8c7;
+  background: #e5c193;
 }
 
 .report-section-grid {
@@ -1832,7 +1880,7 @@ button:disabled {
   padding: 26px 28px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.64);
+  background: color-mix(in srgb, var(--white) 0.64, transparent);
 }
 
 .report-section-heading {
@@ -1858,7 +1906,7 @@ button:disabled {
   padding: 12px 13px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.5);
+  background: color-mix(in srgb, var(--white) 0.5, transparent);
 }
 
 .report-item-link {
@@ -1920,7 +1968,7 @@ button:disabled {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.52);
+  background: color-mix(in srgb, var(--white) 0.52, transparent);
 }
 
 .report-source-card:hover {
@@ -1929,7 +1977,7 @@ button:disabled {
 }
 
 .report-source-card strong {
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Noto Serif SC Variable", "Songti SC", "STSong", serif;
   font-size: 14px;
   font-weight: 500;
   line-height: 1.35;
