@@ -72,15 +72,35 @@ Worker 每轮调用公开的 `runOnce(workerId)`。没有可领取任务时执�
 
 排障时只查看任务 ID、阶段、耗时、重试次数和稳定失败分类。不要记录 Access Secret、第三方响应正文、候选节点或其他账户身份。在线知乎/模型采样依赖真实部署密钥；仓库脱敏 fixture 仅用于适配器契约，不代表在线采样已经完成。
 
+## 来源搜索诊断日志
+
+Worker 为每次知乎来源搜索按顺序输出 `started`、`response` 以及
+`succeeded` 或 `failed` 事件，每行都是一条 JSON 日志。事件包含任务请求 ID、
+查询指纹与长度、请求数量和超时、HTTP 状态、响应 Content-Type、响应体长度、
+JSON 状态、顶层字段/数据字段、来源条目字段集合、来源枚举值、知乎业务码、
+失败阶段和稳定错误分类；不会写入原始查询、来源标题/正文/URL、Access Secret
+或其他响应正文。
+
+生产 Worker 日志筛选示例：
+
+```bash
+docker logs --since 30m zhijing-production-generation-worker-1 2>&1 \
+  | jq -R 'fromjson? | select(type == "object" and ((.event // "") | startswith("zhihu_source_search_")))'
+```
+
+`response` 事件用于区分 HTTP、JSON 信封、业务码、数据字段和来源枚举问题；
+`failed` 事件中的 `requestId`、`queryFingerprint` 与 `failurePhase` 可和地图生成
+任务日志关联。日志收集器故障不会改变来源搜索的成功或失败结果。
+
 ## VPS 生产与 staging 入口
 
 生产和 staging 都使用仓库根目录的 `compose.production.yaml`；不要把本页
 前面的本地 `compose.yaml` 叠加。入口通过三元组严格选择隔离集群：
 
-| 环境 | `ZHIJING_ENVIRONMENT` | `COMPOSE_PROJECT_NAME` | `POSTGRES_VOLUME_NAME` |
-| --- | --- | --- | --- |
-| production | `production` | `zhijing-production` | `zhijing-postgres-production` |
-| staging（仅租约演练） | `staging` | `zhijing-staging` | `zhijing-postgres-staging` |
+| 环境                  | `ZHIJING_ENVIRONMENT` | `COMPOSE_PROJECT_NAME` | `POSTGRES_VOLUME_NAME`        |
+| --------------------- | --------------------- | ---------------------- | ----------------------------- |
+| production            | `production`          | `zhijing-production`   | `zhijing-postgres-production` |
+| staging（仅租约演练） | `staging`             | `zhijing-staging`      | `zhijing-postgres-staging`    |
 
 两套卷都必须预先创建为 external volume；项目名、卷名、环境名和
 `DATABASE_URL`（必须指向 `postgres:5432` 与对应 `POSTGRES_DB`）任一错配

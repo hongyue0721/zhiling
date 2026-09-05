@@ -5,6 +5,8 @@ import {
   ExternalProviderError,
   readExternalProviderEnvironment,
   type ExternalProviderEnvironment,
+  type ZhihuSearchDiagnosticEvent,
+  type ZhihuSearchDiagnosticLogger,
 } from "../public/server";
 import {
   OFFICIAL_FIXTURE_PROVENANCE,
@@ -51,10 +53,14 @@ const assessmentMap = {
   prerequisites: [],
 } as const;
 
-function runtimeWith(fetcher: typeof fetch) {
+function runtimeWith(
+  fetcher: typeof fetch,
+  diagnosticLogger?: ZhihuSearchDiagnosticLogger,
+) {
   return createExternalProviderRuntime({
     environment,
     fetch: fetcher,
+    diagnosticLogger,
     now: () => 1_742_822_400,
   });
 }
@@ -102,6 +108,121 @@ async function providerError(operation: Promise<unknown>) {
 }
 
 describe("Zhihu source search adapter", () => {
+  it("emits redacted lifecycle diagnostics for each source search", async () => {
+    const events: ZhihuSearchDiagnosticEvent[] = [];
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(ZHIHU_SEARCH_SUCCESS_FIXTURE)),
+      );
+
+    const result = await runtimeWith(fetcher, (event) =>
+      events.push(event),
+    ).sourceSearch.search({
+      query: "RAG",
+      count: 5,
+      requestId: "request-source-1",
+      timeoutMs: 500,
+    });
+
+    expect(result.sources).toHaveLength(1);
+    expect(events).toHaveLength(3);
+    expect(events[0]).toMatchObject({
+      event: "zhihu_source_search_started",
+      requestId: "request-source-1",
+      queryLength: 3,
+      count: 5,
+      timeoutMs: 500,
+      startedAtMs: 1_742_822_400_000,
+    });
+    expect(events[1]).toMatchObject({
+      event: "zhihu_source_search_response",
+      response: {
+        httpStatus: 200,
+        responseOk: true,
+        bodyLength: expect.any(Number),
+        jsonStatus: "valid",
+        businessCode: 0,
+        itemCount: 2,
+      },
+    });
+    expect(events[2]).toMatchObject({
+      event: "zhihu_source_search_succeeded",
+      sourceCount: 1,
+    });
+    expect(new Set(events.map((event) => event.queryFingerprint)).size).toBe(1);
+    expect(JSON.stringify(events)).not.toContain("RAG");
+    expect(JSON.stringify(events)).not.toContain("server-secret");
+  });
+
+  it("does not let diagnostic sink errors change a source result", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(ZHIHU_SEARCH_SUCCESS_FIXTURE)),
+      );
+
+    await expect(
+      runtimeWith(fetcher, () => {
+        throw new Error("diagnostic sink failed");
+      }).sourceSearch.search({
+        query: "RAG",
+        count: 5,
+        requestId: "request-source-1",
+        timeoutMs: 500,
+      }),
+    ).resolves.toMatchObject({
+      searchId: "fixture-search-123",
+      sources: [{ sourceId: "zhihu_article_123456789" }],
+    });
+  });
+
+  it("records safe response shape when a source item cannot be normalized", async () => {
+    const events: ZhihuSearchDiagnosticEvent[] = [];
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(ZHIHU_SEARCH_UNKNOWN_ENUM_FIXTURE)),
+      );
+
+    await expect(
+      providerError(
+        runtimeWith(fetcher, (event) => events.push(event)).sourceSearch.search(
+          {
+            query: "RAG",
+            count: 5,
+            requestId: "request-source-1",
+            timeoutMs: 500,
+          },
+        ),
+      ),
+    ).resolves.toMatchObject({
+      provider: "source",
+      code: "protocol_error",
+    });
+
+    expect(events).toHaveLength(3);
+    expect(events[1]).toMatchObject({
+      event: "zhihu_source_search_response",
+      response: {
+        httpStatus: 200,
+        responseOk: true,
+        jsonStatus: "valid",
+        businessCode: 0,
+        itemCount: 1,
+        itemContentTypes: ["UnknownType"],
+        itemAuthorityLevels: ["2"],
+      },
+    });
+    expect(events[2]).toMatchObject({
+      event: "zhihu_source_search_failed",
+      failureCode: "protocol_error",
+      retryable: false,
+      failurePhase: "normalization",
+      validationIssueCodes: ["normalize"],
+    });
+    expect(JSON.stringify(events)).not.toContain("RAG");
+  });
   it("uses the documented fixture provenance", () => {
     expect(OFFICIAL_FIXTURE_PROVENANCE).toContain("not online sampling");
   });

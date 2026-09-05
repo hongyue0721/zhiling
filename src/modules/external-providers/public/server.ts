@@ -3,6 +3,7 @@ import {
   type ExternalProviderRuntimeDependencies as InternalRuntimeDependencies,
 } from "../infrastructure/runtime";
 import { readExternalProviderEnvironment as readEnvironment } from "../infrastructure/config";
+import type { ZhihuSearchDiagnosticLogger } from "../infrastructure/diagnostics";
 import {
   EXTERNAL_PROVIDER_VERSIONS,
   ExternalProviderError,
@@ -14,6 +15,7 @@ export type ExternalProviderRuntimeDependencies = Readonly<{
   environment: ExternalProviderEnvironment;
   fetch?: typeof fetch;
   now?: () => Date | number;
+  diagnosticLogger?: ZhihuSearchDiagnosticLogger;
 }>;
 
 export function readExternalProviderEnvironment(
@@ -70,6 +72,12 @@ export type {
   StructuredViewpoint,
   StructuredModelAccess,
 } from "./contracts";
+
+export { writeZhihuSearchDiagnostic } from "../infrastructure/diagnostics";
+export type {
+  ZhihuSearchDiagnosticEvent,
+  ZhihuSearchDiagnosticLogger,
+} from "../infrastructure/diagnostics";
 
 export {
   EXTERNAL_PROVIDER_VERSIONS,

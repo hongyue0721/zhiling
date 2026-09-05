@@ -67,7 +67,7 @@ const generationStages = [
 ] as const;
 const failureLabels: Record<string, string> = {
   invalid_topic: "这个主题暂时无法生成，请换一个更具体的学习目标。",
-  source_unavailable: "知乎来源暂时不可用，请稍后再试。",
+  source_unavailable: "知乎来源请求未完成，诊断日志已记录，请稍后重试。",
   source_insufficient: "当前可用材料不足，暂时无法形成可靠的学习地图。",
   model_unavailable: "结构化服务暂时不可用，请稍后再试。",
   model_output_invalid:
@@ -907,7 +907,7 @@ export function GenerationPage({
                   {failure?.retryable === true
                     ? "该失败标记为可重试，你可以重新提交主题。"
                     : failure?.retryable === false
-                      ? "这是一次安全失败，未发布不完整的学习地图。"
+                      ? "任务已安全终止，未发布不完整的学习地图；诊断日志已记录。"
                       : "失败原因尚未确认，请稍后重新提交主题。"}
                 </p>
               </div>

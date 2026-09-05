@@ -6,7 +6,7 @@ import {
 
 const generationErrorMessages = {
   invalid_topic: "学习主题无法生成",
-  source_unavailable: "知乎来源暂时不可用",
+  source_unavailable: "知乎来源请求未完成，诊断日志已记录",
   source_insufficient: "可用学习材料不足",
   model_unavailable: "结构化模型暂时不可用",
   model_output_invalid: "模型返回的结构化内容无效，地图未发布",

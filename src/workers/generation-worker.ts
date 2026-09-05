@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   createExternalProviderRuntime,
   readExternalProviderEnvironment,
+  writeZhihuSearchDiagnostic,
 } from "@/modules/external-providers/public/server";
 import { createMapGenerationWorkerRuntime } from "@/modules/map-generation/public/server";
 import { createPostgresDatabase } from "@/platform/database/postgres";
@@ -58,6 +59,7 @@ export async function runGenerationWorker(): Promise<void> {
   );
   const providerRuntime = createExternalProviderRuntime({
     environment: externalEnvironment,
+    diagnosticLogger: writeZhihuSearchDiagnostic,
   });
   const { worker } = createMapGenerationWorkerRuntime({
     database,

@@ -18,11 +18,21 @@ import {
   type ProviderStructuredModelAccess as StructuredModelAccess,
   type ProviderStructureMapInput as StructureMapInput,
 } from "../application/providers";
+import {
+  emitZhihuSearchDiagnostic,
+  queryFingerprint,
+  summarizeZhihuSearchPayload,
+  type ZhihuSearchDiagnosticContext,
+  type ZhihuSearchDiagnosticLogger,
+  type ZhihuSearchFailurePhase,
+  type ZhihuSearchResponseSummary,
+} from "./diagnostics";
 
 export type ExternalProviderRuntimeDependencies = Readonly<{
   environment: ExternalProviderEnvironment;
   fetch?: typeof fetch;
   now?: () => Date | number;
+  diagnosticLogger?: ZhihuSearchDiagnosticLogger;
 }>;
 
 const SOURCE_SEARCH_URL =
@@ -470,28 +480,77 @@ function mapHttpFailure(
   return createProviderError(provider, code, retryAfterMilliseconds(response));
 }
 
-async function readJson(response: Response): Promise<unknown | undefined> {
+type JsonReadStatus = "valid" | "empty" | "invalid" | "unreadable";
+
+type JsonReadResult = Readonly<{
+  value: unknown | undefined;
+  status: JsonReadStatus;
+  bodyLength: number;
+}>;
+
+async function readJsonWithMetadata(
+  response: Response,
+): Promise<JsonReadResult> {
   try {
     const text = await response.text();
+    const bodyLength = text.length;
     if (text.trim().length === 0) {
-      return undefined;
+      return { value: undefined, status: "empty", bodyLength };
     }
-    return JSON.parse(text) as unknown;
+    try {
+      return {
+        value: JSON.parse(text) as unknown,
+        status: "valid",
+        bodyLength,
+      };
+    } catch {
+      return { value: undefined, status: "invalid", bodyLength };
+    }
   } catch {
-    return undefined;
+    return { value: undefined, status: "unreadable", bodyLength: 0 };
   }
 }
 
-function timestampSeconds(clock: Clock): string {
+async function readJson(response: Response): Promise<unknown | undefined> {
+  return (await readJsonWithMetadata(response)).value;
+}
+
+function validationIssueCodes(error: z.ZodError): readonly string[] {
+  return error.issues.slice(0, 8).map((issue) => {
+    const path = issue.path.map(String).join(".");
+    return path.length > 0 ? `${issue.code}:${path}` : issue.code;
+  });
+}
+
+function createSourceResponseSummary(
+  response: Response,
+  json: JsonReadResult,
+): ZhihuSearchResponseSummary {
+  return {
+    ...summarizeZhihuSearchPayload(json.value),
+    httpStatus: response.status,
+    responseOk: response.ok,
+    responseContentType: response.headers.get("content-type"),
+    bodyLength: json.bodyLength,
+    jsonStatus: json.status,
+  };
+}
+
+function clockMilliseconds(clock: Clock): number {
   const raw = clock();
-  const milliseconds = raw instanceof Date ? raw.getTime() : raw;
+  const value = raw instanceof Date ? raw.getTime() : raw;
+  if (!Number.isFinite(value)) {
+    return Number.NaN;
+  }
+  return Math.abs(value) >= 10_000_000_000 ? value : value * 1_000;
+}
+
+function timestampSeconds(clock: Clock): string {
+  const milliseconds = clockMilliseconds(clock);
   if (!Number.isFinite(milliseconds)) {
     throw createProviderError("source", "protocol_error");
   }
-  const seconds =
-    Math.abs(milliseconds) >= 10_000_000_000
-      ? Math.floor(milliseconds / 1_000)
-      : Math.floor(milliseconds);
+  const seconds = Math.floor(milliseconds / 1_000);
   if (seconds < 0) {
     throw createProviderError("source", "protocol_error");
   }
@@ -600,100 +659,302 @@ function validateSearchInput(input: SourceSearchInput): SourceSearchInput {
   }
   return result.data;
 }
+type SourceSearchRequest = Readonly<{
+  query: string;
+  context: ZhihuSearchDiagnosticContext;
+  startedAtMs: number;
+}>;
+
+function createSourceSearchRequest(
+  input: SourceSearchInput,
+  environment: ExternalProviderEnvironment,
+  clock: Clock,
+): SourceSearchRequest {
+  const validInput = validateSearchInput(input);
+  const query = validInput.query.trim();
+  const count = validInput.count <= 0 ? 10 : Math.min(validInput.count, 10);
+  const timeoutMs = effectiveTimeout(
+    validInput.timeoutMs,
+    environment.sourceTimeoutMs,
+  );
+  return {
+    query,
+    context: {
+      requestId: validInput.requestId,
+      queryFingerprint: queryFingerprint(query),
+      queryLength: query.length,
+      count,
+      timeoutMs,
+    },
+    startedAtMs: clockMilliseconds(clock),
+  };
+}
+
+function sourceSearchTiming(
+  request: SourceSearchRequest,
+  clock: Clock,
+): Readonly<{ finishedAtMs: number; durationMs: number }> {
+  const finishedAtMs = clockMilliseconds(clock);
+  return {
+    finishedAtMs,
+    durationMs: Math.max(0, finishedAtMs - request.startedAtMs),
+  };
+}
+
+class SourceSearchFailure extends Error {
+  constructor(
+    readonly failure: ExternalProviderError,
+    readonly phase: ZhihuSearchFailurePhase,
+    readonly response?: ZhihuSearchResponseSummary,
+    readonly issueCodes?: readonly string[],
+  ) {
+    super("source search failed");
+    this.name = "SourceSearchFailure";
+  }
+}
+
+function emitSourceSearchFailure(
+  logger: ZhihuSearchDiagnosticLogger | undefined,
+  request: SourceSearchRequest,
+  clock: Clock,
+  failure: ExternalProviderError,
+  phase: ZhihuSearchFailurePhase,
+  response?: ZhihuSearchResponseSummary,
+  issueCodes?: readonly string[],
+): void {
+  emitZhihuSearchDiagnostic(logger, {
+    event: "zhihu_source_search_failed",
+    ...request.context,
+    startedAtMs: request.startedAtMs,
+    ...sourceSearchTiming(request, clock),
+    failureCode: failure.code,
+    retryable: failure.retryable,
+    failurePhase: phase,
+    ...(response === undefined ? {} : { response }),
+    ...(issueCodes === undefined ? {} : { validationIssueCodes: issueCodes }),
+  });
+}
+
+function sourceTransportFailure(error: unknown): ExternalProviderError {
+  return error instanceof RequestTimeout
+    ? createProviderError("source", "timeout")
+    : createProviderError("source", "temporarily_unavailable");
+}
+
+function sourceTimestampFailure(error: unknown): ExternalProviderError {
+  return error instanceof ExternalProviderError
+    ? new ExternalProviderError({
+        ...error,
+        provider: "source",
+      })
+    : createProviderError("source", "protocol_error");
+}
+
+function sourceUnexpectedFailure(
+  error: unknown,
+  phase: ZhihuSearchFailurePhase,
+): ExternalProviderError {
+  if (error instanceof ExternalProviderError) {
+    return new ExternalProviderError({
+      ...error,
+      provider: "source",
+    });
+  }
+  return phase === "transport"
+    ? sourceTransportFailure(error)
+    : createProviderError("source", "protocol_error");
+}
+type FetchedSourceResponse = Readonly<{
+  response: Response;
+  json: JsonReadResult;
+  summary: ZhihuSearchResponseSummary;
+}>;
+
+async function fetchSourceResponse(
+  fetcher: typeof fetch,
+  url: string,
+  headers: HeadersInit,
+  timeoutMs: number,
+): Promise<FetchedSourceResponse> {
+  const response = await fetchWithTimeout(
+    fetcher,
+    url,
+    { method: "GET", headers },
+    timeoutMs,
+  );
+  const json = await readJsonWithMetadata(response);
+  return {
+    response,
+    json,
+    summary: createSourceResponseSummary(response, json),
+  };
+}
+
+function normalizeSources(
+  items: readonly SourceProviderItem[],
+): readonly NormalizedSource[] {
+  const seen = new Set<string>();
+  const sources: NormalizedSource[] = [];
+  for (const item of items) {
+    const source = normalizeSource(item);
+    if (seen.has(source.sourceId)) {
+      continue;
+    }
+    seen.add(source.sourceId);
+    sources.push(source);
+  }
+  return sources;
+}
+
+function parseSourceSearchResult(
+  response: Response,
+  json: JsonReadResult,
+  responseSummary: ZhihuSearchResponseSummary,
+): SourceSearchResult {
+  if (!response.ok) {
+    throw new SourceSearchFailure(
+      mapHttpFailure("source", response.status, json.value, response),
+      "http",
+      responseSummary,
+    );
+  }
+
+  const parsedResponse = sourceResponseSchema.safeParse(json.value);
+  if (!parsedResponse.success) {
+    throw new SourceSearchFailure(
+      createProviderError("source", "protocol_error"),
+      "envelope",
+      responseSummary,
+      validationIssueCodes(parsedResponse.error),
+    );
+  }
+  if (parsedResponse.data.Code !== 0) {
+    throw new SourceSearchFailure(
+      createProviderError(
+        "source",
+        mapBusinessCode(parsedResponse.data.Code) ?? "protocol_error",
+      ),
+      "business",
+      responseSummary,
+    );
+  }
+
+  const parsedData = sourceDataSchema.safeParse(parsedResponse.data.Data);
+  if (!parsedData.success) {
+    throw new SourceSearchFailure(
+      createProviderError("source", "protocol_error"),
+      "data",
+      responseSummary,
+      validationIssueCodes(parsedData.error),
+    );
+  }
+
+  try {
+    return {
+      searchId: parsedData.data.SearchHashId,
+      sources: normalizeSources(parsedData.data.Items),
+    };
+  } catch {
+    throw new SourceSearchFailure(
+      createProviderError("source", "protocol_error"),
+      "normalization",
+      responseSummary,
+      ["normalize"],
+    );
+  }
+}
 
 class ZhihuSourceSearch implements SourceSearchAccess {
   constructor(
     private readonly environment: ExternalProviderEnvironment,
     private readonly fetcher: typeof fetch,
     private readonly clock: Clock,
+    private readonly diagnosticLogger?: ZhihuSearchDiagnosticLogger,
   ) {}
 
   async search(input: SourceSearchInput): Promise<SourceSearchResult> {
-    const validInput = validateSearchInput(input);
-    let timestamp: string;
-    try {
-      timestamp = timestampSeconds(this.clock);
-    } catch (error) {
-      if (error instanceof ExternalProviderError) {
-        throw new ExternalProviderError({
-          ...error,
-          provider: "source",
-        });
-      }
-      throw createProviderError("source", "protocol_error");
-    }
-
-    const url = new URL(SOURCE_SEARCH_URL);
-    url.searchParams.set("Query", validInput.query.trim());
-    url.searchParams.set(
-      "Count",
-      String(validInput.count <= 0 ? 10 : Math.min(validInput.count, 10)),
+    const request = createSourceSearchRequest(
+      input,
+      this.environment,
+      this.clock,
     );
+    emitZhihuSearchDiagnostic(this.diagnosticLogger, {
+      event: "zhihu_source_search_started",
+      ...request.context,
+      startedAtMs: request.startedAtMs,
+    });
 
-    let response: Response;
+    let phase: ZhihuSearchFailurePhase = "timestamp";
+    let responseSummary: ZhihuSearchResponseSummary | undefined;
     try {
-      response = await fetchWithTimeout(
+      const timestamp = timestampSeconds(this.clock);
+      phase = "transport";
+      const fetched = await fetchSourceResponse(
         this.fetcher,
-        url.toString(),
+        this.sourceSearchUrl(request.query, request.context.count),
         {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${this.environment.accessSecret}`,
-            "X-Request-Timestamp": timestamp,
-            "Content-Type": "application/json",
-          },
+          Authorization: `Bearer ${this.environment.accessSecret}`,
+          "X-Request-Timestamp": timestamp,
+          "Content-Type": "application/json",
         },
-        effectiveTimeout(
-          validInput.timeoutMs,
-          this.environment.sourceTimeoutMs,
-        ),
+        request.context.timeoutMs,
       );
+      responseSummary = fetched.summary;
+      emitZhihuSearchDiagnostic(this.diagnosticLogger, {
+        event: "zhihu_source_search_response",
+        ...request.context,
+        startedAtMs: request.startedAtMs,
+        ...sourceSearchTiming(request, this.clock),
+        response: responseSummary,
+      });
+
+      phase = "envelope";
+      const result = parseSourceSearchResult(
+        fetched.response,
+        fetched.json,
+        responseSummary,
+      );
+      emitZhihuSearchDiagnostic(this.diagnosticLogger, {
+        event: "zhihu_source_search_succeeded",
+        ...request.context,
+        startedAtMs: request.startedAtMs,
+        ...sourceSearchTiming(request, this.clock),
+        sourceCount: result.sources.length,
+      });
+      return result;
     } catch (error) {
-      if (error instanceof RequestTimeout) {
-        throw createProviderError("source", "timeout");
-      }
-      throw createProviderError("source", "temporarily_unavailable");
-    }
-
-    const payload = await readJson(response);
-    if (!response.ok) {
-      throw mapHttpFailure("source", response.status, payload, response);
-    }
-
-    const parsedResponse = sourceResponseSchema.safeParse(payload);
-    if (!parsedResponse.success) {
-      throw createProviderError("source", "protocol_error");
-    }
-    if (parsedResponse.data.Code !== 0) {
-      throw createProviderError(
-        "source",
-        mapBusinessCode(parsedResponse.data.Code) ?? "protocol_error",
+      const failure =
+        error instanceof SourceSearchFailure
+          ? error.failure
+          : phase === "timestamp"
+            ? sourceTimestampFailure(error)
+            : sourceUnexpectedFailure(error, phase);
+      const failurePhase =
+        error instanceof SourceSearchFailure ? error.phase : phase;
+      const failureResponse =
+        error instanceof SourceSearchFailure
+          ? (error.response ?? responseSummary)
+          : responseSummary;
+      const issueCodes =
+        error instanceof SourceSearchFailure ? error.issueCodes : undefined;
+      emitSourceSearchFailure(
+        this.diagnosticLogger,
+        request,
+        this.clock,
+        failure,
+        failurePhase,
+        failureResponse,
+        issueCodes,
       );
+      throw failure;
     }
+  }
 
-    const parsedData = sourceDataSchema.safeParse(parsedResponse.data.Data);
-    if (!parsedData.success) {
-      throw createProviderError("source", "protocol_error");
-    }
-
-    try {
-      const seen = new Set<string>();
-      const sources: NormalizedSource[] = [];
-      for (const item of parsedData.data.Items) {
-        const source = normalizeSource(item);
-        if (seen.has(source.sourceId)) {
-          continue;
-        }
-        seen.add(source.sourceId);
-        sources.push(source);
-      }
-      return {
-        searchId: parsedData.data.SearchHashId,
-        sources,
-      };
-    } catch {
-      throw createProviderError("source", "protocol_error");
-    }
+  private sourceSearchUrl(query: string, count: number): string {
+    const url = new URL(SOURCE_SEARCH_URL);
+    url.searchParams.set("Query", query);
+    url.searchParams.set("Count", String(count));
+    return url.toString();
   }
 }
 
@@ -1304,6 +1565,7 @@ export function createExternalProviderRuntime({
   environment,
   fetch: fetcher = globalThis.fetch,
   now = () => Date.now(),
+  diagnosticLogger,
 }: ExternalProviderRuntimeDependencies): ExternalProviderRuntime {
   if (
     typeof environment.accessSecret !== "string" ||
@@ -1333,7 +1595,12 @@ export function createExternalProviderRuntime({
   }
 
   return {
-    sourceSearch: new ZhihuSourceSearch(environment, fetcher, now),
+    sourceSearch: new ZhihuSourceSearch(
+      environment,
+      fetcher,
+      now,
+      diagnosticLogger,
+    ),
     structuredModel: new ZhihuStructuredModel(environment, fetcher, now),
   };
 }
