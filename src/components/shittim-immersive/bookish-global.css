@@ -1,0 +1,44 @@
+/* Typography mirrors hongyue_bolg. Fonts are not bundled in this kit.
+   Existing zhiling imports already provide WenKai and Noto Serif.
+   Optional Fraunces / Allura / Cormorant: see docs/字体与图片.md. */
+:root {
+  --bk-page: #f6f1e6;
+  --bk-paper: #fbf6ec;
+  --bk-text: #25201b;
+  --bk-muted: #4a4239;
+  --bk-line: #d9cfb9;
+  --bk-accent: #8a4423;
+  --bk-soft: rgba(138, 68, 35, .08);
+  --bk-gold: #a17a42;
+  --bk-shadow: rgba(62, 40, 21, .13);
+  --bk-ui: "LXGW WenKai Screen", "AR PL KaitiM GB", "Kaiti SC", "KaiTi", "PingFang SC", serif;
+  --bk-serif: "Noto Serif SC Variable", "Noto Serif CJK SC", "Songti SC", "STSong", serif;
+  --bk-logo: "Daybook Fraunces", "Fraunces", "EB Garamond", Georgia, serif;
+  --bk-script: "Daybook Allura", "Allura", "Z003", "URW Chancery L", "Brush Script MT", cursive;
+  --bk-meta: "Cormorant Garamond Meta", "Cormorant Garamond", "EB Garamond", Georgia, serif;
+  --bk-ease: cubic-bezier(.22, 1, .36, 1);
+}
+:root[data-shittim-tone="dark"] {
+  --bk-page: #131110;
+  --bk-paper: #1a1715;
+  --bk-text: #f4f0e3;
+  --bk-muted: #c8c1ae;
+  --bk-line: #443b31;
+  --bk-accent: #c89761;
+  --bk-soft: rgba(200, 151, 97, .10);
+  --bk-gold: #cfa46f;
+  --bk-shadow: rgba(0, 0, 0, .4);
+}
+html.book-theme-switching::view-transition-old(root),
+html.book-theme-switching::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+html.book-theme-switching::view-transition-old(root) { z-index: 1; }
+html.book-theme-switching::view-transition-new(root) {
+  z-index: 2;
+  animation: book-reveal 780ms cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes book-reveal { from { clip-path: inset(var(--book-reveal-from, 0 0 100% 0)); } to { clip-path: inset(0); } }
+@media (prefers-reduced-motion: reduce) {
+  html.book-theme-switching::view-transition-new(root) { animation: none; }
+}
+[data-screen] { color-scheme: light; }
+:root[data-shittim-tone="dark"] [data-screen] { color-scheme: dark; }
