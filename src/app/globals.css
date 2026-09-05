@@ -53,8 +53,7 @@ body {
   margin: 0;
   color: var(--ink);
   background: var(--paper);
-  font-family:
-    "LXGW WenKai Screen", "Kaiti SC", "KaiTi", "PingFang SC", serif;
+  font-family: "LXGW WenKai Screen", "Kaiti SC", "KaiTi", "PingFang SC", serif;
   font-size: 15px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
@@ -99,7 +98,8 @@ button:disabled {
   position: sticky;
   z-index: 10;
   top: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line-strong) 72%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--line-strong) 72%, transparent);
   background: color-mix(in srgb, var(--paper) 90%, transparent);
   backdrop-filter: blur(16px);
 }

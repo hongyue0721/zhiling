@@ -24,11 +24,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html
-      lang="zh-CN"
-      data-shittim-tone="light"
-      suppressHydrationWarning
-    >
+    <html lang="zh-CN" data-shittim-tone="light" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
