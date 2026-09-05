@@ -33,50 +33,91 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
   const nextPath = safeNextPath(query.next);
   const initialMode =
     registrationEnabled && query.mode === "sign-up" ? "sign-up" : "sign-in";
+
   return (
-    <main className={styles.authPage}>
-      <div className={styles.authAside}>
-        <div className={styles.authAsideGrid} aria-hidden="true" />
-        <div className={styles.authAsideContent} data-reveal>
-          <span className={styles.authBrand} aria-hidden="true">
-            <span className={styles.authBrandGlyph}>
-              <svg
-                className={styles.authBrandRoute}
-                viewBox="0 0 48 48"
-                role="presentation"
-              >
-                <path d="M8 32.5 18.5 22l8 8L40 16.5" />
-                <circle cx="8" cy="32.5" r="3" />
-                <circle cx="18.5" cy="22" r="3" />
-                <circle cx="26.5" cy="30" r="3" />
-                <circle cx="40" cy="16.5" r="3" />
-              </svg>
-            </span>
-            <span className={styles.authBrandName}>知径</span>
+    <main
+      className={styles.authPage}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+        minHeight: "100vh",
+        alignItems: "center",
+        maxWidth: 1100,
+        margin: "0 auto",
+        padding: "60px 28px",
+        gap: 64,
+      }}
+    >
+      {/* 左侧：Shittim 诗笺风引言，无卡片，纯净纸墨留白 */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 28,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: "var(--primary)",
+              boxShadow: "0 0 12px rgba(138, 68, 35, 0.4)",
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontSize: "1.85rem",
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              color: "var(--primary)",
+            }}
+          >
+            Shittim
           </span>
-          <div className={styles.authAsideSignal} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-          <p className={styles.authAsideQuote}>
-            把零散的讨论
-            <br />
-            走成一条学会的路
-          </p>
-          <div className={styles.authAsidePoints}>
-            <span>真实来源</span>
-            <span>多视角观点</span>
-            <span>服务端验证</span>
-          </div>
         </div>
+
+        <h1
+          style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: "clamp(2.4rem, 4vw, 3.4rem)",
+            fontWeight: 400,
+            lineHeight: 1.3,
+            color: "var(--ink)",
+            margin: 0,
+            letterSpacing: "0.04em",
+          }}
+        >
+          继续你的学习路径
+        </h1>
+
+        <p
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: "1.1rem",
+            color: "var(--ink-soft)",
+            lineHeight: 1.8,
+            margin: 0,
+            maxWidth: 420,
+          }}
+        >
+          从真实经验与多元观点出发，
+          <br />
+          在可验证的地图上留下属于你的探索进度。
+        </p>
       </div>
-      <AuthForm
-        registrationEnabled={registrationEnabled}
-        initialMode={initialMode}
-        verified={query.verified === "1"}
-        nextPath={nextPath}
-      />
+
+      {/* 右侧：无卡片极简登录表单 */}
+      <div>
+        <AuthForm
+          registrationEnabled={registrationEnabled}
+          initialMode={initialMode}
+          verified={query.verified === "1"}
+          nextPath={nextPath}
+        />
+      </div>
     </main>
   );
 }

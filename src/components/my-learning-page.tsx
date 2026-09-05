@@ -6,7 +6,6 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { Alert, Button, Empty, List, Pagination, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
-import styles from "@/components/discovery-experience.module.css";
 import type {
   LearningRelationshipList,
   LearningRelationshipSummary,
@@ -27,9 +26,9 @@ function learningErrorMessage(error: unknown): string {
     return "登录状态已失效，请重新登录。";
   }
   if (error.status >= 500) {
-    return "服务暂时无法读取学习内容，请稍后重试。";
+    return "学径记录暂时无法加载，请稍候重试。";
   }
-  return "学习内容暂时不可用，请稍后重试。";
+  return "学习记录暂时不可用，请稍候重试。";
 }
 
 export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
@@ -102,27 +101,58 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
   );
 
   return (
-    <div className={`app-frame ${styles.page}`}>
-      <AppHeader email={email} eyebrow="我的学习" />
-      <main className={`directory-main ${styles.pageMain}`}>
-        <header className={`directory-heading ${styles.heading}`} data-reveal>
-          <div className={styles.headingCopy}>
-            <span className="section-kicker">我的学习</span>
-            <h1>继续你的学习路径</h1>
-            <p>当前账户已保存的学习关系与节点进度。</p>
-          </div>
-          <div className={styles.headingStamp} aria-hidden="true">
-            继续
-            <br />
-            上路
-          </div>
+    <div className="app-frame" style={{ minHeight: "100vh" }}>
+      <AppHeader email={email} eyebrow="我的学径" />
+      <main
+        style={{
+          maxWidth: 820,
+          margin: "0 auto",
+          padding: "48px 24px 80px",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <header style={{ marginBottom: 40 }} data-reveal>
+          <span
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontSize: "0.88rem",
+              color: "var(--primary)",
+              letterSpacing: "0.12em",
+              display: "block",
+              marginBottom: 8,
+            }}
+          >
+            探索印记
+          </span>
+          <h1
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontSize: "clamp(2rem, 3.5vw, 2.6rem)",
+              fontWeight: 400,
+              color: "var(--ink)",
+              letterSpacing: "0.04em",
+              margin: 0,
+            }}
+          >
+            正在前行的学习路径
+          </h1>
+          <p
+            style={{
+              color: "var(--ink-soft)",
+              fontSize: "1.02rem",
+              marginTop: 10,
+              fontFamily: "var(--font-body)",
+            }}
+          >
+            为你保存的学习地图与进度，随时继续前行。
+          </p>
         </header>
 
         {error ? (
           <Alert
-            className={styles.alert}
+            style={{ marginBottom: 24 }}
             data-reveal
-            role="alert"
             type="error"
             showIcon
             message={error}
@@ -131,62 +161,141 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
                 size="small"
                 onClick={() => setReloadToken((current) => current + 1)}
               >
-                刷新
+                重试
               </Button>
             }
           />
         ) : null}
 
         {isLoading ? (
-          <div className={styles.loading} aria-busy="true">
+          <div style={{ padding: "40px 0" }} aria-busy="true">
             <Skeleton active paragraph={{ rows: 8 }} />
           </div>
         ) : relationships.length > 0 ? (
-          <section aria-label="我的学习列表" className="directory-content">
+          <section aria-label="我的学习列表">
             <List
-              className={styles.resumeList}
               dataSource={visibleRelationships}
               renderItem={(relationship, index) => (
                 <ListItem
-                  className={styles.resumeListItem}
                   key={relationship.learningRelationshipId}
+                  style={{
+                    borderBottom: "1px dashed var(--line)",
+                    padding: "32px 0",
+                  }}
                 >
                   <article
-                    className={styles.resumeCard}
                     data-reveal
                     style={
                       {
+                        width: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 12,
                         "--reveal-delay": `${index * 60}ms`,
                       } as CSSProperties
                     }
                   >
-                    <Link
-                      className={styles.resumeCardLink}
-                      href={`/learn/${encodeURIComponent(relationship.learningRelationshipId)}`}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: 8,
+                      }}
                     >
-                      <div className={styles.resumeTopline}>
-                        <Tag color="blue">学习中</Tag>
-                        <span className={styles.cardIndex} aria-hidden="true">
-                          已保存
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "var(--font-serif)",
+                            fontSize: "1.1rem",
+                            color: "var(--primary)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {String(
+                            (currentPage - 1) * PAGE_SIZE + index + 1,
+                          ).padStart(2, "0")}
                         </span>
+                        <Tag
+                          color="success"
+                          style={{
+                            borderRadius: 12,
+                          }}
+                        >
+                          进行中
+                        </Tag>
                       </div>
-                      <div className={styles.resumeCardBody}>
-                        <strong title={relationship.title}>
-                          {relationship.title}
-                        </strong>
-                        <p title={relationship.summary}>
-                          {relationship.summary}
-                        </p>
-                      </div>
-                      <div className={styles.resumeFooter}>
-                        <span className={styles.resumeAction}>继续学习 →</span>
-                      </div>
+
+                      <Link
+                        href={`/learn/${encodeURIComponent(relationship.learningRelationshipId)}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "6px 18px",
+                          borderRadius: 20,
+                          background: "var(--primary)",
+                          color: "var(--white)",
+                          fontFamily: "var(--font-serif)",
+                          fontSize: "0.9rem",
+                          textDecoration: "none",
+                          boxShadow: "0 2px 10px rgba(138, 68, 35, 0.22)",
+                          transition: "transform 0.2s ease",
+                        }}
+                      >
+                        继续研习 ↗
+                      </Link>
+                    </div>
+
+                    <Link
+                      href={`/learn/${encodeURIComponent(relationship.learningRelationshipId)}`}
+                      style={{ textDecoration: "none" }}
+                    >
+                      <h2
+                        style={{
+                          margin: "4px 0 0",
+                          fontFamily: "var(--font-serif)",
+                          fontSize: "1.35rem",
+                          color: "var(--ink)",
+                          fontWeight: 600,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {relationship.title}
+                      </h2>
                     </Link>
+
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "var(--ink-soft)",
+                        lineHeight: 1.8,
+                        fontSize: "0.95rem",
+                        fontFamily: "var(--font-body)",
+                      }}
+                    >
+                      {relationship.summary}
+                    </p>
                   </article>
                 </ListItem>
               )}
             />
-            <div className={styles.pagination} data-reveal>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginTop: 40,
+              }}
+              data-reveal
+            >
               <Pagination
                 current={currentPage}
                 pageSize={PAGE_SIZE}
@@ -201,14 +310,32 @@ export function MyLearningPage({ email, initialPage }: MyLearningPageProps) {
           </section>
         ) : (
           <Empty
-            className={styles.empty}
             data-reveal
             description={
-              <div>
-                <h2>还没有学习关系</h2>
-                <p>先从精选地图加入一条学习路径。</p>
-                <Link className="button button-primary" href="/featured">
-                  浏览精选地图
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 16,
+                  alignItems: "center",
+                }}
+              >
+                <p style={{ margin: 0, fontFamily: "var(--font-body)" }}>
+                  还没有加入任何学习地图。
+                </p>
+                <Link
+                  href="/featured"
+                  style={{
+                    padding: "8px 24px",
+                    background: "var(--primary)",
+                    color: "var(--white)",
+                    borderRadius: 20,
+                    textDecoration: "none",
+                    fontFamily: "var(--font-serif)",
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  去挑选精选航标 ↗
                 </Link>
               </div>
             }

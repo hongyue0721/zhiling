@@ -5,7 +5,6 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { Alert, Button, Empty, List, Pagination, Skeleton, Tag } from "antd";
 
 import { AppHeader } from "@/components/app-header";
-import styles from "@/components/discovery-experience.module.css";
 import type {
   FeaturedLearningMapSummary,
   LearningRelationshipCreation,
@@ -28,9 +27,9 @@ function featuredErrorMessage(error: unknown): string {
     return "登录状态已失效，请重新登录。";
   }
   if (error.status >= 500) {
-    return "服务暂时无法读取精选地图，请稍后重试。";
+    return "精选航标暂时无法加载，请稍候重试。";
   }
-  return "精选地图暂时不可用，请稍后重试。";
+  return "精选航标暂时不可用，请稍候重试。";
 }
 
 export function FeaturedMapsPage({
@@ -110,7 +109,7 @@ export function FeaturedMapsPage({
         { method: "POST" },
       );
       if (!relationship.learningRelationshipId) {
-        setError("学习关系未能建立，请稍后重试。");
+        setError("未能开启该学径，请稍候重试。");
         return;
       }
       router.push(
@@ -122,14 +121,17 @@ export function FeaturedMapsPage({
         (requestError.status === 401 ||
           requestError.code === "authentication_required")
       ) {
-        router.replace("/auth?next=/featured");
+        router.replace(
+          `/auth?next=${encodeURIComponent(`/featured?page=${page}`)}`,
+        );
         return;
       }
       if (
         isApiRequestError(requestError) &&
         requestError.code === "resource_not_found"
       ) {
-        setError("精选地图不存在或已下架，请刷新后重试。");
+        setError("该地图已更新，正在为你刷新最新版本。");
+        setReloadToken((current) => current + 1);
         return;
       }
       setError(featuredErrorMessage(requestError));
@@ -159,27 +161,58 @@ export function FeaturedMapsPage({
   );
 
   return (
-    <div className={`app-frame ${styles.page}`}>
-      <AppHeader email={email} eyebrow="精选地图" />
-      <main className={`directory-main ${styles.pageMain}`}>
-        <header className={`directory-heading ${styles.heading}`} data-reveal>
-          <div className={styles.headingCopy}>
-            <span className="section-kicker">精选地图</span>
-            <h1>从可靠路径开始</h1>
-            <p>人工检查、版本固定、来源可追溯。</p>
-          </div>
-          <div className={styles.headingStamp} aria-hidden="true">
-            路线
-            <br />
-            索引
-          </div>
+    <div className="app-frame" style={{ minHeight: "100vh" }}>
+      <AppHeader email={email} eyebrow="精选航标" />
+      <main
+        style={{
+          maxWidth: 820,
+          margin: "0 auto",
+          padding: "48px 24px 80px",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <header style={{ marginBottom: 40 }} data-reveal>
+          <span
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontSize: "0.88rem",
+              color: "var(--primary)",
+              letterSpacing: "0.12em",
+              display: "block",
+              marginBottom: 8,
+            }}
+          >
+            航标集录
+          </span>
+          <h1
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontSize: "clamp(2rem, 3.5vw, 2.6rem)",
+              fontWeight: 400,
+              color: "var(--ink)",
+              letterSpacing: "0.04em",
+              margin: 0,
+            }}
+          >
+            从可靠路径开始
+          </h1>
+          <p
+            style={{
+              color: "var(--ink-soft)",
+              fontSize: "1.02rem",
+              marginTop: 10,
+              fontFamily: "var(--font-body)",
+            }}
+          >
+            基于知乎真实讨论提炼、已校验可闭环的学习地图。
+          </p>
         </header>
 
         {error ? (
           <Alert
-            className={styles.alert}
+            style={{ marginBottom: 24 }}
             data-reveal
-            role="alert"
             type="error"
             showIcon
             message={error}
@@ -188,70 +221,148 @@ export function FeaturedMapsPage({
                 size="small"
                 onClick={() => setReloadToken((current) => current + 1)}
               >
-                刷新
+                重试
               </Button>
             }
           />
         ) : null}
 
         {isLoading ? (
-          <div className={styles.loading} aria-busy="true">
+          <div style={{ padding: "40px 0" }} aria-busy="true">
             <Skeleton active paragraph={{ rows: 8 }} />
           </div>
         ) : featured.length > 0 ? (
-          <section aria-label="精选地图列表" className="directory-content">
+          <section aria-label="精选地图列表">
+            {/* 无卡片极简条目列表，细虚线分隔 */}
             <List
-              className={styles.cardList}
               dataSource={visibleFeatured}
-              renderItem={(map, index) => {
+              renderItem={(item, index) => {
                 const relationship = relationshipByMapAndVersion.get(
-                  `${map.mapId}:${map.versionId}`,
+                  `${item.mapId}:${item.versionId}`,
                 );
-                const isJoining = joiningMapId === map.mapId;
+                const isJoining = joiningMapId === item.mapId;
                 return (
                   <ListItem
-                    className={styles.cardListItem}
-                    key={`${map.mapId}:${map.versionId}`}
+                    key={`${item.mapId}:${item.versionId}`}
+                    style={{
+                      borderBottom: "1px dashed var(--line)",
+                      padding: "32px 0",
+                    }}
                   >
                     <article
-                      className={styles.directionCard}
                       data-reveal
                       style={
                         {
+                          width: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 12,
                           "--reveal-delay": `${index * 60}ms`,
                         } as CSSProperties
                       }
                     >
-                      <div className={styles.cardTopline}>
-                        <span className={styles.cardIndex} aria-hidden="true">
-                          {String(
-                            (currentPage - 1) * PAGE_SIZE + index + 1,
-                          ).padStart(2, "0")}
-                        </span>
-                        <Tag color="blue">已发布地图</Tag>
-                      </div>
-                      <div className={styles.cardCopy}>
-                        <h2 title={map.title}>{map.title}</h2>
-                        <p title={map.summary}>{map.summary}</p>
-                      </div>
-                      <div className={styles.cardFooter}>
-                        <span className={styles.cardFooterFact}>
-                          {map.nodeCount} 个节点
-                        </span>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: "var(--font-serif)",
+                              fontSize: "1.1rem",
+                              color: "var(--primary)",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {String(
+                              (currentPage - 1) * PAGE_SIZE + index + 1,
+                            ).padStart(2, "0")}
+                          </span>
+                          <Tag
+                            style={{
+                              borderRadius: 12,
+                              borderColor: "var(--line)",
+                              background: "rgba(251, 246, 236, 0.8)",
+                              color: "var(--ink-soft)",
+                            }}
+                          >
+                            {item.nodeCount} 个核心节点
+                          </Tag>
+                        </div>
+
                         <Button
                           type={relationship ? "default" : "primary"}
-                          onClick={() => void joinFeaturedMap(map)}
+                          onClick={() => void joinFeaturedMap(item)}
                           loading={isJoining}
+                          style={{
+                            borderRadius: 20,
+                            fontFamily: "var(--font-serif)",
+                            fontSize: "0.9rem",
+                            background: relationship
+                              ? "var(--white)"
+                              : "var(--primary)",
+                            borderColor: relationship
+                              ? "var(--line)"
+                              : "var(--primary)",
+                            color: relationship ? "var(--ink)" : "var(--white)",
+                            boxShadow: relationship
+                              ? "none"
+                              : "0 2px 10px rgba(138, 68, 35, 0.22)",
+                          }}
                         >
                           {relationship ? "继续学习" : "加入学习"}
                         </Button>
                       </div>
+
+                      <h2
+                        style={{
+                          margin: "4px 0 0",
+                          fontFamily: "var(--font-serif)",
+                          fontSize: "1.35rem",
+                          color: "var(--ink)",
+                          fontWeight: 600,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {item.title}
+                      </h2>
+
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "var(--ink-soft)",
+                          lineHeight: 1.8,
+                          fontSize: "0.95rem",
+                          fontFamily: "var(--font-body)",
+                        }}
+                      >
+                        {item.summary}
+                      </p>
                     </article>
                   </ListItem>
                 );
               }}
             />
-            <div className={styles.pagination} data-reveal>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginTop: 40,
+              }}
+              data-reveal
+            >
               <Pagination
                 current={currentPage}
                 pageSize={PAGE_SIZE}
@@ -266,13 +377,11 @@ export function FeaturedMapsPage({
           </section>
         ) : (
           <Empty
-            className={styles.empty}
             data-reveal
             description={
-              <div>
-                <h2>精选地图正在准备中</h2>
-                <p>当前没有可用的精选版本。</p>
-              </div>
+              <p style={{ fontFamily: "var(--font-body)" }}>
+                暂无可用的航标版本。
+              </p>
             }
           />
         )}
