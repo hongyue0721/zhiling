@@ -4,9 +4,9 @@ import {
   formatElapsed,
   readProgress,
   readServerTimestamp,
-} from "./generation-page";
+} from "./shittim-immersive/generation-progress";
 
-describe("generation page progress contract", () => {
+describe("generation progress contract", () => {
   it("reads server facts needed for the visible recovery state", () => {
     expect(
       readProgress({
