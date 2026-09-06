@@ -658,21 +658,19 @@ describe("Zhihu structured model adapter", () => {
       prerequisites: [],
     };
     const questions = {
-      questions: [
-        {
-          questionId: "question-1",
-          nodeId: "node-1",
-          type: "single_choice",
-          prompt: "Prompt",
-          explanation: "Explanation",
-          options: [
-            { optionId: "yes", label: "Yes" },
-            { optionId: "no", label: "No" },
-          ],
-          correctOptionIds: ["yes"],
-          sourceIds: [source.sourceId],
-        },
-      ],
+      questions: [0, 1].map((index) => ({
+        questionId: `question-${index}`,
+        nodeId: "node-1",
+        type: "single_choice" as const,
+        prompt: `Prompt ${index}`,
+        explanation: `Explanation ${index}`,
+        options: [
+          { optionId: `yes-${index}`, label: "Yes" },
+          { optionId: `no-${index}`, label: "No" },
+        ],
+        correctOptionIds: [`yes-${index}`],
+        sourceIds: [source.sourceId],
+      })),
     };
     const fetcher = vi
       .fn<typeof fetch>()
@@ -680,31 +678,29 @@ describe("Zhihu structured model adapter", () => {
         new Response(JSON.stringify(modelFixture(JSON.stringify(questions)))),
       );
     const runtime = runtimeWith(fetcher);
-    await runtime.structuredModel.generateAssessments({
+    const result = await runtime.structuredModel.generateAssessments({
       topic: "RAG",
       map,
       sources: [source],
       requestId: "request-assessment-1",
       timeoutMs: 500,
     });
+    expect(result.questions).toHaveLength(2);
     const body = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)) as {
       messages: readonly [{ content: string }];
     };
-    expect(body.messages[0]?.content).toContain(
-      "every node represented in the supplied map with 2 to 3 questions per node",
+    const prompt = body.messages[0]?.content ?? "";
+    expect(prompt).toContain(
+      "Write 2 to 3 evidence-grounded questions for EACH target node, and no other nodes.",
     );
-    expect(body.messages[0]?.content).toContain(
-      "single_choice|multiple_choice|matching|opinion_analysis",
+    expect(prompt).toContain(
+      "multiple_choice has the same fields as single_choice but one or more correctOptionIds.",
     );
-    expect(body.messages[0]?.content).toContain(
-      "For single_choice and opinion_analysis, include exactly one correctOptionIds entry and omit correctMatches.",
+    expect(prompt).toContain(
+      "Choose one supported type per question. Use ONLY that type's answer field.",
     );
-    expect(body.messages[0]?.content).toContain(
-      "For matching, include one or more correctMatches entries and omit correctOptionIds",
-    );
-    expect(body.messages[0]?.content).toContain(
-      "every option must appear exactly once across the left and right sides",
-    );
+    expect(prompt).toContain("correctOptionIds");
+    expect(prompt).toContain("correctMatches");
   });
   it("scopes a batch prompt and validates cardinality for target nodes", async () => {
     const targetMap = {
@@ -753,18 +749,15 @@ describe("Zhihu structured model adapter", () => {
     const prompt = body.messages[0]?.content ?? "";
     expect(prompt).toContain('["node-1"]');
     expect(prompt).toContain(
-      "The batch scope overrides the preceding every-node instruction.",
+      "Write 2 to 3 evidence-grounded questions for EACH target node, and no other nodes.",
     );
     expect(prompt).toContain(
-      "Only create questions for these target nodes. Every question nodeId must belong to this target-node set.",
+      "Prefix questionId with nodeId, for example nodeId-q1.",
     );
     expect(prompt).toContain(
-      "All other nodes are handled in other batches; do not create questions for them.",
+      "nodeId and sourceIds must come from the input; each source must belong to that node.",
     );
-    expect(prompt).toContain("Produce 2 to 3 questions for each target node.");
-    expect(prompt).toContain(
-      "Prefix every questionId with its nodeId (for example `nodeId-q1`) so question IDs never collide across batches.",
-    );
+    expect(prompt).not.toContain("node-2");
   });
 
   it("rejects assessment questions outside the target node set", async () => {
@@ -859,6 +852,25 @@ describe("Zhihu structured model adapter", () => {
   });
 
   it("accepts all four assessment types without losing their answer fields", async () => {
+    const map = {
+      title: "Map",
+      summary: "Summary",
+      nodes: [
+        {
+          nodeId: "node-1",
+          title: "Node 1",
+          learningObjective: "Objective",
+          sourceIds: [assessmentSource.sourceId],
+        },
+        {
+          nodeId: "node-2",
+          title: "Node 2",
+          learningObjective: "Objective",
+          sourceIds: [assessmentSource.sourceId],
+        },
+      ],
+      prerequisites: [],
+    };
     const questions = {
       questions: [
         {
@@ -890,7 +902,7 @@ describe("Zhihu structured model adapter", () => {
         },
         {
           questionId: "question-matching",
-          nodeId: "node-1",
+          nodeId: "node-2",
           type: "matching",
           prompt: "Match each concept to its description.",
           explanation:
@@ -909,7 +921,7 @@ describe("Zhihu structured model adapter", () => {
         },
         {
           questionId: "question-opinion",
-          nodeId: "node-1",
+          nodeId: "node-2",
           type: "opinion_analysis",
           prompt: "Which interpretation best fits the evidence?",
           explanation: "The first interpretation is supported by the source.",
@@ -935,7 +947,7 @@ describe("Zhihu structured model adapter", () => {
       fetcher,
     ).structuredModel.generateAssessments({
       topic: "RAG",
-      map: assessmentMap,
+      map,
       sources: [assessmentSource],
       requestId: "request-assessment-four-types",
       timeoutMs: 500,
@@ -969,15 +981,44 @@ describe("Zhihu structured model adapter", () => {
   });
 
   it("rejects invalid answer combinations for every assessment type", async () => {
+    const invalidNodeMap = {
+      ...assessmentMap,
+      nodes: [
+        {
+          nodeId: "node-invalid",
+          title: "Invalid",
+          learningObjective: "Objective",
+          sourceIds: [assessmentSource.sourceId],
+        },
+        {
+          nodeId: "node-ok",
+          title: "Ok",
+          learningObjective: "Objective",
+          sourceIds: [assessmentSource.sourceId],
+        },
+      ],
+    };
     const commonQuestion = {
       questionId: "question-invalid",
-      nodeId: "node-1",
+      nodeId: "node-invalid",
       prompt: "Prompt",
       explanation: "Explanation",
       options: [
         { optionId: "left-a", label: "Left A" },
         { optionId: "right-a", label: "Right A" },
       ],
+      sourceIds: [assessmentSource.sourceId],
+    };
+    const companion = {
+      questionId: "question-ok",
+      nodeId: "node-ok",
+      prompt: "Prompt",
+      explanation: "Explanation",
+      options: [
+        { optionId: "ok-a", label: "Ok A" },
+        { optionId: "ok-b", label: "Ok B" },
+      ],
+      correctOptionIds: ["ok-a"],
       sourceIds: [assessmentSource.sourceId],
     };
     const invalidQuestions: readonly Record<string, unknown>[] = [
@@ -1029,14 +1070,16 @@ describe("Zhihu structured model adapter", () => {
         .mockResolvedValue(
           new Response(
             JSON.stringify(
-              modelFixture(JSON.stringify({ questions: [question] })),
+              modelFixture(
+                JSON.stringify({ questions: [question, companion] }),
+              ),
             ),
           ),
         );
       const error = await providerError(
         runtimeWith(fetcher).structuredModel.generateAssessments({
           topic: "RAG",
-          map: assessmentMap,
+          map: invalidNodeMap,
           sources: [assessmentSource],
           requestId: `request-assessment-invalid-${index}`,
           timeoutMs: 500,

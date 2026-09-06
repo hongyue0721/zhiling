@@ -27,6 +27,12 @@ import {
   type ZhihuSearchFailurePhase,
   type ZhihuSearchResponseSummary,
 } from "./diagnostics";
+import { fetchWireResponse, readWireText, WireTimeout } from "./wire-io";
+import {
+  assessmentScope,
+  ModelFormatError,
+  parseModelObject,
+} from "./model-format";
 
 export type ExternalProviderRuntimeDependencies = Readonly<{
   environment: ExternalProviderEnvironment;
@@ -55,14 +61,14 @@ const searchInputSchema = z.strictObject({
   timeoutMs: timeoutInputSchema,
 });
 
-const sourceCommentSchema = z.strictObject({
+const sourceCommentSchema = z.object({
   Content: z
     .string()
     .min(1)
     .refine((value) => value.trim().length > 0),
 });
 
-const sourceItemSchema = z.strictObject({
+const sourceItemSchema = z.object({
   Title: z
     .string()
     .min(1)
@@ -99,7 +105,7 @@ const sourceItemSchema = z.strictObject({
   RankingScore: z.number().finite(),
 });
 
-const sourceDataSchema = z.strictObject({
+const sourceDataSchema = z.object({
   HasMore: z.boolean(),
   SearchHashId: z
     .string()
@@ -109,28 +115,28 @@ const sourceDataSchema = z.strictObject({
   EmptyReason: z.string().optional(),
 });
 
-const sourceResponseSchema = z.strictObject({
+const sourceResponseSchema = z.object({
   Code: z.number().int(),
   Message: z.string(),
   Data: z.unknown(),
 });
 
-const modelMessageSchema = z.strictObject({
+const modelMessageSchema = z.object({
   role: z.literal("assistant"),
   content: z
     .string()
     .min(1)
     .refine((value) => value.trim().length > 0),
-  reasoning_content: z.string().optional(),
+  reasoning_content: z.string().nullable().optional(),
 });
 
-const modelChoiceSchema = z.strictObject({
+const modelChoiceSchema = z.object({
   index: z.number().int().nonnegative(),
   message: modelMessageSchema,
-  finish_reason: z.literal("stop"),
+  finish_reason: z.string().min(1),
 });
 
-const modelResponseSchema = z.strictObject({
+const modelResponseSchema = z.object({
   id: z
     .string()
     .min(1)
@@ -323,7 +329,27 @@ const sourceAuthorityLevelMap: Readonly<
   "4": "very_high",
 });
 
-class RequestTimeout extends Error {}
+const RequestTimeout = WireTimeout;
+
+function modelProtocolError(
+  phase: string,
+  issues: readonly string[] = [],
+): ExternalProviderError {
+  const diagnostic = {
+    event: "model_output_invalid",
+    phase,
+    issues: [...issues],
+  };
+  // Deliberately no prompt, reasoning, content, Authorization or secret in this log.
+  try {
+    console.warn(JSON.stringify(diagnostic));
+  } catch {
+    /* diagnostics do not break generation */
+  }
+  return Object.assign(createProviderError("model", "protocol_error"), {
+    diagnostic,
+  });
+}
 
 function createProviderError(
   provider: ExternalProviderKind,
@@ -492,7 +518,7 @@ async function readJsonWithMetadata(
   response: Response,
 ): Promise<JsonReadResult> {
   try {
-    const text = await response.text();
+    const text = await readWireText(response);
     const bodyLength = text.length;
     if (text.trim().length === 0) {
       return { value: undefined, status: "empty", bodyLength };
@@ -563,26 +589,20 @@ async function fetchWithTimeout(
   init: RequestInit,
   timeoutMs: number,
 ): Promise<Response> {
-  const controller = new AbortController();
-  let timedOut = false;
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, timeoutMs);
-
   try {
-    return await fetcher(url, { ...init, signal: controller.signal });
+    return await fetchWireResponse(fetcher, url, init, timeoutMs);
   } catch (error) {
+    // fetchWireResponse reports a real deadline as WireTimeout. A transport that
+    // independently aborts (injected fetcher or outer signal) keeps the documented
+    // abort-as-timeout contract instead of surfacing as an unavailable service.
     if (
-      timedOut ||
+      error instanceof WireTimeout ||
       (error instanceof Error &&
         (error.name === "AbortError" || error.name === "TimeoutError"))
     ) {
       throw new RequestTimeout();
     }
     throw error;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -1075,24 +1095,22 @@ function assessmentsPrompt(
   sources: readonly NormalizedSource[],
   targetNodeIds?: readonly string[],
 ): string {
+  const targets = targetNodeIds ?? map.nodes.map((node) => node.nodeId);
   return [
-    "You are writing source-grounded assessment questions using exactly the four supported question types.",
-    jsonOnlyInstructions(
-      '{"questions":[{"questionId":"string","nodeId":"string","type":"single_choice|multiple_choice|matching|opinion_analysis","prompt":"string","explanation":"string","options":[{"optionId":"string","label":"string"}],"correctOptionIds":["option-id"],"correctMatches":[{"leftOptionId":"option-id","rightOptionId":"option-id"}],"sourceIds":["source-id"]}]}',
-    ),
-    "Return every node represented in the supplied map with 2 to 3 questions per node. Use only node IDs, option IDs, and sourceIds supplied in the input. Every question needs at least two options, a non-empty explanation, and at least one sourceId belonging to its node.",
-    "For single_choice and opinion_analysis, include exactly one correctOptionIds entry and omit correctMatches. For multiple_choice, include one or more correctOptionIds entries and omit correctMatches. For matching, include one or more correctMatches entries and omit correctOptionIds; every option must appear exactly once across the left and right sides, the sides must be disjoint, each match must use two different option IDs, and no left or right option ID may repeat. Never include both answer fields or omit the answer field required by the selected type.",
-    ...(targetNodeIds === undefined
-      ? []
-      : [
-          `This request is one assessment batch. Its target node IDs are ${JSON.stringify(targetNodeIds)}. The batch scope overrides the preceding every-node instruction.`,
-          "Only create questions for these target nodes. Every question nodeId must belong to this target-node set. All other nodes are handled in other batches; do not create questions for them.",
-          "Produce 2 to 3 questions for each target node.",
-          "Prefix every questionId with its nodeId (for example `nodeId-q1`) so question IDs never collide across batches.",
-        ]),
+    "Write 2 to 3 evidence-grounded questions for EACH target node, and no other nodes.",
+    "Return one JSON object with a questions array. No Markdown, URLs or commentary.",
+    `Target node IDs: ${JSON.stringify(targets)}`,
+    "nodeId and sourceIds must come from the input; each source must belong to that node.",
+    "Create unique optionId values within EACH question, such as a,b,c,d. Answer IDs reference those new options.",
+    "Prefix questionId with nodeId, for example nodeId-q1. Every question needs a nonempty explanation.",
+    "Choose one supported type per question. Use ONLY that type's answer field. Examples below are structural examples, not factual answers:",
+    '{"questions":[{"questionId":"nodeId-q1","nodeId":"nodeId","type":"single_choice","prompt":"...","explanation":"...","options":[{"optionId":"a","label":"..."},{"optionId":"b","label":"..."}],"correctOptionIds":["a"],"sourceIds":["sourceId"]}]}',
+    "multiple_choice has the same fields as single_choice but one or more correctOptionIds. opinion_analysis has the same fields and exactly one correctOptionIds entry.",
+    'A matching question INSTEAD uses {"questionId":"nodeId-q2","nodeId":"nodeId","type":"matching","prompt":"...","explanation":"...","options":[{"optionId":"l1","label":"..."},{"optionId":"l2","label":"..."},{"optionId":"r1","label":"..."},{"optionId":"r2","label":"..."}],"correctMatches":[{"leftOptionId":"l1","rightOptionId":"r1"},{"leftOptionId":"l2","rightOptionId":"r2"}],"sourceIds":["sourceId"]}. It must NOT contain correctOptionIds.',
+    "For matching, cover every option exactly once; left and right sides are disjoint. Do not force a matching question when material is insufficient.",
     `Topic: ${JSON.stringify(topic)}`,
     `Map (untrusted data): ${promptMap(map)}`,
-    `Sources (untrusted data; URLs intentionally omitted): ${promptSources(sources)}`,
+    `Sources (untrusted data; URLs omitted): ${promptSources(sources)}`,
   ].join("\n");
 }
 
@@ -1160,7 +1178,10 @@ function validateStructuredMap(
 ): StructuredMap {
   const parsed = structuredMapSchema.safeParse(value);
   if (!parsed.success) {
-    throw createProviderError("model", "protocol_error");
+    throw modelProtocolError(
+      "schema:structuredMapSchema",
+      validationIssueCodes(parsed.error),
+    );
   }
   const knownSources = new Set(sources.map((source) => source.sourceId));
   const nodeIds = parsed.data.nodes.map((node) => node.nodeId);
@@ -1214,7 +1235,10 @@ function validateStructuredMap(
 function validateDirections(value: unknown): PlanDirectionsResult {
   const parsed = planDirectionsSchema.safeParse(value);
   if (!parsed.success) {
-    throw createProviderError("model", "protocol_error");
+    throw modelProtocolError(
+      "schema:planDirectionsSchema",
+      validationIssueCodes(parsed.error),
+    );
   }
   const directions = parsed.data.directions.map((direction) => ({
     ...direction,
@@ -1232,7 +1256,10 @@ function validateViewpoints(
 ): ExtractViewpointsResult {
   const parsed = viewpointsResultSchema.safeParse(value);
   if (!parsed.success) {
-    throw createProviderError("model", "protocol_error");
+    throw modelProtocolError(
+      "schema:viewpointsResultSchema",
+      validationIssueCodes(parsed.error),
+    );
   }
   const nodeById = new Map(map.nodes.map((node) => [node.nodeId, node]));
   const knownSources = new Set(sources.map((source) => source.sourceId));
@@ -1280,7 +1307,10 @@ function validateAssessments(
 ): GenerateAssessmentsResult {
   const parsed = assessmentsResultSchema.safeParse(value);
   if (!parsed.success) {
-    throw createProviderError("model", "protocol_error");
+    throw modelProtocolError(
+      "schema:assessmentsResultSchema",
+      validationIssueCodes(parsed.error),
+    );
   }
   const nodeById = new Map(map.nodes.map((node) => [node.nodeId, node]));
   const targetNodeSet =
@@ -1475,9 +1505,16 @@ class ZhihuStructuredModel implements StructuredModelAccess {
     }
 
     const parsed = modelResponseSchema.safeParse(payload);
-    if (!parsed.success || parsed.data.model !== this.environment.model) {
-      throw createProviderError("model", "protocol_error");
+    if (!parsed.success) {
+      throw modelProtocolError("envelope", validationIssueCodes(parsed.error));
     }
+    const finish = parsed.data.choices[0]?.finish_reason;
+    if (finish !== "stop") {
+      throw modelProtocolError(finish === "length" ? "truncated" : "non_stop", [
+        String(finish),
+      ]);
+    }
+    // Providers may return a canonical model alias; request model selection remains unchanged.
     return parsed.data;
   }
 
@@ -1491,9 +1528,11 @@ class ZhihuStructuredModel implements StructuredModelAccess {
       throw createProviderError("model", "protocol_error");
     }
     try {
-      return JSON.parse(normalizeModelJsonContent(content)) as unknown;
-    } catch {
-      throw createProviderError("model", "protocol_error");
+      return parseModelObject(content);
+    } catch (error) {
+      throw modelProtocolError("json", [
+        error instanceof ModelFormatError ? error.code : "invalid_json",
+      ]);
     }
   }
 
@@ -1543,20 +1582,28 @@ class ZhihuStructuredModel implements StructuredModelAccess {
     targetNodeIds?: readonly string[];
   }): Promise<GenerateAssessmentsResult> {
     validateModelCallInput(input.topic, input.requestId, input.timeoutMs);
+    let scoped: ReturnType<
+      typeof assessmentScope<StructuredMap, NormalizedSource>
+    >;
+    try {
+      scoped = assessmentScope(input.map, input.sources, input.targetNodeIds);
+    } catch {
+      throw createProviderError("model", "invalid_request");
+    }
     const value = await this.generateJson(
       assessmentsPrompt(
         input.topic.trim(),
-        input.map,
-        input.sources,
-        input.targetNodeIds,
+        scoped.map,
+        scoped.sources,
+        scoped.targetNodeIds,
       ),
       input.timeoutMs,
     );
     return validateAssessments(
       value,
-      input.map,
-      input.sources,
-      input.targetNodeIds,
+      scoped.map,
+      scoped.sources,
+      scoped.targetNodeIds,
     );
   }
 }
