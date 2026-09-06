@@ -1,4 +1,5 @@
 "use client";
+import "./bookish-fonts";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   currentBookTheme,
@@ -41,6 +42,15 @@ export function BookThemeToggle() {
       if (event.key === THEME_STORAGE_KEY)
         applyBookTheme(normalizedTheme(event.newValue));
     };
+    if (!document.documentElement.dataset.shittimTone) {
+      try {
+        applyBookTheme(
+          normalizedTheme(localStorage.getItem(THEME_STORAGE_KEY)),
+        );
+      } catch {
+        applyBookTheme("light");
+      }
+    }
     update();
     window.addEventListener("shittim:theme", update);
     window.addEventListener("storage", storage);
@@ -80,10 +90,10 @@ export function BookThemeToggle() {
     </button>
   );
 }
-/** Optional fan-art bookmark. Put a generated transparent image at the local path to replace the reference. */
+/** Optional fan-art bookmark. Uses the user-supplied illustration locally; no external image request. */
 export function AnonBookmark() {
   const [open, setOpen] = useState(false),
-    [image, setImage] = useState<"local" | "reference" | "missing">("local");
+    [image, setImage] = useState<"local" | "missing">("local");
   const button = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -128,19 +138,11 @@ export function AnonBookmark() {
           "missing" /* eslint-disable-next-line @next/next/no-img-element */ ? (
             <img
               className={s.anonImage}
-              width="150"
-              height="178"
-              alt="千早爱音的 Q 版书签"
-              src={
-                image === "local"
-                  ? "/shittim/anon-reading.webp"
-                  : "https://bangdream.gamedbs.jp/images/chara/livesd/1694871242002_htd2n9wi.png"
-              }
-              onError={() =>
-                setImage((value) =>
-                  value === "local" ? "reference" : "missing",
-                )
-              }
+              width="240"
+              height="240"
+              alt="千早爱音的 Q 版彩蛋"
+              src="/shittim/anon-easter.webp"
+              onError={() => setImage("missing")}
             />
           ) : (
             <span className={s.anonFallback}>
