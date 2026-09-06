@@ -15,6 +15,7 @@ export type TaskSnapshot = Readonly<{
   deadlineAt: string;
   result: TaskResult | null;
   failure: TaskFailure | null;
+  progress?: unknown;
 }>;
 export type TaskEvent = Readonly<{
   protocolVersion: "1";
@@ -70,6 +71,7 @@ export function readSnapshot(value: unknown): TaskSnapshot {
       f && text(f.code) && typeof f.retryable === "boolean"
         ? { code: text(f.code), retryable: f.retryable }
         : null,
+    ...("progress" in r ? { progress: r.progress } : {}),
   };
 }
 export function readRequest(value: unknown): {
@@ -119,6 +121,14 @@ export class SseDecoder {
 }
 export function eventStage(event: TaskEvent): string | null {
   return text(event.data.status) || text(event.data.stage) || null;
+}
+export function eventProgress(
+  event: TaskEvent,
+): Record<string, unknown> | null {
+  const data = record(event.data);
+  if (!data) return null;
+  if ("progress" in data) return record(data.progress);
+  return record(data);
 }
 export function isTerminal(status: string): boolean {
   return status === "succeeded" || status === "failed";

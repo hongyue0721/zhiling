@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiRequest, isApiRequestError } from "@/shared/ui/api-client";
 import {
+  eventProgress,
   eventStage,
   readRequest,
   readSnapshot,
@@ -12,7 +13,10 @@ import {
   followGeneration,
   ProgressConnectionError,
 } from "./generation-transport";
+import { requestDeadline } from "./request-deadline";
 import { failureText } from "./generation-copy";
+import type { GenerationProgress } from "@/components/contracts";
+import { readProgress } from "./generation-progress";
 export type GenerationView = {
   phase:
     | "idle"
@@ -32,6 +36,7 @@ export type GenerationView = {
   error: string | null;
   result: TaskSnapshot["result"];
   failure: TaskSnapshot["failure"];
+  progress: GenerationProgress | null;
   reuse: string;
   events: { sequence: number; status: string; at: number }[];
   visited: string[];
@@ -49,6 +54,7 @@ const empty: GenerationView = {
   error: null,
   result: null,
   failure: null,
+  progress: null,
   reuse: "",
   events: [],
   visited: [],
@@ -94,6 +100,7 @@ export function useGeneration(accountKey: string, enabled: boolean) {
     if (snapshot.status === "succeeded" && !snapshot.result)
       throw new Error("地图已生成，但学习入口尚未返回。请重新连接原任务。");
     cursorRef.current = Math.max(cursorRef.current, snapshot.sequence);
+    const progress = snapshot.progress ? readProgress(snapshot.progress) : null;
     setView((current) => ({
       ...current,
       taskId: snapshot.taskId,
@@ -104,6 +111,7 @@ export function useGeneration(accountKey: string, enabled: boolean) {
       lastEventAt: Date.now(),
       result: snapshot.result,
       failure: snapshot.failure,
+      progress: progress ?? current.progress,
       phase:
         snapshot.status === "succeeded"
           ? "succeeded"
@@ -154,11 +162,15 @@ export function useGeneration(accountKey: string, enabled: boolean) {
               snapshot: await getSnapshot(resumeTaskId, controller.signal),
             }
           : readRequest(
-              await apiRequest<unknown>("/api/map-generations", {
-                method: "POST",
-                body: JSON.stringify({ topic }),
-                signal: controller.signal,
-              }),
+              await requestDeadline(
+                (signal) =>
+                  apiRequest<unknown>("/api/map-generations", {
+                    method: "POST",
+                    body: JSON.stringify({ topic }),
+                    signal,
+                  }),
+                controller.signal,
+              ),
             );
         if (controller.signal.aborted) return;
         const snapshot = requested.snapshot;
@@ -191,10 +203,13 @@ export function useGeneration(accountKey: string, enabled: boolean) {
             if (controller.signal.aborted) return;
             cursorRef.current = Math.max(cursorRef.current, event.sequence);
             const status = eventStage(event);
+            const rawProgress = eventProgress(event);
+            const progress = rawProgress ? readProgress(rawProgress) : null;
             setView((current) => ({
               ...current,
               sequence: cursorRef.current,
               lastEventAt: Date.now(),
+              progress: progress ?? current.progress,
               // Terminal state is committed only by canonical GET, never by animation or a partial event.
               status:
                 status && status !== "succeeded" && status !== "failed"
