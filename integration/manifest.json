@@ -1,0 +1,70 @@
+{
+  "package": "Shittim Bookish V4 · 实际仓库接入交付",
+  "repo": "https://github.com/hongyue0721/zhiling.git",
+  "baselineDev": "8c9d70470631233953797bb62ff5c73acc3e1d84",
+  "v4Branch": "feature/shittim-v4",
+  "reviewedMain": "f8087852427b76493209f4d20991235beec83932",
+  "runtimeBlob": "b362b84aa1ecda4679473ade0ade9107b6fa433d",
+  "runtimeBlobMatchesBaseline": true,
+  "backendMigration": "semantic-merge-by-responsibility, not whole-file overwrite",
+  "skippedFixes": [
+    {
+      "edit": "structure-evidence (V4 runtime.json)",
+      "reason": "仓库 8d17bfa 已因线上拒答把结构阶段来源精简为标题级并带回归测试断言不含 excerpt；沿用当前实现，避免恢复线上问题。"
+    }
+  ],
+  "frontendPolicy": {
+    "homeAndGenerate": "同一卷页连续流程，immersion 视图由 / 与 /generate 复用",
+    "routes": "不新增页面路由；藏书仅用 /api/learning-relationships 与 /api/featured-learning-maps",
+    "previewToggle": "左下角开发预览切换器已移除",
+    "knowledgeFirst": "点核心节点先读知识，主动点练习才加载题目",
+    "marginalNotes": "只投影已有 viewpoints/sources/conditions/excerpt，无新增搜索/模型/出题请求",
+    "progress": "只统计真实核心节点；生成页展示服务端真实检索/恢复进度字段",
+    "aiAsset": "anon-easter.webp 本地图，仅书签点击后出现，无第三方图片请求",
+    "layout": "顶栏/题签/图谱物理分区，非绝对定位叠压；字体包仓库已具，未新增依赖/二进制"
+  },
+  "commits": [
+    { "sha": "47aed4b", "type": "修复(生成)", "title": "迁移 V4 出题适配层超时/解析/诊断与节点裁剪" },
+    { "sha": "58456ce", "type": "重构(生成)", "title": "迁移真实进度解析纯函数至独立模块" },
+    { "sha": "6a529c1", "type": "风格(前端)", "title": "接入爱音本地彩蛋素材并分区重构书卷版式" },
+    { "sha": "b681849", "type": "功能(研读)", "title": "图谱先读知识后练题并投影观点与引文旁注" },
+    { "sha": "7204ce0", "type": "功能(首页/生成)", "title": "首页与生成页合并为连续卷页流程" },
+    { "sha": "1b3e3b0", "type": "功能(研读)", "title": "学习工作区接入读本/练习并在生成视图展示真实进度" },
+    { "sha": "02a7a1c", "type": "风格(前端)", "title": "收拢书卷字体导入为单一 font gate" }
+  ],
+  "dependencies": {
+    "added": [],
+    "alreadyPresent": ["@fontsource/allura", "@fontsource/fraunces", "@fontsource/cormorant-garamond", "@fontsource-variable/noto-serif-sc", "lxgw-wenkai-screen-web", "three", "@types/three"],
+    "packageManager": "pnpm@11.25.0",
+    "noFontBinariesInRepo": true
+  },
+  "validation": {
+    "format": "pass",
+    "lint": "pass",
+    "typecheck": "pass",
+    "architecture": "pass",
+    "unit": "80/80",
+    "architectureTests": "10/10",
+    "contracts": "84/84",
+    "build": "pass",
+    "integration": "44/47 (3 failures identical to pristine baseline 8c9d704, environment-dependent)",
+    "browser": {
+      "tool": "real headless Chromium against local dev server + seeded Postgres",
+      "checked": {
+        "1440x900": ["cover", "theme toggle", "library drawer", "atlas zones topbar/title/map no overlap (96/117-218/231-900)", "chapter→读本", "marginal note→读本", "practice lazy-load", "question submit", "dialog close focus restore"],
+        "390x844": ["cover", "atlas no overflow"],
+        "844x390": ["atlas no overflow"],
+        "320x568": ["cover no overflow"],
+        "renderers": ["three-webgl real GPU path confirmed", "canvas2d fallback confirmed with --disable-webgl"]
+      },
+      "notCheckedAfterEnvCleanup": ["SSE reconnect/snapshot-resume final E2E after environment tmp cleanup; SSE live status + recovery UI was observed earlier during generation POST"]
+    }
+  },
+  "deliverables": [
+    "integration/manifest.json",
+    "integration/docs/安装与验证.md",
+    "integration/docs/回滚方案.md",
+    "integration/docs/验证结果.md",
+    "integration/patches/shittim-bookish-v4.patch"
+  ]
+}
