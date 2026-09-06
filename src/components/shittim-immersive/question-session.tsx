@@ -327,7 +327,7 @@ export function QuestionSession({
                   : onBack
               }
             >
-              {index < questions.length - 1 ? "下一题解析 →" : "返回地图 ↗"}
+              {index < questions.length - 1 ? "下一题解析 →" : "回到读本 ↗"}
             </button>
           </div>
         </section>
@@ -429,7 +429,7 @@ export function QuestionSession({
                   : onBack
               }
             >
-              {index ? "上一题" : "返回地图"}
+              {index ? "上一题" : "回到读本"}
             </button>
             <div className={s.stepDots} aria-hidden="true">
               {questions.map((q, i) => (
