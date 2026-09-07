@@ -11,6 +11,7 @@ import {
 import {
   OFFICIAL_FIXTURE_PROVENANCE,
   ZHIHU_SEARCH_ADDITIVE_METADATA_FIXTURE,
+  ZHIHU_SEARCH_EMPTY_AUTHOR_NAME_FIXTURE,
   REAL_AUTH_FAILURE_FIXTURE,
   ZHIDA_SUCCESS_FIXTURE,
   ZHIHU_SEARCH_EMPTY_FIXTURE,
@@ -108,6 +109,12 @@ async function providerError(operation: Promise<unknown>) {
 }
 
 describe("Zhihu source search adapter", () => {
+  it("advertises the v3 source adapter contract for empty AuthorName compatibility", () => {
+    expect(
+      runtimeWith(vi.fn<typeof fetch>()).versions.sourceAdapterVersion,
+    ).toBe("zhihu-http-2026-07-16-v3");
+  });
+
   it("emits redacted lifecycle diagnostics for each source search", async () => {
     const events: ZhihuSearchDiagnosticEvent[] = [];
     const fetcher = vi
@@ -301,6 +308,30 @@ describe("Zhihu source search adapter", () => {
     expect(result.sources[0]).not.toHaveProperty("authorSignature");
   });
 
+  it("accepts empty AuthorName and normalizes it to the registered anonymous label", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(ZHIHU_SEARCH_EMPTY_AUTHOR_NAME_FIXTURE)),
+      );
+
+    const result = await sourceRequest(fetcher);
+
+    expect(result.sources).toHaveLength(3);
+    expect(result.sources[0]).toMatchObject({
+      sourceId: "zhihu_article_empty-author-1",
+      authorName: "匿名",
+    });
+    expect(result.sources[1]).toMatchObject({
+      sourceId: "zhihu_article_empty-author-2",
+      authorName: "匿名",
+    });
+    expect(result.sources[2]).toMatchObject({
+      sourceId: "zhihu_article_123456789",
+      authorName: "张三",
+    });
+  });
+
   it("returns a successful empty result without confusing it with auth failure", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
@@ -356,6 +387,26 @@ describe("Zhihu source search adapter", () => {
     );
     await expect(
       providerError(sourceRequest(blankTitle)),
+    ).resolves.toMatchObject({
+      provider: "source",
+      code: "protocol_error",
+      retryable: false,
+    });
+    const { AuthorName: _omitted, ...itemWithoutAuthor } =
+      ZHIHU_SEARCH_SUCCESS_FIXTURE.Data.Items[0];
+    const missingAuthor = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ...ZHIHU_SEARCH_SUCCESS_FIXTURE,
+          Data: {
+            ...ZHIHU_SEARCH_SUCCESS_FIXTURE.Data,
+            Items: [itemWithoutAuthor],
+          },
+        }),
+      ),
+    );
+    await expect(
+      providerError(sourceRequest(missingAuthor)),
     ).resolves.toMatchObject({
       provider: "source",
       code: "protocol_error",

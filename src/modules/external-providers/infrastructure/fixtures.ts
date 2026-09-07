@@ -66,6 +66,35 @@ export const ZHIHU_SEARCH_ADDITIVE_METADATA_FIXTURE = {
   },
 } as const;
 
+/**
+ * Live-compatible envelope observed on 2026-09-07: HTTP 200 / Code=0 items
+ * with empty or whitespace-only `AuthorName`. The adapter must accept the
+ * envelope and normalize those authors to `匿名`. This is a redacted
+ * compatibility fixture, not a stored production payload.
+ */
+export const ZHIHU_SEARCH_EMPTY_AUTHOR_NAME_FIXTURE = {
+  ...ZHIHU_SEARCH_SUCCESS_FIXTURE,
+  Data: {
+    ...ZHIHU_SEARCH_SUCCESS_FIXTURE.Data,
+    Items: [
+      {
+        ...ZHIHU_SEARCH_SUCCESS_FIXTURE.Data.Items[0],
+        ContentID: "empty-author-1",
+        Url: "https://zhuanlan.zhihu.com/p/empty-author-1?utm_source=fixture",
+        AuthorName: "",
+      },
+      {
+        ...ZHIHU_SEARCH_SUCCESS_FIXTURE.Data.Items[0],
+        ContentID: "empty-author-2",
+        Title: "空白作者名条目",
+        Url: "https://zhuanlan.zhihu.com/p/empty-author-2?utm_source=fixture",
+        AuthorName: "   ",
+      },
+      ZHIHU_SEARCH_SUCCESS_FIXTURE.Data.Items[0],
+    ],
+  },
+} as const;
+
 /** Official contract shape for a successful search with no items. */
 export const ZHIHU_SEARCH_EMPTY_FIXTURE = {
   Code: 0,

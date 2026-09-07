@@ -45,6 +45,9 @@ const SOURCE_SEARCH_URL =
   "https://developer.zhihu.com/api/v1/content/zhihu_search";
 const MODEL_COMPLETIONS_URL = "https://developer.zhihu.com/v1/chat/completions";
 
+/** Registered ZH-001 fallback when Zhihu returns an empty or whitespace AuthorName. */
+const ANONYMOUS_AUTHOR_NAME = "匿名";
+
 const timeoutInputSchema = z.number().int().min(1).max(600_000);
 const requestIdSchema = z
   .string()
@@ -91,10 +94,10 @@ const sourceItemSchema = z.object({
     .refine((value) => value.trim().length > 0),
   CommentCount: z.number().int().nonnegative(),
   VoteUpCount: z.number().int().nonnegative(),
-  AuthorName: z
-    .string()
-    .min(1)
-    .refine((value) => value.trim().length > 0),
+  // Production 2026-09-07: Zhihu returned HTTP 200 / Code=0 items with empty
+  // AuthorName. Rejecting the envelope mapped to source_unavailable. The field
+  // must still exist as a string; missing or non-string values remain protocol_error.
+  AuthorName: z.string(),
   AuthorSignature: z.string().optional(),
   AuthorAvatar: z.string(),
   AuthorBadge: z.string(),
@@ -664,7 +667,8 @@ function normalizeSource(item: SourceProviderItem): NormalizedSource {
     title: item.Title.trim(),
     excerpt: item.ContentText.trim(),
     url,
-    authorName: item.AuthorName.trim(),
+    // Domain candidate validation requires a non-blank authorName.
+    authorName: item.AuthorName.trim() || ANONYMOUS_AUTHOR_NAME,
     contentType,
     updatedAt: item.EditTime,
     authorityLevel,
