@@ -54,6 +54,7 @@
 - 结构化阶段只发送来源 ID 与标题的紧凑来源载荷，模型适配版本升级为 `zhida-thinking-1p5-json-2026-09-04-v5`，修复完整来源载荷触发知乎直答输出普通文本拒答的问题。
 - 修复生产容器与知乎平台间歇性 TLS 卡死的根因：为生产 Compose 网络显式设置 MTU `1452`。
 - 知乎搜索适配器接受线上空/空白 `AuthorName` 并规范化为 `匿名`，来源适配版本升级为 `zhihu-http-2026-07-16-v3`；此前整包会被判为 `protocol_error` 并映射成 `source_unavailable`。
+- 修复生成上下文摘要按 UTF-16 码元截断切开代理对，导致结构化写入 `jsonb` 被 PostgreSQL 拒绝并误报 `internal_failure`；摘要改为按 Unicode 码点截断并剔除落单代理项。搜索 checkpoint 仍只是任务恢复缓存，正式成功只在校验并发布后写入 `generation_cache`。
 
 - 出题阶段改为按单个节点分批生成并在每批成功后写入批级 checkpoint；修复知乎直答服务端长请求（约 70 秒）处理上限导致的间歇性判死，并支持恢复时只补缺失批次。
 

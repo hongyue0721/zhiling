@@ -290,6 +290,108 @@ describe("map generation persistence", () => {
     );
   });
 
+  it("keeps 从零学习Agent search checkpoints without marking generation succeeded", async () => {
+    const topic = "从零学习Agent";
+    const emoji = "📘";
+    const marker = "手写 AI Agent,完整 Python 教程\n\n";
+    const crossingExcerpt = `${marker}${"词".repeat(319 - marker.length)}${emoji}后续内容`;
+    const emojiSources = sources.map((source) => ({
+      ...source,
+      excerpt: crossingExcerpt,
+    }));
+    let taskId = "";
+    let observedBeforeModel = false;
+    const generation = createMapGenerationRuntime({
+      database,
+      providerVersions: versions,
+      rateLimit: testRateLimit,
+      idGenerator: () => crypto.randomUUID(),
+    }).generation;
+    const baseModel = provider();
+    const worker = createMapGenerationWorkerRuntime({
+      database,
+      providerVersions: versions,
+      sourceSearch: {
+        async search() {
+          return { searchId: "search-agent-topic", sources: emojiSources };
+        },
+      },
+      structuredModel: {
+        ...baseModel,
+        async structureMap(input) {
+          observedBeforeModel = true;
+          const snapshot = await generation.getGeneration("user-a", taskId);
+          expect(snapshot?.status).toBe("structuring");
+          expect(snapshot?.result).toBeFalsy();
+          const searchRows = await database
+            .select({
+              operationKey: generationCheckpoint.operationKey,
+              completedAt: generationCheckpoint.completedAt,
+            })
+            .from(generationCheckpoint)
+            .where(
+              and(
+                eq(generationCheckpoint.taskId, taskId),
+                eq(generationCheckpoint.stage, "searching"),
+              ),
+            );
+          expect(
+            searchRows.some(
+              (row) => row.operationKey === "stage" && row.completedAt !== null,
+            ),
+          ).toBe(true);
+          expect(
+            searchRows.filter((row) => row.operationKey.startsWith("search:")),
+          ).toHaveLength(3);
+          expect(
+            await database
+              .select({ taskId: generationCache.taskId })
+              .from(generationCache),
+          ).toHaveLength(0);
+          const structuringInput = await database
+            .select({ input: generationCheckpoint.input })
+            .from(generationCheckpoint)
+            .where(
+              and(
+                eq(generationCheckpoint.taskId, taskId),
+                eq(generationCheckpoint.stage, "structuring"),
+                eq(generationCheckpoint.operationKey, "structuring"),
+              ),
+            );
+          const persistedSources = (
+            structuringInput[0]?.input as {
+              sources?: readonly { excerpt: string }[];
+            }
+          ).sources;
+          expect(persistedSources?.length).toBeGreaterThan(0);
+          expect(
+            persistedSources?.every((source) => source.excerpt.endsWith(emoji)),
+          ).toBe(true);
+          return baseModel.structureMap(input);
+        },
+      },
+      idGenerator: () => crypto.randomUUID(),
+      sleep: async () => undefined,
+    }).worker;
+
+    const created = await generation.requestGeneration("user-a", topic);
+    taskId = created.snapshot.taskId;
+    expect(created.reuse).toBe("created");
+    expect(created.snapshot.status).toBe("queued");
+    expect(created.snapshot.result).toBeFalsy();
+
+    await worker.runOnce("agent-topic-worker");
+
+    expect(observedBeforeModel).toBe(true);
+    const completed = await generation.getGeneration("user-a", taskId);
+    expect(completed?.status).toBe("succeeded");
+    expect(completed?.result?.mapId).toBeTruthy();
+    const publishedCache = await database
+      .select({ taskId: generationCache.taskId })
+      .from(generationCache);
+    expect(publishedCache).toEqual([{ taskId }]);
+  });
+
   it("uses one model call per assessment batch and source call per normal stage", async () => {
     const modelCalls = {
       planning: 0,

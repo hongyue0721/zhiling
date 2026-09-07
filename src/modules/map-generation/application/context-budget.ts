@@ -92,11 +92,50 @@ function compareSources(
   );
 }
 
+function stripUnpairedSurrogates(value: string): string {
+  let result = "";
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const low = value.charCodeAt(index + 1);
+      if (low >= 0xdc00 && low <= 0xdfff) {
+        result += value[index]! + value[index + 1]!;
+        index += 1;
+      }
+      continue;
+    }
+    if (code >= 0xdc00 && code <= 0xdfff) {
+      continue;
+    }
+    result += value[index]!;
+  }
+  return result;
+}
+
+function sliceByCodePoint(value: string, maxCodePoints: number): string {
+  let result = "";
+  let count = 0;
+  for (const point of value) {
+    if (count >= maxCodePoints) {
+      break;
+    }
+    result += point;
+    count += 1;
+  }
+  return result;
+}
+
 function compactSource(
   source: GenerationSourceCandidate,
   maxExcerptChars: number,
 ): GenerationSourceCandidate {
-  const excerpt = source.excerpt.trim().slice(0, maxExcerptChars);
+  // Prompt budgets count Unicode code points. String#slice uses UTF-16 code
+  // units and can cut a surrogate pair; Node will JSON.stringify the orphan,
+  // but PostgreSQL jsonb rejects it.
+  const excerpt = sliceByCodePoint(
+    stripUnpairedSurrogates(source.excerpt.trim()),
+    maxExcerptChars,
+  );
   return excerpt === source.excerpt ? source : { ...source, excerpt };
 }
 

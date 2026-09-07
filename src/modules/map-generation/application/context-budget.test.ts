@@ -4,7 +4,29 @@ import type {
   GenerationDirectionCandidate,
   GenerationSourceCandidate,
 } from "../domain/candidate";
-import { createModelContextBudget, MODEL_MAX_ATTEMPTS } from "./context-budget";
+import {
+  createModelContextBudget,
+  MODEL_CONTEXT_BUDGETS,
+  MODEL_MAX_ATTEMPTS,
+} from "./context-budget";
+
+function hasUnpairedSurrogate(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const low = value.charCodeAt(index + 1);
+      if (low < 0xdc00 || low > 0xdfff) {
+        return true;
+      }
+      index += 1;
+      continue;
+    }
+    if (code >= 0xdc00 && code <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
+}
 
 const directions: readonly GenerationDirectionCandidate[] = [
   {
@@ -113,10 +135,81 @@ describe("model context budget", () => {
     expect(
       budget.sources.every((source) => source.url.includes("zhihu.com")),
     ).toBe(true);
-    expect(budget.sources[0]?.excerpt).toHaveLength(320);
+    expect(Array.from(budget.sources[0]?.excerpt ?? "")).toHaveLength(320);
     expect(budget.serializedChars).toBeLessThanOrEqual(
       budget.targetSourceChars,
     );
+  });
+
+  it("keeps emoji excerpts persistable when the UTF-16 budget boundary splits a pair", () => {
+    const emoji = "📘";
+    const marker = "手写 AI Agent,完整 Python 教程\n\n";
+    const crossingExcerpt = `${marker}${"词".repeat(
+      MODEL_CONTEXT_BUDGETS[0].maxExcerptChars - 1 - marker.length,
+    )}${emoji}后续内容`;
+    const brokenByCodeUnit = crossingExcerpt
+      .trim()
+      .slice(0, MODEL_CONTEXT_BUDGETS[0].maxExcerptChars);
+    expect(brokenByCodeUnit.charCodeAt(brokenByCodeUnit.length - 1)).toBe(
+      0xd83d,
+    );
+    expect(brokenByCodeUnit.at(-1)).not.toBe(emoji);
+
+    const emojiSources: readonly GenerationSourceCandidate[] = sources.map(
+      (source, index) => ({
+        ...source,
+        excerpt: `${crossingExcerpt}${index}`,
+      }),
+    );
+    const budget = createModelContextBudget({
+      attempt: 1,
+      directions,
+      sources: emojiSources,
+      sourceIdsByDirection: [
+        { directionId: "direction-a", sourceIds: ["source-a"] },
+        { directionId: "direction-b", sourceIds: ["source-b"] },
+        { directionId: "direction-c", sourceIds: ["source-c"] },
+      ],
+    });
+
+    expect(
+      budget.sources.every((source) => source.excerpt.endsWith(emoji)),
+    ).toBe(true);
+    expect(Array.from(budget.sources[0]!.excerpt)).toHaveLength(
+      MODEL_CONTEXT_BUDGETS[0].maxExcerptChars,
+    );
+    expect(budget.sources[0]!.excerpt.length).toBeGreaterThan(
+      MODEL_CONTEXT_BUDGETS[0].maxExcerptChars,
+    );
+    for (const source of budget.sources) {
+      expect(hasUnpairedSurrogate(source.excerpt)).toBe(false);
+      expect(hasUnpairedSurrogate(JSON.stringify(source))).toBe(false);
+    }
+  });
+
+  it("drops unpaired surrogates already present in a source excerpt", () => {
+    const budget = createModelContextBudget({
+      attempt: 1,
+      directions,
+      sources: [
+        {
+          ...sources[0]!,
+          excerpt: `完整摘要\uD83D中间\uDE00以及结尾\uD83D`,
+        },
+        ...sources.slice(1),
+      ],
+      sourceIdsByDirection: [
+        { directionId: "direction-a", sourceIds: ["source-a"] },
+        { directionId: "direction-b", sourceIds: ["source-b"] },
+        { directionId: "direction-c", sourceIds: ["source-c"] },
+      ],
+    });
+
+    const compacted = budget.sources.find(
+      (source) => source.sourceId === "source-a",
+    );
+    expect(compacted?.excerpt).toBe("完整摘要中间以及结尾");
+    expect(hasUnpairedSurrogate(JSON.stringify(compacted))).toBe(false);
   });
 
   it("converges source count and excerpt length on recovery attempts", () => {
